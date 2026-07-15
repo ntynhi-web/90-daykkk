@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Mic, MicOff, Send, HelpCircle, Flame, Calendar, Trash2, Plus, CheckCircle, 
-  AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye
+  AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
+  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } from "../types";
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
+import GoalIcon from "./GoalIcon";
 
 interface TodayViewProps {
   state: AppState;
@@ -519,7 +521,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"><ListTodo className="h-4 w-4" /></span>
               1. Việc ưu tiên hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Xếp việc theo Ma trận Eisenhower để tập trung tối đa tâm trí.</p>
@@ -571,7 +573,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <div className="bg-white rounded-2xl p-5 border border-rose-100 shadow-3xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                <Siren className="h-4 w-4 text-rose-500" />
                 Gấp & Quan trọng
               </span>
               <span className="text-[10px] font-bold text-slate-400 font-mono">
@@ -625,7 +627,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <div className="bg-white rounded-2xl p-5 border border-indigo-100 shadow-3xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-indigo-600 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <Brain className="h-4 w-4 text-indigo-500" />
                 Quan trọng (Deep Work)
               </span>
               <span className="text-[10px] font-bold text-slate-400 font-mono">
@@ -679,7 +681,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <div className="bg-white rounded-2xl p-5 border border-amber-100 shadow-3xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <Zap className="h-4 w-4 text-amber-500" />
                 Gấp (Làm nhanh / Ủy quyền)
               </span>
               <span className="text-[10px] font-bold text-slate-400 font-mono">
@@ -733,7 +735,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <div className="bg-white rounded-2xl p-5 border border-slate-150 shadow-3xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                <Archive className="h-4 w-4 text-slate-400" />
                 Làm sau (Giải trí / Tích lũy)
               </span>
               <span className="text-[10px] font-bold text-slate-400 font-mono">
@@ -791,7 +793,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-500" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100"><Calendar className="h-4 w-4" /></span>
               2. Lịch hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Quản lý block thời gian Deep Work và phát hiện trùng lặp.</p>
@@ -846,7 +848,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       <section id="section-goal-journeys" className="space-y-4">
         <div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-teal-500" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
             3. Các hành trình mục tiêu
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Tiến trình đạt các mốc cột mốc trong chu kỳ 90 ngày của bạn.</p>
@@ -861,9 +863,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               return (
                 <div key={journey.id} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-3xs space-y-4 hover:border-indigo-200 transition-all">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex items-start gap-3">
+                      <GoalIcon icon={journey.icon} color={journey.accentColor} size={18} className="p-2 rounded-xl border shrink-0" />
+                      <div>
                       <h3 className="text-xs font-black text-slate-900">{journey.name}</h3>
                       <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{journey.desiredOutcome}</p>
+                      </div>
                     </div>
                     <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
                       {progress}%
@@ -914,7 +919,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       <section id="section-routines" className="space-y-4">
         <div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Repeat2 className="h-4 w-4" /></span>
             4. Thói quen nên duy trì
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Thực thi kỷ luật thép mỗi ngày để tự động hóa thành công của các hành trình mục tiêu.</p>
@@ -965,7 +970,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       <section id="section-quick-input" className="space-y-4">
         <div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-indigo-600" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100"><MessageSquareText className="h-4 w-4" /></span>
             5. Cập nhật nhanh bằng giọng nói hoặc văn bản
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Trí tuệ nhân tạo Gemini tự động phân loại, cập nhật cột mốc và tích hợp lịch làm việc.</p>
