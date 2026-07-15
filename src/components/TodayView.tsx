@@ -514,22 +514,22 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   };
 
   return (
-    <div id="today-dashboard-view" className="space-y-8">
+    <div id="today-dashboard-view" className="space-y-7">
       
       {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
-      <section id="section-quick-input" className="space-y-4 rounded-[24px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 md:p-6 shadow-sm">
+      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[30px] border border-white/10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 md:p-7 shadow-[0_24px_70px_rgba(99,102,241,0.28)]">
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100"><MessageSquareText className="h-4 w-4" /></span>
-            1. Check-in nhanh bằng giọng nói hoặc văn bản
+          <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white border border-white/20 shadow-inner"><MessageSquareText className="h-5 w-5" /></span>
+            Hôm nay của bạn thế nào?
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Trí tuệ nhân tạo Gemini tự động phân loại, cập nhật cột mốc và tích hợp lịch làm việc.</p>
+          <p className="text-sm text-indigo-100 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. Gemini sẽ biến nội dung thành tiến độ, việc cần làm và lịch phù hợp.</p>
         </div>
 
-        <div className="bg-white/90 rounded-2xl p-5 md:p-6 border border-indigo-100 shadow-sm space-y-4 backdrop-blur-sm">
+        <div className="bg-white rounded-[22px] p-4 md:p-5 border border-white/70 shadow-xl space-y-4">
           <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
             <Sparkles className="w-4 h-4 shrink-0" />
-            <span>Đọc nhật ký check-in (ví dụ: "Hôm nay tôi hoàn thành cột mốc nộp hồ sơ, đã đi bộ 30 phút và muốn lên lịch backtest ngày mai từ 9 giờ đến 10 giờ")</span>
+            <span>Ví dụ: “Tôi đã hoàn thành 3 backtests, đi bộ 6.000 bước và muốn làm website B2B lúc 14:00 ngày mai.”</span>
           </div>
 
           <div className="space-y-3">
@@ -539,7 +539,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               placeholder="Nhập nội dung nhật ký thô tại đây hoặc nhấn nút Microphone để nói..."
               value={transcript}
               onChange={e => setTranscript(e.target.value)}
-              className="w-full text-xs border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 bg-slate-50/30 focus:outline-none focus:ring-1 focus:ring-indigo-100 transition-all font-medium leading-relaxed"
+              className="w-full text-sm border border-slate-200 focus:border-indigo-400 rounded-2xl px-4 py-4 bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all font-medium leading-relaxed resize-none"
             />
 
             {micError && (
@@ -605,7 +605,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                 id="btn-analyze-input"
                 disabled={!transcript.trim() || isClassifying}
                 onClick={() => handleAnalyzeTranscript(transcript)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+                className="flex items-center gap-2 bg-slate-950 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-5 py-3 rounded-2xl shadow-lg transition-all cursor-pointer active:scale-[0.98]"
               >
                 <Send className="w-4 h-4" />
                 <span>Gửi phân tích AI</span>
@@ -620,9 +620,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       <section id="section-priority-board" className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"><ListTodo className="h-4 w-4" /></span>
-              2. Việc ưu tiên hôm nay
+              Việc đáng tập trung hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Xếp việc theo Ma trận Eisenhower để tập trung tối đa tâm trí.</p>
           </div>
@@ -670,7 +670,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Quadrant 1: Gấp & Quan trọng */}
-          <div className="bg-white rounded-2xl p-5 border border-rose-100 shadow-3xs space-y-3">
+          <div className="bg-gradient-to-br from-white to-rose-50/60 rounded-3xl p-5 border border-rose-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
                 <Siren className="h-4 w-4 text-rose-500" />
@@ -724,7 +724,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           </div>
 
           {/* Quadrant 2: Quan trọng nhưng không gấp (Deep Work) */}
-          <div className="bg-white rounded-2xl p-5 border border-indigo-100 shadow-3xs space-y-3">
+          <div className="bg-gradient-to-br from-white to-indigo-50/60 rounded-3xl p-5 border border-indigo-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-indigo-600 flex items-center gap-1.5">
                 <Brain className="h-4 w-4 text-indigo-500" />
@@ -778,7 +778,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           </div>
 
           {/* Quadrant 3: Gấp nhưng không quan trọng */}
-          <div className="bg-white rounded-2xl p-5 border border-amber-100 shadow-3xs space-y-3">
+          <div className="bg-gradient-to-br from-white to-amber-50/60 rounded-3xl p-5 border border-amber-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
                 <Zap className="h-4 w-4 text-amber-500" />
@@ -832,7 +832,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           </div>
 
           {/* Quadrant 4: Ít quan trọng & Chưa gấp */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-150 shadow-3xs space-y-3">
+          <div className="bg-gradient-to-br from-white to-slate-100/60 rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                 <Archive className="h-4 w-4 text-slate-400" />
@@ -892,9 +892,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       <section id="section-today-schedule" className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100"><Calendar className="h-4 w-4" /></span>
-              3. Lịch hôm nay
+              Nhịp ngày hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Quản lý block thời gian Deep Work và phát hiện trùng lặp.</p>
           </div>
@@ -904,7 +904,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-3xs">
+        <div className="bg-white/90 rounded-3xl p-5 border border-white shadow-sm">
           {todaySchedule.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {todaySchedule.map(item => {
@@ -947,9 +947,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       {/* 4. CÁC HÀNH TRÌNH MỤC TIÊU */}
       <section id="section-goal-journeys" className="space-y-4">
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
-            4. Các hành trình mục tiêu
+            Ba hành trình đang tiến tới
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Tiến trình đạt các mốc cột mốc trong chu kỳ 90 ngày của bạn.</p>
         </div>
@@ -961,7 +961,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               const activeMilestone = getActiveMilestone(journey);
 
               return (
-                <div key={journey.id} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-3xs space-y-4 hover:border-indigo-200 transition-all">
+                <div key={journey.id} className="group bg-white/95 rounded-3xl p-5 border border-white shadow-sm space-y-4 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-100/70 transition-all duration-300">
                   <div className="flex justify-between items-start">
                     <div className="flex items-start gap-3">
                       <GoalIcon icon={journey.icon} color={journey.accentColor} size={18} className="p-2 rounded-xl border shrink-0" />
@@ -1018,14 +1018,14 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       {/* 5. THÓI QUEN NÊN DUY TRÌ */}
       <section id="section-routines" className="space-y-4">
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Repeat2 className="h-4 w-4" /></span>
-            5. Thói quen nên duy trì
+            Những nhịp nhỏ nên giữ
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Thực thi kỷ luật thép mỗi ngày để tự động hóa thành công của các hành trình mục tiêu.</p>
+          <p className="text-xs text-slate-400 mt-1">Không cần hoàn hảo — chỉ cần giữ nhịp đủ lâu để tạo đà.</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-3xs">
+        <div className="bg-white/90 rounded-3xl p-5 border border-white shadow-sm">
           {state.routines.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {state.routines.map(routine => {
