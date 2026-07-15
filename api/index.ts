@@ -82,7 +82,7 @@ app.get("/api/ai-status", (req, res) => {
 
 // POST /api/classify endpoint
 app.post("/api/classify", async (req, res) => {
-  const { transcript, currentDate, goals = [], routines = [], chores = [] } = req.body;
+  const { transcript, currentDate, currentCycle = {}, goals = [], routines = [], chores = [] } = req.body;
 
   const todayStr = currentDate || getHoChiMinhDate(0);
 
@@ -109,6 +109,9 @@ ${JSON.stringify(activeGoals.map((g: any) => ({
   description: g.description || g.desiredOutcome,
   milestones: (g.milestones || []).map((m: any) => ({ id: m.id, title: m.title, status: m.status, targetValue: m.targetValue, currentValue: m.currentValue }))
 })), null, 2)}
+
+=== CHU KỲ 90 NGÀY HIỆN TẠI ===
+${JSON.stringify(currentCycle, null, 2)}
 
 === CÁC THÓI QUEN ĐANG DUY TRÌ (ROUTINES) ===
 ${JSON.stringify(routines.map((r: any) => ({
@@ -156,7 +159,13 @@ ${JSON.stringify(chores.map((chore: any) => ({
    - category chỉ được là home, pet, errand, self_care hoặc admin. frequency chỉ được là daily, weekly hoặc one_time.
    - Không đồng thời biến chore thành task mục tiêu, routine hoặc activity gắn goal, trừ khi transcript nói rõ đó là một phần của mục tiêu.
 
-7. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
+7. ĐIỀU KHIỂN CHU KỲ (cycleUpdate): Nếu người dùng nói rõ muốn bắt đầu, khởi động lại hoặc đổi ngày bắt đầu lịch trình/chu kỳ 90 ngày:
+   - Trả về startDate theo YYYY-MM-DD. Các từ "hôm nay", "bữa nay" phải dùng ngày hiện tại ${todayStr}.
+   - shiftPlan mặc định true để dời deadline, milestone và lịch theo cùng độ lệch ngày.
+   - Nếu transcript không yêu cầu đổi chu kỳ, cycleUpdate phải là null.
+   - Không suy diễn lệnh đổi chu kỳ từ một câu chỉ nói về việc muốn làm hôm nay.
+
+8. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
 
 NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 "${transcript || ""}"
@@ -257,12 +266,22 @@ Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác 
                 required: ["title", "category", "frequency", "suggestedStatus", "confidence", "evidence"]
               }
             },
+            cycleUpdate: {
+              type: Type.OBJECT,
+              nullable: true,
+              properties: {
+                startDate: { type: Type.STRING, description: "Ngày bắt đầu mới theo YYYY-MM-DD" },
+                shiftPlan: { type: Type.BOOLEAN },
+                reason: { type: Type.STRING }
+              },
+              required: ["startDate", "shiftPlan", "reason"]
+            },
             unclassifiedItems: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
             }
           },
-          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "choreUpdates", "unclassifiedItems"]
+          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "choreUpdates", "cycleUpdate", "unclassifiedItems"]
         }
       }
     });
