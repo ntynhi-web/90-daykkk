@@ -82,9 +82,20 @@ app.get("/api/ai-status", (req, res) => {
 
 // POST /api/classify endpoint
 app.post("/api/classify", async (req, res) => {
-  const { transcript, currentDate, goals = [], routines = [], chores = [] } = req.body;
+  const { transcript, currentDate, currentCycle = {}, goals = [], routines = [], chores = [] } = req.body;
 
   const todayStr = currentDate || getHoChiMinhDate(0);
+  const addDays = (dateStr: string, days: number) => {
+    const date = new Date(`${dateStr}T12:00:00+07:00`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const todayDate = new Date(`${todayStr}T12:00:00+07:00`);
+  const weekday = todayDate.getUTCDay() || 7;
+  const thisMonday = addDays(todayStr, 1 - weekday);
+  const thisSunday = addDays(thisMonday, 6);
+  const nextMonday = addDays(thisMonday, 7);
+  const nextSunday = addDays(nextMonday, 6);
 
   // If GEMINI_API_KEY is not configured, return clear error JSON
   if (!aiClient) {
@@ -109,6 +120,15 @@ ${JSON.stringify(activeGoals.map((g: any) => ({
   description: g.description || g.desiredOutcome,
   milestones: (g.milestones || []).map((m: any) => ({ id: m.id, title: m.title, status: m.status, targetValue: m.targetValue, currentValue: m.currentValue }))
 })), null, 2)}
+
+=== CHU KỲ 90 NGÀY HIỆN TẠI ===
+${JSON.stringify(currentCycle, null, 2)}
+
+=== MỐC THỜI GIAN TUYỆT ĐỐI (MÚI GIỜ ASIA/HO_CHI_MINH) ===
+- Hôm nay / bữa nay: ${todayStr}
+- Ngày mai: ${addDays(todayStr, 1)}
+- Tuần này: ${thisMonday} đến ${thisSunday}
+- Tuần sau: ${nextMonday} đến ${nextSunday}
 
 === CÁC THÓI QUEN ĐANG DUY TRÌ (ROUTINES) ===
 ${JSON.stringify(routines.map((r: any) => ({
@@ -143,9 +163,14 @@ ${JSON.stringify(chores.map((chore: any) => ({
 3. ĐỀ XUẤT CÔNG VIỆC MỚI (taskSuggestions): Nếu người dùng đề cập đến kế hoạch, việc muốn làm sắp tới (ví dụ: "Ngày mai tôi muốn làm..."):
    - Trích xuất tiêu đề, chọn priority phù hợp (important_urgent, important, urgent, later) và ước tính số phút estimatedMinutes.
    - Gán journeyId tương ứng hoặc null.
+   - Luôn phân loại timeframe là today, tomorrow, this_week, next_week, specific_date hoặc no_date.
+   - Lưu dueDate theo YYYY-MM-DD khi người dùng nêu thời gian. Với "tuần này" không có ngày cụ thể dùng ${thisSunday}; với "tuần sau" không có ngày cụ thể dùng ${nextSunday}.
+   - Một kế hoạch cho tương lai không phải là activity đã hoàn thành hôm nay.
 
 4. ĐỀ XUẤT LỊCH TRÌNH MỚI (scheduleSuggestions): Nếu người dùng muốn lên lịch, đặt giờ thực hiện việc gì (ví dụ: "ngày mai tôi muốn làm 10 backtest từ 9 giờ đến 10 giờ"):
    - Trích xuất title, date (định dạng YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), và journeyId tương ứng hoặc null.
+   - Chỉ tạo scheduleSuggestion khi có ngày/ngữ cảnh ngày đủ rõ. Nếu chỉ nói "tuần sau" mà không có thứ/ngày/giờ, hãy tạo taskSuggestion có dueDate thay vì tự bịa giờ.
+   - "Ngày mai" phải là ${addDays(todayStr, 1)}, không được gán thành hôm nay.
 
 5. CẬP NHẬT THÓI QUEN (routineUpdates): Đối với mỗi thói quen (routine) của người dùng đã hoàn thành dựa trên mô tả nhật ký:
    - Cung cấp routineId, đặt suggestedStatus là "completed", kèm bằng chứng và độ tự tin.
@@ -156,7 +181,13 @@ ${JSON.stringify(chores.map((chore: any) => ({
    - category chỉ được là home, pet, errand, self_care hoặc admin. frequency chỉ được là daily, weekly hoặc one_time.
    - Không đồng thời biến chore thành task mục tiêu, routine hoặc activity gắn goal, trừ khi transcript nói rõ đó là một phần của mục tiêu.
 
-7. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
+7. ĐIỀU KHIỂN CHU KỲ (cycleUpdate): Nếu người dùng nói rõ muốn bắt đầu, khởi động lại hoặc đổi ngày bắt đầu lịch trình/chu kỳ 90 ngày:
+   - Trả về startDate theo YYYY-MM-DD. Các từ "hôm nay", "bữa nay" phải dùng ngày hiện tại ${todayStr}.
+   - shiftPlan mặc định true để dời deadline, milestone và lịch theo cùng độ lệch ngày.
+   - Nếu transcript không yêu cầu đổi chu kỳ, cycleUpdate phải là null.
+   - Không suy diễn lệnh đổi chu kỳ từ một câu chỉ nói về việc muốn làm hôm nay.
+
+8. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
 
 NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 "${transcript || ""}"
@@ -208,9 +239,11 @@ Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác 
                   title: { type: Type.STRING },
                   journeyId: { type: Type.STRING, nullable: true },
                   priority: { type: Type.STRING },
-                  estimatedMinutes: { type: Type.INTEGER }
+                  estimatedMinutes: { type: Type.INTEGER },
+                  dueDate: { type: Type.STRING, nullable: true, description: "YYYY-MM-DD hoặc null" },
+                  timeframe: { type: Type.STRING, description: "today, tomorrow, this_week, next_week, specific_date hoặc no_date" }
                 },
-                required: ["title", "priority", "estimatedMinutes"]
+                required: ["title", "priority", "estimatedMinutes", "timeframe"]
               }
             },
             scheduleSuggestions: {
@@ -257,12 +290,22 @@ Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác 
                 required: ["title", "category", "frequency", "suggestedStatus", "confidence", "evidence"]
               }
             },
+            cycleUpdate: {
+              type: Type.OBJECT,
+              nullable: true,
+              properties: {
+                startDate: { type: Type.STRING, description: "Ngày bắt đầu mới theo YYYY-MM-DD" },
+                shiftPlan: { type: Type.BOOLEAN },
+                reason: { type: Type.STRING }
+              },
+              required: ["startDate", "shiftPlan", "reason"]
+            },
             unclassifiedItems: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
             }
           },
-          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "choreUpdates", "unclassifiedItems"]
+          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "choreUpdates", "cycleUpdate", "unclassifiedItems"]
         }
       }
     });

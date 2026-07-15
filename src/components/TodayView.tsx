@@ -6,7 +6,7 @@ import {
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
-import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
+import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import DailyRoutineCheckin from "./DailyRoutineCheckin";
@@ -38,6 +38,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classificationError, setClassificationError] = useState<string | null>(null);
@@ -70,6 +71,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       journeyId: string | null;
       priority: 'important_urgent' | 'important' | 'urgent' | 'later';
       estimatedMinutes: number;
+      dueDate: string | null;
+      timeframe: 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'specific_date' | 'no_date';
     }>;
     scheduleSuggestions: Array<{
       title: string;
@@ -94,6 +97,11 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       confidence: number;
       evidence: string;
     }>;
+    cycleUpdate: {
+      startDate: string;
+      shiftPlan: boolean;
+      reason: string;
+    } | null;
     unclassifiedItems: string[];
   } | null>(null);
 
@@ -104,6 +112,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   // Speech recognition ref
   const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef("");
+  const interimTranscriptRef = useRef("");
+  const analyzeAfterStopRef = useRef(false);
 
   useEffect(() => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -137,6 +148,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   const startRecording = () => {
     setMicError(null);
+    setVoiceNotice(null);
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
       setMicError("Nhận diện giọng nói không được hỗ trợ trên trình duyệt này. Vui lòng thử trên Google Chrome hoặc Safari.");
@@ -150,16 +162,29 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       recognition.lang = "vi-VN";
 
       recognition.onstart = () => {
+        finalTranscriptRef.current = transcript.trim();
+        interimTranscriptRef.current = "";
+        analyzeAfterStopRef.current = false;
         setIsRecording(true);
         setMicError(null);
         setRecordingSeconds(0);
       };
 
       recognition.onresult = (event: any) => {
-        const currentResult = Array.from(event.results)
-          .map((res: any) => res[0].transcript)
-          .join(" ");
-        setTranscript(currentResult);
+        let interim = "";
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const phrase = event.results[index][0]?.transcript?.trim();
+          if (!phrase) continue;
+          if (event.results[index].isFinal) {
+            finalTranscriptRef.current = `${finalTranscriptRef.current} ${phrase}`.trim();
+          } else {
+            interim += `${phrase} `;
+          }
+        }
+        interimTranscriptRef.current = interim.trim();
+        const captured = `${finalTranscriptRef.current} ${interimTranscriptRef.current}`.trim();
+        setTranscript(captured);
+        setVoiceNotice(captured ? "Đang ghi nhận nội dung giọng nói…" : null);
       };
 
       recognition.onerror = (event: any) => {
@@ -172,7 +197,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       };
 
       recognition.onend = () => {
+        const captured = `${finalTranscriptRef.current} ${interimTranscriptRef.current}`.trim();
+        if (captured) {
+          setTranscript(captured);
+          setVoiceNotice(analyzeAfterStopRef.current ? "Đã ghi nhận. Đang phân tích nội dung…" : "Đã ghi nhận giọng nói. Bạn có thể kiểm tra rồi gửi phân tích AI.");
+        }
         setIsRecording(false);
+        if (analyzeAfterStopRef.current && captured) {
+          analyzeAfterStopRef.current = false;
+          handleAnalyzeTranscript(captured);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -187,6 +221,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   const stopRecording = () => {
     if (recognitionRef.current) {
+      analyzeAfterStopRef.current = true;
       recognitionRef.current.stop();
     }
     setIsRecording(false);
@@ -217,6 +252,71 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     }
   };
 
+  const getLocalTemporalFallback = (rawText: string) => {
+    const addDays = (dateStr: string, days: number) => {
+      const date = new Date(`${dateStr}T12:00:00`);
+      date.setDate(date.getDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+    const getWeekEnd = (weekOffset: number) => {
+      const date = new Date(`${todayStr}T12:00:00`);
+      const weekday = date.getDay() || 7;
+      return addDays(todayStr, (7 - weekday) + weekOffset * 7);
+    };
+    const sentences = rawText.split(/[.!?\n]+/).map(item => item.trim()).filter(Boolean);
+    const taskSuggestions: Array<any> = [];
+    const scheduleSuggestions: Array<any> = [];
+    const activities: Array<any> = [];
+
+    sentences.forEach(sentence => {
+      const normalized = sentence.toLowerCase();
+      let timeframe: 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'specific_date' | 'no_date' = 'no_date';
+      let dueDate: string | null = null;
+      if (/\b(ngày mai|mai)\b/.test(normalized)) {
+        timeframe = 'tomorrow';
+        dueDate = addDays(todayStr, 1);
+      } else if (normalized.includes('tuần sau')) {
+        timeframe = 'next_week';
+        dueDate = getWeekEnd(1);
+      } else if (normalized.includes('tuần này')) {
+        timeframe = 'this_week';
+        dueDate = getWeekEnd(0);
+      } else if (/\b(hôm nay|bữa nay)\b/.test(normalized)) {
+        timeframe = 'today';
+        dueDate = todayStr;
+      }
+
+      const isFuturePlan = timeframe !== 'no_date' && /\b(muốn|sẽ|cần|định|làm|hoàn thành|xếp lịch|lên lịch)\b/.test(normalized);
+      if (isFuturePlan && dueDate) {
+        const title = sentence
+          .replace(/\b(hôm nay|bữa nay|ngày mai|mai|tuần này|tuần sau)\b/gi, '')
+          .replace(/\b(tôi|mình)\s+(muốn|sẽ|cần|định)\s*/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const journeyId = /backtest|fund|trading|setup/i.test(sentence)
+          ? 'G1'
+          : /b2b|website|portfolio|email|marketing|sales/i.test(sentence)
+            ? 'G2'
+            : /sức khỏe|health|đi bộ|cân|skincare/i.test(sentence)
+              ? 'G3'
+              : null;
+        const timeRange = normalized.match(/(?:từ\s*)?(\d{1,2})(?:\s*(?:h|giờ|:)(\d{1,2})?)?\s*(?:đến|-)\s*(\d{1,2})(?:\s*(?:h|giờ|:)(\d{1,2})?)?/i);
+        taskSuggestions.push({ title, journeyId, priority: 'important', estimatedMinutes: timeRange ? 60 : 30, dueDate, timeframe });
+        if (timeRange && (timeframe === 'today' || timeframe === 'tomorrow')) {
+          const startHour = String(Number(timeRange[1])).padStart(2, '0');
+          const startMinute = String(Number(timeRange[2] || 0)).padStart(2, '0');
+          const endHour = String(Number(timeRange[3])).padStart(2, '0');
+          const endMinute = String(Number(timeRange[4] || 0)).padStart(2, '0');
+          scheduleSuggestions.push({ title, date: dueDate, startTime: `${startHour}:${startMinute}`, endTime: `${endHour}:${endMinute}`, journeyId });
+        }
+      } else {
+        activities.push({ activity: sentence, journeyId: null, milestoneId: null, confidence: 0.5, evidence: 'Dữ liệu được giữ lại khi AI tạm hết hạn mức.' });
+      }
+    });
+
+    return { activities, taskSuggestions, scheduleSuggestions };
+  };
+
   // Classify transcript via server API
   const handleAnalyzeTranscript = async (textToAnalyze: string) => {
     if (!textToAnalyze.trim()) return;
@@ -237,6 +337,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         body: JSON.stringify({
           transcript: textToAnalyze,
           currentDate: todayStr,
+          currentCycle: { startDate: state.startDate, endDate: state.endDate },
           goals: activeGoals,
           routines: activeRoutines,
           chores: state.chores || []
@@ -269,7 +370,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           title: t.title,
           journeyId: t.journeyId && t.journeyId !== "null" ? t.journeyId : null,
           priority: t.priority || 'important_urgent',
-          estimatedMinutes: t.estimatedMinutes || 30
+          estimatedMinutes: t.estimatedMinutes || 30,
+          dueDate: t.dueDate || null,
+          timeframe: t.timeframe || "no_date"
         })),
         scheduleSuggestions: (data.scheduleSuggestions || []).map((s: any) => ({
           title: s.title,
@@ -294,30 +397,32 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           confidence: chore.confidence || 0.9,
           evidence: chore.evidence || ""
         })),
+        cycleUpdate: data.cycleUpdate?.startDate ? {
+          startDate: data.cycleUpdate.startDate,
+          shiftPlan: data.cycleUpdate.shiftPlan !== false,
+          reason: data.cycleUpdate.reason || "Người dùng muốn đổi ngày bắt đầu chu kỳ."
+        } : null,
         unclassifiedItems: data.unclassifiedItems || []
       });
 
     } catch (err: any) {
       console.error(err);
-      setClassificationError(err.message || "Gặp lỗi khi xử lý phân loại bằng AI.");
+      const localFallback = getLocalTemporalFallback(textToAnalyze);
+      const quotaLimited = String(err.message || '').includes('429') || String(err.message || '').toLowerCase().includes('quota');
+      setClassificationError(quotaLimited
+        ? "Gemini đã hết lượt miễn phí tạm thời. App vẫn phân loại ngày và giờ bằng chế độ dự phòng cục bộ."
+        : (err.message || "Gặp lỗi khi xử lý phân loại bằng AI."));
       
       // Fallback state
       setEditableCheckIn({
-        summary: "Cập nhật thủ công (Phân tích AI bị gián đoạn)",
-        activities: [
-          {
-            activity: textToAnalyze,
-            journeyId: null,
-            milestoneId: null,
-            confidence: 0.5,
-            evidence: "Người dùng nhập liệu trực tiếp."
-          }
-        ],
+        summary: quotaLimited ? "Đã phân loại thời gian cục bộ vì Gemini tạm hết lượt" : "Cập nhật thủ công (Phân tích AI bị gián đoạn)",
+        activities: localFallback.activities,
         milestoneUpdates: [],
-        taskSuggestions: [],
-        scheduleSuggestions: [],
+        taskSuggestions: localFallback.taskSuggestions,
+        scheduleSuggestions: localFallback.scheduleSuggestions,
         routineUpdates: [],
         choreUpdates: [],
+        cycleUpdate: null,
         unclassifiedItems: []
       });
     } finally {
@@ -351,6 +456,46 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     if (!editableCheckIn) return;
 
     let updatedState = { ...state };
+
+    // 0. Apply a confirmed 90-day cycle command and preserve the plan's relative timing.
+    if (editableCheckIn.cycleUpdate) {
+      const nextStartDate = editableCheckIn.cycleUpdate.startDate;
+      const oldStart = new Date(`${state.startDate}T12:00:00`);
+      const nextStart = new Date(`${nextStartDate}T12:00:00`);
+      const deltaDays = Math.round((nextStart.getTime() - oldStart.getTime()) / (24 * 60 * 60 * 1000));
+      const shiftDate = (value?: string | null) => {
+        if (!value || !editableCheckIn.cycleUpdate?.shiftPlan) return value;
+        const date = new Date(`${value}T12:00:00`);
+        if (Number.isNaN(date.getTime())) return value;
+        date.setDate(date.getDate() + deltaDays);
+        return date.toISOString().slice(0, 10);
+      };
+
+      updatedState.startDate = nextStartDate;
+      updatedState.endDate = calculateEndDate(nextStartDate);
+      updatedState.dailyFocusDate = null;
+      updatedState.goals = updatedState.goals.map(goal => ({
+        ...goal,
+        startDate: nextStartDate,
+        deadline: shiftDate(goal.deadline) || goal.deadline,
+        milestones: (goal.milestones || []).map(milestone => ({
+          ...milestone,
+          dueDate: shiftDate(milestone.dueDate) || milestone.dueDate
+        }))
+      }));
+      updatedState.priorityTasks = (updatedState.priorityTasks || []).map(task => ({
+        ...task,
+        dueDate: shiftDate(task.dueDate)
+      }));
+      updatedState.scheduleItems = (updatedState.scheduleItems || []).map(item => ({
+        ...item,
+        date: shiftDate(item.date) || item.date
+      }));
+      updatedState.chores = (updatedState.chores || []).map(chore => ({
+        ...chore,
+        dueDate: shiftDate(chore.dueDate)
+      }));
+    }
 
     // 1. Add activities
     const newActivities = editableCheckIn.activities.map(act => ({
@@ -474,7 +619,10 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         title: t.title,
         priority: t.priority,
         completed: false,
-        journeyId: t.journeyId
+        journeyId: t.journeyId,
+        dueDate: t.dueDate,
+        estimatedMinutes: t.estimatedMinutes,
+        createdAt: new Date().toISOString()
       }));
       updatedState.priorityTasks = [...(updatedState.priorityTasks || []), ...newTasks];
     }
@@ -707,6 +855,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               </div>
             )}
 
+            {voiceNotice && !micError && (
+              <div className="flex items-center gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3 text-xs font-semibold text-sky-700">
+                <Mic className="h-4 w-4 shrink-0" /> {voiceNotice}
+              </div>
+            )}
+
             {refineError && (
               <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -727,7 +881,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer animate-pulse"
                     >
                       <MicOff className="w-4 h-4" />
-                      <span>Đang nghe... ({recordingSeconds}s) - Bấm để dừng</span>
+                      <span>Đang nghe... ({recordingSeconds}s) · Dừng & phân tích</span>
                     </button>
                   ) : (
                     <button
@@ -1579,6 +1733,23 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       </div>
                     )}
 
+                    {editableCheckIn.cycleUpdate && (
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                          Điều chỉnh chu kỳ 90 ngày
+                        </h4>
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-slate-700">
+                          <div>
+                            <p>Bắt đầu mới từ <strong>{formatDisplayDate(editableCheckIn.cycleUpdate.startDate)}</strong></p>
+                            <p className="mt-1 text-[10px] text-slate-500">Kết thúc: {formatDisplayDate(calculateEndDate(editableCheckIn.cycleUpdate.startDate))} · {editableCheckIn.cycleUpdate.shiftPlan ? "Dời toàn bộ deadline và lịch theo cùng số ngày" : "Giữ nguyên lịch hiện tại"}</p>
+                            <p className="mt-1 text-[10px] italic text-slate-400">{editableCheckIn.cycleUpdate.reason}</p>
+                          </div>
+                          <button onClick={() => setEditableCheckIn({ ...editableCheckIn, cycleUpdate: null })} className="cursor-pointer rounded p-1 font-bold text-slate-400 hover:bg-white hover:text-rose-600">Bỏ đề xuất</button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Đề xuất công việc kế tiếp (taskSuggestions) */}
                     {editableCheckIn.taskSuggestions.length > 0 && (
                       <div className="space-y-2">
@@ -1591,7 +1762,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                             <div key={idx} className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl flex items-center justify-between gap-3 text-xs text-slate-700 font-medium">
                               <div>
                                 <span>Lên danh sách việc: <strong>{t.title}</strong></span>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">Thời gian dự kiến: {t.estimatedMinutes} phút • Độ ưu tiên: {t.priority}</span>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">{t.dueDate ? `Hạn: ${formatDisplayDate(t.dueDate)} • ` : ""}Thời gian dự kiến: {t.estimatedMinutes} phút • Độ ưu tiên: {t.priority}</span>
                               </div>
                               <button
                                 onClick={() => {
