@@ -252,6 +252,71 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     }
   };
 
+  const getLocalTemporalFallback = (rawText: string) => {
+    const addDays = (dateStr: string, days: number) => {
+      const date = new Date(`${dateStr}T12:00:00`);
+      date.setDate(date.getDate() + days);
+      return date.toISOString().slice(0, 10);
+    };
+    const getWeekEnd = (weekOffset: number) => {
+      const date = new Date(`${todayStr}T12:00:00`);
+      const weekday = date.getDay() || 7;
+      return addDays(todayStr, (7 - weekday) + weekOffset * 7);
+    };
+    const sentences = rawText.split(/[.!?\n]+/).map(item => item.trim()).filter(Boolean);
+    const taskSuggestions: Array<any> = [];
+    const scheduleSuggestions: Array<any> = [];
+    const activities: Array<any> = [];
+
+    sentences.forEach(sentence => {
+      const normalized = sentence.toLowerCase();
+      let timeframe: 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'specific_date' | 'no_date' = 'no_date';
+      let dueDate: string | null = null;
+      if (/\b(ngày mai|mai)\b/.test(normalized)) {
+        timeframe = 'tomorrow';
+        dueDate = addDays(todayStr, 1);
+      } else if (normalized.includes('tuần sau')) {
+        timeframe = 'next_week';
+        dueDate = getWeekEnd(1);
+      } else if (normalized.includes('tuần này')) {
+        timeframe = 'this_week';
+        dueDate = getWeekEnd(0);
+      } else if (/\b(hôm nay|bữa nay)\b/.test(normalized)) {
+        timeframe = 'today';
+        dueDate = todayStr;
+      }
+
+      const isFuturePlan = timeframe !== 'no_date' && /\b(muốn|sẽ|cần|định|làm|hoàn thành|xếp lịch|lên lịch)\b/.test(normalized);
+      if (isFuturePlan && dueDate) {
+        const title = sentence
+          .replace(/\b(hôm nay|bữa nay|ngày mai|mai|tuần này|tuần sau)\b/gi, '')
+          .replace(/\b(tôi|mình)\s+(muốn|sẽ|cần|định)\s*/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const journeyId = /backtest|fund|trading|setup/i.test(sentence)
+          ? 'G1'
+          : /b2b|website|portfolio|email|marketing|sales/i.test(sentence)
+            ? 'G2'
+            : /sức khỏe|health|đi bộ|cân|skincare/i.test(sentence)
+              ? 'G3'
+              : null;
+        const timeRange = normalized.match(/(?:từ\s*)?(\d{1,2})(?:\s*(?:h|giờ|:)(\d{1,2})?)?\s*(?:đến|-)\s*(\d{1,2})(?:\s*(?:h|giờ|:)(\d{1,2})?)?/i);
+        taskSuggestions.push({ title, journeyId, priority: 'important', estimatedMinutes: timeRange ? 60 : 30, dueDate, timeframe });
+        if (timeRange && (timeframe === 'today' || timeframe === 'tomorrow')) {
+          const startHour = String(Number(timeRange[1])).padStart(2, '0');
+          const startMinute = String(Number(timeRange[2] || 0)).padStart(2, '0');
+          const endHour = String(Number(timeRange[3])).padStart(2, '0');
+          const endMinute = String(Number(timeRange[4] || 0)).padStart(2, '0');
+          scheduleSuggestions.push({ title, date: dueDate, startTime: `${startHour}:${startMinute}`, endTime: `${endHour}:${endMinute}`, journeyId });
+        }
+      } else {
+        activities.push({ activity: sentence, journeyId: null, milestoneId: null, confidence: 0.5, evidence: 'Dữ liệu được giữ lại khi AI tạm hết hạn mức.' });
+      }
+    });
+
+    return { activities, taskSuggestions, scheduleSuggestions };
+  };
+
   // Classify transcript via server API
   const handleAnalyzeTranscript = async (textToAnalyze: string) => {
     if (!textToAnalyze.trim()) return;
@@ -342,23 +407,19 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
     } catch (err: any) {
       console.error(err);
-      setClassificationError(err.message || "Gặp lỗi khi xử lý phân loại bằng AI.");
+      const localFallback = getLocalTemporalFallback(textToAnalyze);
+      const quotaLimited = String(err.message || '').includes('429') || String(err.message || '').toLowerCase().includes('quota');
+      setClassificationError(quotaLimited
+        ? "Gemini đã hết lượt miễn phí tạm thời. App vẫn phân loại ngày và giờ bằng chế độ dự phòng cục bộ."
+        : (err.message || "Gặp lỗi khi xử lý phân loại bằng AI."));
       
       // Fallback state
       setEditableCheckIn({
-        summary: "Cập nhật thủ công (Phân tích AI bị gián đoạn)",
-        activities: [
-          {
-            activity: textToAnalyze,
-            journeyId: null,
-            milestoneId: null,
-            confidence: 0.5,
-            evidence: "Người dùng nhập liệu trực tiếp."
-          }
-        ],
+        summary: quotaLimited ? "Đã phân loại thời gian cục bộ vì Gemini tạm hết lượt" : "Cập nhật thủ công (Phân tích AI bị gián đoạn)",
+        activities: localFallback.activities,
         milestoneUpdates: [],
-        taskSuggestions: [],
-        scheduleSuggestions: [],
+        taskSuggestions: localFallback.taskSuggestions,
+        scheduleSuggestions: localFallback.scheduleSuggestions,
         routineUpdates: [],
         choreUpdates: [],
         cycleUpdate: null,
