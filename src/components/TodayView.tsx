@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Mic, MicOff, Send, HelpCircle, Flame, Calendar, Trash2, Plus, CheckCircle, 
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
-  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText
+  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } from "../types";
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
@@ -41,6 +41,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [micError, setMicError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
+  const [isCoaching, setIsCoaching] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
+  const [coachAdvice, setCoachAdvice] = useState<any | null>(null);
 
   // Interactive Confirmation State
   const [editableCheckIn, setEditableCheckIn] = useState<{
@@ -294,6 +297,27 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       });
     } finally {
       setIsClassifying(false);
+    }
+  };
+
+  const handleAskCoach = async () => {
+    if (!transcript.trim()) return;
+    setIsCoaching(true);
+    setCoachError(null);
+    setCoachAdvice(null);
+    try {
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: transcript, state })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "Không thể kết nối Life OS Coach.");
+      setCoachAdvice(data);
+    } catch (err: any) {
+      setCoachError(err.message || "Life OS Coach gặp sự cố.");
+    } finally {
+      setIsCoaching(false);
     }
   };
 
@@ -611,6 +635,58 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                 <span>Gửi phân tích AI</span>
               </button>
             </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100">
+              <button
+                id="btn-ask-life-os-coach"
+                disabled={!transcript.trim() || isCoaching}
+                onClick={handleAskCoach}
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-5 py-3 rounded-2xl shadow-lg shadow-indigo-100 transition-all cursor-pointer"
+              >
+                {isCoaching ? <Loader className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+                <span>{isCoaching ? "Coach đang phân tích..." : "Hỏi Life OS Coach"}</span>
+              </button>
+              <p className="text-[11px] text-slate-400">Tư vấn theo đúng dữ liệu Fund, B2B hoặc Health của bạn — không tìm kiếm chung.</p>
+            </div>
+
+            {coachError && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {coachError}
+              </div>
+            )}
+
+            {coachAdvice && (
+              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <Bot className="w-5 h-5 text-indigo-600" /> Life OS Coach
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    <span className="px-2.5 py-1 rounded-full bg-white border border-indigo-100 text-indigo-700">{coachAdvice.expertLens}</span>
+                    <span className="flex items-center gap-1 text-slate-500"><Gauge className="w-3.5 h-3.5" /> {Math.round((coachAdvice.confidence || 0) * 100)}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Chẩn đoán</p>
+                  <p className="text-xs text-slate-700 mt-1">{coachAdvice.diagnosis}</p>
+                </div>
+                <div className="rounded-xl bg-white border border-indigo-100 p-4">
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600"><Lightbulb className="w-3.5 h-3.5" /> Việc nên làm ngay</p>
+                  <p className="text-sm font-bold text-slate-900 mt-1.5">{coachAdvice.nextAction}</p>
+                  <p className="text-xs text-slate-500 mt-2">Đo bằng: <strong>{coachAdvice.successMetric}</strong></p>
+                </div>
+                {coachAdvice.plan?.length > 0 && (
+                  <ol className="grid gap-2 sm:grid-cols-3">
+                    {coachAdvice.plan.map((step: string, index: number) => (
+                      <li key={index} className="text-xs text-slate-600 bg-white/80 border border-slate-100 rounded-xl p-3"><strong className="text-indigo-600">{index + 1}.</strong> {step}</li>
+                    ))}
+                  </ol>
+                )}
+                <p className="text-[11px] text-slate-500"><strong>Lý do:</strong> {coachAdvice.reasoning}</p>
+                {coachAdvice.riskNote && <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3"><strong>Lưu ý:</strong> {coachAdvice.riskNote}</p>}
+                {coachAdvice.clarifyingQuestion && <p className="text-xs font-semibold text-indigo-700">Coach cần biết thêm: {coachAdvice.clarifyingQuestion}</p>}
+              </div>
+            )}
           </div>
         </div>
       </section>
