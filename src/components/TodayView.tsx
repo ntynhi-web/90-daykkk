@@ -9,6 +9,7 @@ import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } fr
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
+import DailyRoutineCheckin from "./DailyRoutineCheckin";
 
 interface TodayViewProps {
   state: AppState;
@@ -352,6 +353,31 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         }
         return r;
       });
+
+      const routine = updatedState.routines.find(r => r.id === ru.routineId);
+      if (routine && ru.suggestedStatus === "completed") {
+        const existingLog = (updatedState.routineLogs || []).find(log =>
+          log.routineId === ru.routineId && log.date === todayStr
+        );
+        const linkedActivity = newActivities.find(activity => activity.goalId === routine.goalId);
+        const now = Date.now();
+        const nextLog = {
+          id: existingLog?.id || `routine_log_${ru.routineId}_${todayStr}`,
+          routineId: ru.routineId,
+          goalId: routine.goalId,
+          date: todayStr,
+          status: "completed" as const,
+          source: "ai" as const,
+          evidence: ru.evidence || linkedActivity?.activity || routine.target,
+          activityId: linkedActivity?.id || existingLog?.activityId || null,
+          createdTimestamp: existingLog?.createdTimestamp || now,
+          updatedTimestamp: now
+        };
+        updatedState.routineLogs = [
+          nextLog,
+          ...(updatedState.routineLogs || []).filter(log => !(log.routineId === ru.routineId && log.date === todayStr))
+        ];
+      }
     });
 
     // 3. Apply milestone updates
@@ -749,6 +775,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         state={state}
         today={todayStr}
         currentDay={currentDay}
+        onChangeState={onChangeState}
+      />
+
+      <DailyRoutineCheckin
+        state={state}
+        today={todayStr}
         onChangeState={onChangeState}
       />
 
