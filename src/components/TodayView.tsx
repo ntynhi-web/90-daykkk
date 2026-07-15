@@ -372,6 +372,23 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       });
     });
 
+    // Recalculate journey progress immediately after confirmed milestone updates.
+    // This keeps every activity check-in, milestone and dashboard percentage in sync.
+    updatedState.goals = updatedState.goals.map(goal => {
+      const milestones = goal.milestones || [];
+      if (milestones.length === 0) return goal;
+      const completedCount = milestones.filter(m => m.achieved).length;
+      const nextMilestone = milestones.find(m => !m.achieved) || null;
+      const progress = Math.round((completedCount / milestones.length) * 100);
+      return {
+        ...goal,
+        currentProgress: progress,
+        currentMilestone: nextMilestone?.title || "Đã hoàn thành",
+        currentMilestoneId: nextMilestone?.id || null,
+        status: progress === 100 ? "completed" as const : goal.status
+      };
+    });
+
     // 4. Add task suggestions as real priority tasks
     if (editableCheckIn.taskSuggestions.length > 0) {
       const newTasks: PriorityTask[] = editableCheckIn.taskSuggestions.map((t, idx) => ({
@@ -453,6 +470,41 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   // Section 2: Today's Schedule and Overlaps
   const todaySchedule = (state.scheduleItems || []).filter(item => item.date === todayStr)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  const currentTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date());
+
+  const overdueTasks = (state.priorityTasks || []).filter(task =>
+    !task.completed && !!task.dueDate && task.dueDate < todayStr
+  );
+  const unfinishedPastSchedule = todaySchedule.filter(item =>
+    !item.completed && item.endTime < currentTime
+  );
+  const overdueMilestones = (state.goals || []).flatMap(goal =>
+    (goal.milestones || [])
+      .filter(milestone => !milestone.achieved && !!milestone.dueDate && milestone.dueDate < todayStr)
+      .map(milestone => ({ ...milestone, journeyName: goal.name }))
+  );
+  const attentionCount = overdueTasks.length + unfinishedPastSchedule.length + overdueMilestones.length;
+
+  const handleToggleScheduleItem = (itemId: string) => {
+    const target = (state.scheduleItems || []).find(item => item.id === itemId);
+    if (!target) return;
+    const completed = !target.completed;
+    onChangeState({
+      ...state,
+      scheduleItems: (state.scheduleItems || []).map(item =>
+        item.id === itemId ? { ...item, completed } : item
+      ),
+      priorityTasks: (state.priorityTasks || []).map(task =>
+        target.taskId && task.id === target.taskId ? { ...task, completed } : task
+      )
+    });
+  };
 
   // Overlap checker for today
   const getOverlappingToday = () => {
@@ -689,6 +741,77 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
+      <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
+        <div className="life-panel p-5 md:p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="life-kicker text-indigo-600 mb-2">02 · Lịch hôm nay</p>
+              <h2 className="font-display text-lg font-extrabold text-slate-950">Nhịp công việc hôm nay</h2>
+              <p className="text-xs text-slate-400 mt-1">Chỉ hiển thị những block bạn cần thực hiện trong ngày.</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-700 border border-indigo-100">
+              {todaySchedule.filter(item => item.completed).length}/{todaySchedule.length} xong
+            </span>
+          </div>
+
+          {todaySchedule.length > 0 ? (
+            <div className="space-y-2">
+              {todaySchedule.slice(0, 5).map(item => {
+                const isPast = !item.completed && item.endTime < currentTime;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleToggleScheduleItem(item.id)}
+                    className={`w-full flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                      item.completed ? "border-emerald-100 bg-emerald-50/70" : isPast ? "border-amber-200 bg-amber-50/60" : "border-slate-100 bg-slate-50/70 hover:border-indigo-200"
+                    }`}
+                  >
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${item.completed ? "border-emerald-200 bg-white text-emerald-600" : "border-slate-200 bg-white text-slate-400"}`}>
+                      {item.completed ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-xs font-bold ${item.completed ? "text-emerald-800 line-through" : "text-slate-800"}`}>{item.title}</span>
+                      <span className="mt-0.5 block text-[10px] text-slate-400 font-mono">{item.startTime}–{item.endTime} · {getJourneyName(item.journeyId)}</span>
+                    </span>
+                    {isPast && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700">Chưa xong</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+              <Calendar className="mx-auto h-5 w-5 text-slate-300" />
+              <p className="mt-2 text-xs font-semibold text-slate-500">Hôm nay chưa có lịch công việc.</p>
+              <p className="mt-1 text-[10px] text-slate-400">Bạn có thể nói: “Xếp lịch làm portfolio lúc 14:00”.</p>
+            </div>
+          )}
+        </div>
+
+        <div className={`life-panel p-5 md:p-6 space-y-4 ${attentionCount > 0 ? "border-amber-200" : "border-emerald-100"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className={`life-kicker mb-2 ${attentionCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>Cảnh báo ngoại lệ</p>
+              <h2 className="font-display text-lg font-extrabold text-slate-950">{attentionCount > 0 ? `${attentionCount} việc cần xem lại` : "Mọi thứ đang ổn"}</h2>
+            </div>
+            <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${attentionCount > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+              {attentionCount > 0 ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+            </span>
+          </div>
+
+          {attentionCount > 0 ? (
+            <div className="space-y-2">
+              {unfinishedPastSchedule.slice(0, 2).map(item => <p key={item.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Lịch chưa hoàn thành: {item.title}</p>)}
+              {overdueTasks.slice(0, 2).map(task => <p key={task.id} className="rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800">Việc đã quá hạn: {task.title}</p>)}
+              {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-800">Cột mốc trễ: {milestone.title} · {milestone.journeyName}</p>)}
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">Không có lịch bỏ sót, task quá hạn hoặc milestone trễ. Bạn chỉ cần tập trung vào việc đang làm.</p>
+          )}
+          <p className="text-[10px] leading-relaxed text-slate-400">App chỉ đưa những phần lệch khỏi kế hoạch lên đây, nên các mục tiêu khác vẫn được giám sát mà không làm dashboard bị ngợp.</p>
         </div>
       </section>
 
@@ -966,7 +1089,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 3. LỊCH HÔM NAY */}
-      <section id="section-today-schedule" className="space-y-4">
+      <section id="section-today-schedule" className="hidden space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
