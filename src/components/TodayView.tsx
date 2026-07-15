@@ -6,7 +6,7 @@ import {
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
-import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
+import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import DailyRoutineCheckin from "./DailyRoutineCheckin";
@@ -94,6 +94,11 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       confidence: number;
       evidence: string;
     }>;
+    cycleUpdate: {
+      startDate: string;
+      shiftPlan: boolean;
+      reason: string;
+    } | null;
     unclassifiedItems: string[];
   } | null>(null);
 
@@ -237,6 +242,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         body: JSON.stringify({
           transcript: textToAnalyze,
           currentDate: todayStr,
+          currentCycle: { startDate: state.startDate, endDate: state.endDate },
           goals: activeGoals,
           routines: activeRoutines,
           chores: state.chores || []
@@ -294,6 +300,11 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           confidence: chore.confidence || 0.9,
           evidence: chore.evidence || ""
         })),
+        cycleUpdate: data.cycleUpdate?.startDate ? {
+          startDate: data.cycleUpdate.startDate,
+          shiftPlan: data.cycleUpdate.shiftPlan !== false,
+          reason: data.cycleUpdate.reason || "Người dùng muốn đổi ngày bắt đầu chu kỳ."
+        } : null,
         unclassifiedItems: data.unclassifiedItems || []
       });
 
@@ -318,6 +329,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         scheduleSuggestions: [],
         routineUpdates: [],
         choreUpdates: [],
+        cycleUpdate: null,
         unclassifiedItems: []
       });
     } finally {
@@ -351,6 +363,46 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     if (!editableCheckIn) return;
 
     let updatedState = { ...state };
+
+    // 0. Apply a confirmed 90-day cycle command and preserve the plan's relative timing.
+    if (editableCheckIn.cycleUpdate) {
+      const nextStartDate = editableCheckIn.cycleUpdate.startDate;
+      const oldStart = new Date(`${state.startDate}T12:00:00`);
+      const nextStart = new Date(`${nextStartDate}T12:00:00`);
+      const deltaDays = Math.round((nextStart.getTime() - oldStart.getTime()) / (24 * 60 * 60 * 1000));
+      const shiftDate = (value?: string | null) => {
+        if (!value || !editableCheckIn.cycleUpdate?.shiftPlan) return value;
+        const date = new Date(`${value}T12:00:00`);
+        if (Number.isNaN(date.getTime())) return value;
+        date.setDate(date.getDate() + deltaDays);
+        return date.toISOString().slice(0, 10);
+      };
+
+      updatedState.startDate = nextStartDate;
+      updatedState.endDate = calculateEndDate(nextStartDate);
+      updatedState.dailyFocusDate = null;
+      updatedState.goals = updatedState.goals.map(goal => ({
+        ...goal,
+        startDate: nextStartDate,
+        deadline: shiftDate(goal.deadline) || goal.deadline,
+        milestones: (goal.milestones || []).map(milestone => ({
+          ...milestone,
+          dueDate: shiftDate(milestone.dueDate) || milestone.dueDate
+        }))
+      }));
+      updatedState.priorityTasks = (updatedState.priorityTasks || []).map(task => ({
+        ...task,
+        dueDate: shiftDate(task.dueDate)
+      }));
+      updatedState.scheduleItems = (updatedState.scheduleItems || []).map(item => ({
+        ...item,
+        date: shiftDate(item.date) || item.date
+      }));
+      updatedState.chores = (updatedState.chores || []).map(chore => ({
+        ...chore,
+        dueDate: shiftDate(chore.dueDate)
+      }));
+    }
 
     // 1. Add activities
     const newActivities = editableCheckIn.activities.map(act => ({
@@ -1575,6 +1627,23 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                               </button>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {editableCheckIn.cycleUpdate && (
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                          Điều chỉnh chu kỳ 90 ngày
+                        </h4>
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-slate-700">
+                          <div>
+                            <p>Bắt đầu mới từ <strong>{formatDisplayDate(editableCheckIn.cycleUpdate.startDate)}</strong></p>
+                            <p className="mt-1 text-[10px] text-slate-500">Kết thúc: {formatDisplayDate(calculateEndDate(editableCheckIn.cycleUpdate.startDate))} · {editableCheckIn.cycleUpdate.shiftPlan ? "Dời toàn bộ deadline và lịch theo cùng số ngày" : "Giữ nguyên lịch hiện tại"}</p>
+                            <p className="mt-1 text-[10px] italic text-slate-400">{editableCheckIn.cycleUpdate.reason}</p>
+                          </div>
+                          <button onClick={() => setEditableCheckIn({ ...editableCheckIn, cycleUpdate: null })} className="cursor-pointer rounded p-1 font-bold text-slate-400 hover:bg-white hover:text-rose-600">Bỏ đề xuất</button>
                         </div>
                       </div>
                     )}
