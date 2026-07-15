@@ -82,7 +82,7 @@ app.get("/api/ai-status", (req, res) => {
 
 // POST /api/classify endpoint
 app.post("/api/classify", async (req, res) => {
-  const { transcript, currentDate, goals = [], routines = [] } = req.body;
+  const { transcript, currentDate, goals = [], routines = [], chores = [] } = req.body;
 
   const todayStr = currentDate || getHoChiMinhDate(0);
 
@@ -119,6 +119,17 @@ ${JSON.stringify(routines.map((r: any) => ({
   target: r.target
 })), null, 2)}
 
+=== CÁC VIỆC DUY TRÌ CUỘC SỐNG (CHORES) ===
+${JSON.stringify(chores.map((chore: any) => ({
+  id: chore.id,
+  title: chore.title,
+  category: chore.category,
+  frequency: chore.frequency,
+  dueDate: chore.dueDate,
+  completed: chore.completed,
+  lastCompletedDate: chore.lastCompletedDate
+})), null, 2)}
+
 === QUY TẮC PHÂN TÍCH ===
 1. CHIA NHỎ HOẠT ĐỘNG (activities): Hãy tách transcript thành các hoạt động nhỏ độc lập.
    - Tìm kiếm hành trình mục tiêu (goal/journey) phù hợp nhất bằng ID có sẵn.
@@ -139,7 +150,13 @@ ${JSON.stringify(routines.map((r: any) => ({
 5. CẬP NHẬT THÓI QUEN (routineUpdates): Đối với mỗi thói quen (routine) của người dùng đã hoàn thành dựa trên mô tả nhật ký:
    - Cung cấp routineId, đặt suggestedStatus là "completed", kèm bằng chứng và độ tự tin.
 
-6. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
+6. PHÂN LOẠI CHORES (choreUpdates): Chore là việc duy trì cuộc sống không trực tiếp tạo tiến độ cho mục tiêu lớn, ví dụ dọn nhà, chăm mèo, mua đồ sinh hoạt, chăm sóc cá nhân hoặc hành chính.
+   - Nếu người dùng đã hoàn thành một chore có sẵn, dùng đúng choreId và đặt suggestedStatus là "completed".
+   - Nếu người dùng nêu một chore mới hoặc kế hoạch làm chore chưa có, đặt choreId là null và suggestedStatus là "create".
+   - category chỉ được là home, pet, errand, self_care hoặc admin. frequency chỉ được là daily, weekly hoặc one_time.
+   - Không đồng thời biến chore thành task mục tiêu, routine hoặc activity gắn goal, trừ khi transcript nói rõ đó là một phần của mục tiêu.
+
+7. Nếu độ tự tin hoặc độ chắc chắn thấp (confidence < 0.6), hãy hạ thấp confidence để hệ thống cảnh báo người dùng xác nhận thủ công. Không tự ý lưu các cập nhật chưa chắc chắn.
 
 NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 "${transcript || ""}"
@@ -223,12 +240,29 @@ Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác 
                 required: ["routineId", "suggestedStatus", "confidence", "evidence"]
               }
             },
+            choreUpdates: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  choreId: { type: Type.STRING, nullable: true },
+                  title: { type: Type.STRING },
+                  category: { type: Type.STRING, description: "home, pet, errand, self_care hoặc admin" },
+                  frequency: { type: Type.STRING, description: "daily, weekly hoặc one_time" },
+                  dueDate: { type: Type.STRING, nullable: true, description: "YYYY-MM-DD hoặc null" },
+                  suggestedStatus: { type: Type.STRING, description: "completed hoặc create" },
+                  confidence: { type: Type.NUMBER },
+                  evidence: { type: Type.STRING }
+                },
+                required: ["title", "category", "frequency", "suggestedStatus", "confidence", "evidence"]
+              }
+            },
             unclassifiedItems: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
             }
           },
-          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "unclassifiedItems"]
+          required: ["summary", "activities", "milestoneUpdates", "taskSuggestions", "scheduleSuggestions", "routineUpdates", "choreUpdates", "unclassifiedItems"]
         }
       }
     });
