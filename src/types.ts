@@ -72,8 +72,8 @@ export interface Goal {
 export interface ActivityEntry {
   id: string;
   date: string; // YYYY-MM-DD
-  goalId: string;
-  source: 'voice' | 'text' | 'manual';
+  goalId: string | null;
+  source?: 'voice' | 'text' | 'manual';
   originalTranscript?: string;
   activity: string;
   output: Record<string, any>;

@@ -278,7 +278,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         activities: [
           {
             activity: textToAnalyze,
-            journeyId: state.goals[0]?.id || null,
+            journeyId: null,
             milestoneId: null,
             confidence: 0.5,
             evidence: "Người dùng nhập liệu trực tiếp."
@@ -304,7 +304,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     // 1. Add activities
     const newActivities = editableCheckIn.activities.map(act => ({
       id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      goalId: act.journeyId || "",
+      goalId: act.journeyId || null,
       date: todayStr,
       activity: act.activity,
       category: act.journeyId ? (state.goals.find(g => g.id === act.journeyId)?.name || "Chung") : "Chung",
@@ -1143,11 +1143,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                                   }}
                                   className="w-full text-xs border border-slate-200 rounded-lg p-1.5 bg-white focus:outline-none"
                                 >
-                                  <option value="">-- Không thuộc hành trình nào --</option>
+                                  <option value="">Chưa phân loại.</option>
                                   {activeJourneys.map(j => (
                                     <option key={j.id} value={j.id}>{j.name}</option>
                                   ))}
                                 </select>
+                                {!act.journeyId && (
+                                  <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">
+                                    Chưa phân loại. Vui lòng chọn bằng tay.
+                                  </span>
+                                )}
                               </div>
 
                               {/* Milestone Selector */}
