@@ -538,19 +538,20 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   };
 
   return (
-    <div id="today-dashboard-view" className="space-y-7">
+    <div id="today-dashboard-view" className="space-y-8">
       
       {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
-      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[30px] border border-white/10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 md:p-7 shadow-[0_24px_70px_rgba(99,102,241,0.28)]">
+      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[28px] border border-slate-800 bg-slate-950 p-5 md:p-7 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl">
         <div>
-          <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white border border-white/20 shadow-inner"><MessageSquareText className="h-5 w-5" /></span>
-            Hôm nay của bạn thế nào?
+          <p className="life-kicker text-indigo-300 mb-3">01 · Voice & text check-in</p>
+          <h2 className="font-display text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
+            Bạn đã tiến được gì hôm nay?
           </h2>
-          <p className="text-sm text-indigo-100 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. Gemini sẽ biến nội dung thành tiến độ, việc cần làm và lịch phù hợp.</p>
+          <p className="text-sm text-slate-300 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. AI sẽ phân loại tiến độ, phát hiện thông tin còn thiếu và đề xuất bước tiếp theo.</p>
         </div>
 
-        <div className="bg-white rounded-[22px] p-4 md:p-5 border border-white/70 shadow-xl space-y-4">
+        <div className="relative bg-white rounded-[22px] p-4 md:p-5 border border-slate-200 shadow-2xl space-y-4">
           <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
             <Sparkles className="w-4 h-4 shrink-0" />
             <span>Ví dụ: “Tôi đã hoàn thành 3 backtests, đi bộ 6.000 bước và muốn làm website B2B lúc 14:00 ngày mai.”</span>
@@ -698,9 +699,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"><ListTodo className="h-4 w-4" /></span>
-              Việc đáng tập trung hôm nay
+              Ưu tiên hôm nay
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Xếp việc theo Ma trận Eisenhower để tập trung tối đa tâm trí.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Chỉ giữ những việc thật sự cần sự chú ý của bạn.</p>
           </div>
 
           {/* Quick-add Task Form */}
