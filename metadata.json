@@ -1,0 +1,6 @@
+{
+  "name": "90-Day Life OS",
+  "description": "Hệ điều hành cá nhân 90 ngày giúp chuyển hóa mục tiêu thành hành động hàng ngày với tính năng AI Voice Check-in.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

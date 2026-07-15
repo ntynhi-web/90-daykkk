@@ -1,0 +1,966 @@
+import { AppState, Goal, Routine, ActivityEntry, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, Experiment, WeeklyReview, Recommendation } from "./types";
+
+// Helper to format Date to YYYY-MM-DD
+export function formatDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Helper to format Date for Vietnamese display: DD/MM/YYYY
+export function formatDisplayDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+// Automatically calculate end date based on a 90-day cycle
+export function calculateEndDate(startDateStr: string): string {
+  try {
+    const start = new Date(startDateStr);
+    if (isNaN(start.getTime())) return "";
+    const end = new Date(start.getTime() + (89 * 24 * 60 * 60 * 1000)); // 90 days total including start date
+    return formatDateStr(end);
+  } catch {
+    return "";
+  }
+}
+
+// Calculate current day index and days remaining
+export function getCycleStats(startDateStr: string, currentDateStr: string): { currentDay: number; daysRemaining: number; totalDays: number } {
+  try {
+    const start = new Date(startDateStr);
+    const current = new Date(currentDateStr);
+    
+    // Normalize times to midnight for accurate day calculations
+    start.setHours(0,0,0,0);
+    current.setHours(0,0,0,0);
+    
+    const diffTime = current.getTime() - start.getTime();
+    const currentDay = Math.max(1, Math.floor(diffTime / (24 * 60 * 60 * 1000)) + 1);
+    const daysRemaining = Math.max(0, 90 - currentDay);
+    
+    return {
+      currentDay: Math.min(90, currentDay),
+      daysRemaining,
+      totalDays: 90
+    };
+  } catch {
+    return { currentDay: 1, daysRemaining: 89, totalDays: 90 };
+  }
+}
+
+// Get Default App State
+export function getDefaultAppState(): AppState {
+  const startDate = "2026-07-13";
+  const endDate = calculateEndDate(startDate);
+
+  const goals: Goal[] = [
+    {
+      id: "G1",
+      name: "B2B SaaS & Marketing",
+      desiredOutcome: "Tạo dịch vụ B2B marketing cho SaaS, đạt ít nhất 1 khách hàng trả phí hoặc pilot.",
+      priority: "highest",
+      deadline: endDate,
+      mainMetric: "Paying clients & Revenue",
+      currentProgress: 20,
+      currentMilestone: "Hoàn thành Portfolio dịch vụ & Outreach 50 leads",
+      status: "active",
+      nextAction: "Sửa lại mẫu email tiếp cận và gửi cho 15 leads mới",
+      accentColor: "blue",
+      category: "business",
+      icon: "briefcase",
+      notes: "Cần tập trung cao độ vào nhóm khách hàng SaaS nhỏ và vừa, cung cấp gói dịch vụ tối ưu.",
+      milestones: [
+        { id: "m1_1", title: "ICP & Nghiên cứu thị trường", targetValue: "Hoàn thành", currentValue: "Hoàn thành", achieved: true, dueDate: "2026-07-20" },
+        { id: "m1_2", title: "Xây dựng Offer & Portfolio mẫu", targetValue: "Đạt 3 case study", currentValue: "1 case study", achieved: false, dueDate: "2026-08-05" },
+        { id: "m1_3", title: "Gửi 100 email tiếp cận", targetValue: "100 email", currentValue: "15 email", achieved: false, dueDate: "2026-08-25" },
+        { id: "m1_4", title: "Khách hàng trả phí đầu tiên", targetValue: "1 client", currentValue: "0", achieved: false, dueDate: "2026-09-15" }
+      ]
+    },
+    {
+      id: "G2",
+      name: "Công việc trên 30 triệu",
+      desiredOutcome: "Nhận được một lời mời nhận việc phù hợp với mức lương trên 30 triệu VND làm phương án dự phòng.",
+      priority: "secondary",
+      deadline: endDate,
+      mainMetric: "Offers & Expected salary",
+      currentProgress: 15,
+      currentMilestone: "Cập nhật CV, Portfolio & Tiếp cận 10 công ty mục tiêu",
+      status: "active",
+      nextAction: "Cập nhật phần kinh nghiệm dự án SaaS vào CV",
+      accentColor: "emerald",
+      category: "career",
+      icon: "career",
+      notes: "Kế hoạch song song với G1 để phòng ngừa rủi ro tài chính.",
+      milestones: [
+        { id: "m2_1", title: "Cập nhật CV & Portfolio", targetValue: "Xong CV tiếng Anh", currentValue: "Đang sửa", achieved: false, dueDate: "2026-07-25" },
+        { id: "m2_2", title: "Nộp hồ sơ 15 công ty mục tiêu", targetValue: "15 ứng tuyển", currentValue: "1 ứng tuyển", achieved: false, dueDate: "2026-08-15" },
+        { id: "m2_3", title: "Vượt qua vòng phỏng vấn kỹ thuật", targetValue: "Đạt 3 cuộc phỏng vấn", currentValue: "0", achieved: false, dueDate: "2026-09-10" }
+      ]
+    },
+    {
+      id: "G3",
+      name: "Sức khỏe và ngoại hình",
+      desiredOutcome: "Cải thiện sức khỏe, vóc dáng, giảm cân từ 64 kg về 55 kg một cách an toàn.",
+      priority: "normal",
+      deadline: endDate,
+      mainMetric: "Cân nặng (kg) & Số bước chân",
+      currentProgress: 10,
+      currentMilestone: "Duy trì thói quen đi bộ 6000 bước & ăn uống đúng kế hoạch",
+      status: "active",
+      nextAction: "Chuẩn bị bữa ăn lành mạnh cho ngày mai và skincare tối",
+      accentColor: "rose",
+      category: "health",
+      icon: "heart",
+      notes: "Không ép cân cực đoan. Lắng nghe cơ thể, nếu chóng mặt mệt mỏi kéo dài cần điều chỉnh ngay.",
+      milestones: [
+        { id: "m3_1", title: "Giảm cân giai đoạn 1", targetValue: "61 kg", currentValue: "63.8 kg", achieved: false, dueDate: "2026-08-10" },
+        { id: "m3_2", title: "Duy trì thói quen thể chất", targetValue: "30 buổi strength", currentValue: "2 buổi", achieved: false, dueDate: "2026-09-15" },
+        { id: "m3_3", title: "Đạt mục tiêu cân nặng", targetValue: "55 kg", currentValue: "63.8 kg", achieved: false, dueDate: "2026-10-10" }
+      ]
+    },
+    {
+      id: "G4",
+      name: "Lifestyle & Không gian sống",
+      desiredOutcome: "Duy trì căn hộ 40m² gọn gàng, ấm cúng với bạn đời và 2 chú mèo, giữ vững thời gian cá nhân.",
+      priority: "normal",
+      deadline: endDate,
+      mainMetric: "Routines consistency",
+      currentProgress: 25,
+      currentMilestone: "Thực hiện dọn dẹp nhanh 15 phút mỗi ngày và date night hàng tuần",
+      status: "active",
+      nextAction: "Dọn dẹp nhanh phòng khách & cho mèo ăn đúng giờ",
+      accentColor: "amber",
+      category: "home",
+      icon: "home",
+      notes: "Tổ ấm là điểm tựa tinh thần. Phân chia công việc nhà hài hòa.",
+      milestones: [
+        { id: "m4_1", title: "Thanh lý đồ đạc dư thừa (Declutter)", targetValue: "Gọn gàng tủ quần áo", currentValue: "Đã làm 50%", achieved: false, dueDate: "2026-07-30" },
+        { id: "m4_2", title: "Hệ thống hóa lịch dọn dẹp hàng tuần", targetValue: "100% hoàn thành lịch dọn dẹp", currentValue: "Chưa ổn định", achieved: false, dueDate: "2026-08-20" }
+      ]
+    },
+    {
+      id: "G5",
+      name: "Batch Test & Fund",
+      desiredOutcome: "Hoàn thành bài kiểm tra quỹ có kỷ luật trước khi thử nghiệm các yêu cầu DAO hoặc STMO.",
+      priority: "normal",
+      deadline: endDate,
+      mainMetric: "Độ tuân thủ checklist & Kết quả R",
+      currentProgress: 5,
+      currentMilestone: "Tuân thủ tuyệt đối quy tắc quản lý rủi ro và ghi nhật ký giao dịch",
+      status: "active",
+      nextAction: "Ghi chép bài học từ lệnh giao dịch hôm nay vào journal",
+      accentColor: "purple",
+      category: "fund_backtest",
+      icon: "chart",
+      notes: "Tuyệt đối không vi phạm giới hạn rủi ro. Không khuyến khích giao dịch mạo hiểm.",
+      milestones: [
+        { id: "m5_1", title: "Thiết lập hệ thống & Quản trị rủi ro", targetValue: "100% tuân thủ trong 10 trades", currentValue: "2 trades tuân thủ", achieved: false, dueDate: "2026-07-28" },
+        { id: "m5_2", title: "Đạt điều kiện tài khoản demo", targetValue: "+5% Equity", currentValue: "0%", achieved: false, dueDate: "2026-08-25" }
+      ]
+    }
+  ];
+
+  const routines: Routine[] = [
+    { id: "r1", goalId: "G1", name: "Deep work B2B", frequency: "Hàng ngày", minimumDay: "Làm việc tập trung 30 phút", target: "Làm việc tập trung 90 phút", evidence: "Minutes of deep work", status: "pending" },
+    { id: "r2", goalId: "G1", name: "B2B Outreach", frequency: "Hàng ngày", minimumDay: "Gửi 1 tin nhắn/email tiếp cận", target: "Gửi 15 tin nhắn/email tiếp cận", evidence: "Number of outreach emails", status: "pending" },
+    { id: "r3", goalId: "G2", name: "Hành động Tìm việc", frequency: "Hàng ngày", minimumDay: "Xem 1 tin tuyển dụng phù hợp", target: "Nộp ít nhất 1 hồ sơ CV chất lượng", evidence: "Applications submitted", status: "pending" },
+    { id: "r4", goalId: "G3", name: "Giấc ngủ ngon", frequency: "Hàng ngày", minimumDay: "Ngủ trước 12h đêm", target: "Ngủ đủ 7-8 tiếng, dậy đúng giờ", evidence: "Sleep hours", status: "pending" },
+    { id: "r5", goalId: "G3", name: "Đi bộ vận động", frequency: "Hàng ngày", minimumDay: "Đi bộ 3,000 bước", target: "Đi bộ 6,000 bước trở lên", evidence: "Steps counted", status: "pending" },
+    { id: "r6", goalId: "G3", name: "Tập luyện Strength", frequency: "Hàng tuần", minimumDay: "Tập 15 phút giãn cơ tại nhà", target: "Tập 3 buổi strength 45 phút/tuần", evidence: "Strength sessions completed", status: "pending" },
+    { id: "r7", goalId: "G3", name: "Skincare & Ngoại hình", frequency: "Hàng ngày", minimumDay: "Rửa mặt sạch trước khi ngủ", target: "Đầy đủ dưỡng da sáng/tối và chọn trang phục tươm tất", evidence: "Skincare checklist", status: "pending" },
+    { id: "r8", goalId: "G4", name: "Dọn dẹp nhanh (Home reset)", frequency: "Hàng ngày", minimumDay: "Dọn dẹp rác & lau bàn ăn 5 phút", target: "Reset nhà cửa gọn gàng 15 phút", evidence: "Reset done", status: "pending" },
+    { id: "r9", goalId: "G4", name: "Chăm sóc mèo cưng", frequency: "Hàng ngày", minimumDay: "Cho mèo ăn đầy đủ", target: "Dọn khay cát, chải lông và cho ăn", evidence: "Cat care done", status: "pending" },
+    { id: "r10", goalId: "G5", name: "Ghi nhật ký Trading (Journal)", frequency: "Hàng ngày", minimumDay: "Ghi lại kết quả trade trong ngày", target: "Phân tích kỹ setup, rủi ro, bài học trade", evidence: "Trades logged", status: "pending" }
+  ];
+
+  return {
+    startDate,
+    endDate,
+    goals: goals.map((g, index) => {
+      // Ensure description and milestones types/statuses are properly configured
+      const updatedMilestones = g.milestones.map((m, idx) => ({
+        ...m,
+        goalId: g.id,
+        status: m.achieved ? "completed" as const : (idx === 0 ? "active" : "locked") as any,
+        type: "completion" as const,
+        currentValue: m.achieved ? m.targetValue : "0",
+        order: idx
+      }));
+      return {
+        ...g,
+        description: g.desiredOutcome,
+        startDate,
+        currentMilestoneId: updatedMilestones.find(m => !m.achieved)?.id || updatedMilestones[0]?.id || null,
+        milestones: updatedMilestones
+      };
+    }),
+    activities: [],
+    routines,
+    experiments: [],
+    weeklyReviews: [],
+    b2bLeads: [],
+    jobApplications: [],
+    healthRecords: {},
+    lifestyleRecords: {},
+    batchTestRecords: [],
+    evidenceRecommendations: [],
+    priorityTasks: [
+      {
+        id: "task_default_1",
+        title: "Soạn và gửi 5 email outreach chất lượng cho leads SaaS",
+        description: "Tập trung vào giải pháp tiếp thị tự động hóa",
+        goalId: "G1",
+        milestoneId: "m1_3",
+        priority: "important_urgent",
+        estimatedMinutes: 45,
+        scheduledStart: "14:00",
+        scheduledEnd: "14:45",
+        completed: false,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "task_default_2",
+        title: "Hoàn thiện 10 backtests với cặp BTCUSD",
+        description: "Tuân thủ chặt chẽ quy tắc dừng lỗ và ghi chép nhật ký đầy đủ",
+        goalId: "G5",
+        milestoneId: "m5_1",
+        priority: "important",
+        estimatedMinutes: 60,
+        scheduledStart: "09:00",
+        scheduledEnd: "10:00",
+        completed: false,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "task_default_3",
+        title: "Đi bộ nhẹ nhàng 6,000 bước quanh công viên",
+        description: "Vừa đi cùng bạn đời ngắm hoàng hôn",
+        goalId: "G3",
+        milestoneId: "m3_1",
+        priority: "urgent",
+        estimatedMinutes: 30,
+        scheduledStart: "18:00",
+        scheduledEnd: "18:30",
+        completed: false,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "task_default_4",
+        title: "Home reset: Dọn dẹp phòng khách & cho mèo cưng ăn",
+        description: "Hút bụi thảm và lau dọn bàn làm việc",
+        goalId: "G4",
+        milestoneId: "m4_1",
+        priority: "later",
+        estimatedMinutes: 15,
+        scheduledStart: "20:00",
+        scheduledEnd: "20:15",
+        completed: false,
+        createdAt: new Date().toISOString()
+      }
+    ],
+    scheduleItems: [
+      {
+        id: "sched_default_1",
+        title: "Thực hiện Backtest Setup 1",
+        date: "2026-07-14",
+        startTime: "09:00",
+        endTime: "10:00",
+        estimatedMinutes: 60,
+        goalId: "G5",
+        milestoneId: "m5_1",
+        taskId: "task_default_2",
+        type: "task",
+        notes: "Ghi chép đầy đủ rủi ro và tỷ lệ R/R.",
+        completed: false
+      },
+      {
+        id: "sched_default_2",
+        title: "B2B Outreach & Mail gửi khách hàng",
+        date: "2026-07-14",
+        startTime: "14:00",
+        endTime: "15:30",
+        estimatedMinutes: 90,
+        goalId: "G1",
+        milestoneId: "m1_3",
+        taskId: "task_default_1",
+        type: "task",
+        notes: "Tìm leads trên LinkedIn và gửi.",
+        completed: false
+      },
+      {
+        id: "sched_default_3",
+        title: "Đi bộ thể thao 30 phút",
+        date: "2026-07-14",
+        startTime: "18:00",
+        endTime: "18:30",
+        estimatedMinutes: 30,
+        goalId: "G3",
+        milestoneId: "m3_1",
+        taskId: "task_default_3",
+        type: "habit",
+        notes: "Uông nước và nghe nhạc nhẹ nhàng.",
+        completed: false
+      }
+    ]
+  };
+}
+
+export function migrateAppState(rawState: any): AppState {
+  if (!rawState) return getDefaultAppState();
+
+  const migrated: any = { ...rawState };
+
+  // 1. Ensure goals are formatted correctly with descriptions, startDates, and milestone fields
+  if (Array.isArray(migrated.goals)) {
+    migrated.goals = migrated.goals.map((goal: any, index: number) => {
+      const g = { ...goal };
+      if (!g.description) {
+        g.description = g.desiredOutcome || "";
+      }
+      if (!g.startDate) {
+        g.startDate = migrated.startDate || "2026-07-13";
+      }
+      if (!g.status) {
+        g.status = "active";
+      }
+      
+      if (Array.isArray(g.milestones)) {
+        g.milestones = g.milestones.map((milestone: any, mIndex: number) => {
+          const m = { ...milestone };
+          if (!m.goalId) {
+            m.goalId = g.id;
+          }
+          if (!m.status) {
+            m.status = m.achieved ? "completed" as const : (mIndex === 0 ? "active" : "locked") as any;
+          }
+          if (!m.type) {
+            m.type = "completion" as const;
+          }
+          if (m.currentValue === undefined || m.currentValue === null) {
+            m.currentValue = m.achieved ? m.targetValue : "0";
+          }
+          if (m.order === undefined) {
+            m.order = mIndex;
+          }
+          return m;
+        });
+      } else {
+        g.milestones = [];
+      }
+      
+      const activeMilestone = g.milestones.find((m: any) => m.status === "active") || g.milestones[0];
+      if (activeMilestone && !g.currentMilestoneId) {
+        g.currentMilestoneId = activeMilestone.id;
+      }
+
+      // Infer category and icon if not present
+      if (!g.category || !g.icon) {
+        const nameLower = (g.name || "").toLowerCase();
+        if (nameLower.includes("backtest") || nameLower.includes("trading") || nameLower.includes("fund") || nameLower.includes("quỹ")) {
+          g.category = g.category || "fund_backtest";
+          g.icon = g.icon || "chart";
+        } else if (nameLower.includes("b2b") || nameLower.includes("business") || nameLower.includes("kinh doanh")) {
+          g.category = g.category || "business";
+          g.icon = g.icon || "briefcase";
+        } else if (nameLower.includes("marketing") || nameLower.includes("social") || nameLower.includes("website") || nameLower.includes("tiếp thị")) {
+          g.category = g.category || "marketing";
+          g.icon = g.icon || "megaphone";
+        } else if (nameLower.includes("health") || nameLower.includes("sức khỏe") || nameLower.includes("cân") || nameLower.includes("weight") || nameLower.includes("vóc dáng")) {
+          g.category = g.category || "health";
+          g.icon = g.icon || "heart";
+        } else if (nameLower.includes("career") || nameLower.includes("job") || nameLower.includes("việc") || nameLower.includes("tuyển")) {
+          g.category = g.category || "career";
+          g.icon = g.icon || "career";
+        } else if (nameLower.includes("learning") || nameLower.includes("course") || nameLower.includes("học") || nameLower.includes("tiếng") || nameLower.includes("ngôn ngữ")) {
+          g.category = g.category || "learning";
+          g.icon = g.icon || "learning";
+        } else if (nameLower.includes("home") || nameLower.includes("lifestyle") || nameLower.includes("nhà") || nameLower.includes("mèo")) {
+          g.category = g.category || "home";
+          g.icon = g.icon || "home";
+        } else if (nameLower.includes("finance") || nameLower.includes("saving") || nameLower.includes("tài chính") || nameLower.includes("tiết kiệm")) {
+          g.category = g.category || "finance";
+          g.icon = g.icon || "finance";
+        } else if (nameLower.includes("thói quen") || nameLower.includes("habit")) {
+          g.category = g.category || "habit";
+          g.icon = g.icon || "habit";
+        } else if (nameLower.includes("dự án") || nameLower.includes("project")) {
+          g.category = g.category || "project";
+          g.icon = g.icon || "project";
+        } else {
+          g.category = g.category || "custom";
+          g.icon = g.icon || "target";
+        }
+      }
+
+      return g;
+    });
+  } else {
+    migrated.goals = getDefaultAppState().goals;
+  }
+
+  // 2. Ensure routines are present
+  if (!Array.isArray(migrated.routines)) {
+    migrated.routines = getDefaultAppState().routines;
+  }
+
+  // 3. Ensure priorityTasks is present
+  if (!Array.isArray(migrated.priorityTasks) || migrated.priorityTasks.length === 0) {
+    migrated.priorityTasks = getDefaultAppState().priorityTasks;
+  }
+
+  // 4. Ensure scheduleItems is present
+  if (!Array.isArray(migrated.scheduleItems) || migrated.scheduleItems.length === 0) {
+    migrated.scheduleItems = getDefaultAppState().scheduleItems;
+  }
+
+  // Fallback for other arrays
+  if (!migrated.activities) migrated.activities = [];
+  if (!migrated.experiments) migrated.experiments = [];
+  if (!migrated.weeklyReviews) migrated.weeklyReviews = [];
+  if (!migrated.b2bLeads) migrated.b2bLeads = [];
+  if (!migrated.jobApplications) migrated.jobApplications = [];
+  if (!migrated.healthRecords) migrated.healthRecords = {};
+  if (!migrated.lifestyleRecords) migrated.lifestyleRecords = {};
+  if (!migrated.batchTestRecords) migrated.batchTestRecords = [];
+  if (!migrated.evidenceRecommendations) migrated.evidenceRecommendations = [];
+
+  return migrated;
+}
+
+// Check-in helper to insert / update a custom check-in state
+export function saveCheckInToState(state: AppState, payload: {
+  date: string;
+  summary: string;
+  energy: number | null;
+  entries: Array<{
+    goalId: string;
+    category: string;
+    activity: string;
+    output: Record<string, any>;
+    outcome: Record<string, any>;
+    insight?: string | null;
+    nextAction?: string | null;
+    confidence: number;
+  }>;
+  source: 'voice' | 'text' | 'manual';
+  originalTranscript?: string;
+}): AppState {
+  const updatedState = { ...state };
+  
+  // Calculate unique base ID
+  const timestamp = Date.now();
+  
+  // Create ActivityEntry for each classified entry
+  payload.entries.forEach((ent, idx) => {
+    const activityId = `act_${timestamp}_${idx}`;
+    const newEntry: ActivityEntry = {
+      id: activityId,
+      date: payload.date,
+      goalId: ent.goalId,
+      source: payload.source,
+      originalTranscript: payload.originalTranscript,
+      activity: ent.activity,
+      output: ent.output,
+      outcome: ent.outcome,
+      insight: ent.insight || null,
+      nextAction: ent.nextAction || null,
+      confidence: ent.confidence,
+      createdTimestamp: timestamp,
+      updatedTimestamp: timestamp
+    };
+    
+    updatedState.activities = [newEntry, ...updatedState.activities];
+
+    // Propagate updates to corresponding specific data structures
+    const out = ent.output || {};
+    const otc = ent.outcome || {};
+
+    // G1 - B2B SaaS
+    if (ent.goalId === "G1") {
+      // If outreach or replies are logged, we can dynamically add a generic lead or update goals progress
+      if (out.outreach) {
+        const leadId = `lead_${timestamp}_${idx}`;
+        const newLead: B2BLead = {
+          id: leadId,
+          companyName: `Đối tác tiềm năng #${Math.floor(Math.random() * 900) + 100}`,
+          contactPerson: "Chưa rõ",
+          status: otc.replies ? "replied" : "outreached",
+          notes: `Tự động tạo từ hoạt động outreach ngày ${formatDisplayDate(payload.date)}: ${ent.activity}`,
+          updatedAt: payload.date
+        };
+        updatedState.b2bLeads = [newLead, ...updatedState.b2bLeads];
+      }
+    }
+
+    // G2 - Jobs
+    if (ent.goalId === "G2") {
+      if (out.applications || ent.activity.toLowerCase().includes("ứng tuyển") || ent.activity.toLowerCase().includes("nộp")) {
+        const appId = `app_${timestamp}_${idx}`;
+        const newApp: JobApplication = {
+          id: appId,
+          companyName: ent.activity.match(/ở\s+([A-Za-z0-9\s]+)/)?.[1]?.trim() || `Công ty SaaS tiềm năng`,
+          role: "Developer / Marketer",
+          salary: otc.salary || "30,000,000 VND",
+          status: "applied",
+          notes: `Được tạo từ hoạt động check-in ngày ${formatDisplayDate(payload.date)}`,
+          updatedAt: payload.date
+        };
+        updatedState.jobApplications = [newApp, ...updatedState.jobApplications];
+      }
+    }
+
+    // G3 - S Health
+    if (ent.goalId === "G3") {
+      const existingRecord: HealthRecord = updatedState.healthRecords[payload.date] || {
+        date: payload.date,
+        weight: null,
+        sleepHours: null,
+        energy: payload.energy,
+        steps: null,
+        strengthSession: false,
+        eatOnPlan: false,
+        skincare: false,
+        styleAndAppearance: false,
+        notes: ""
+      };
+
+      if (out.steps) existingRecord.steps = Number(out.steps);
+      if (out.weightKg) existingRecord.weight = Number(out.weightKg);
+      if (out.sleepHours) existingRecord.sleepHours = Number(out.sleepHours);
+      if (out.strengthMinutes) existingRecord.strengthSession = true;
+      if (ent.activity.toLowerCase().includes("skincare") || out.skincare) existingRecord.skincare = true;
+      if (ent.activity.toLowerCase().includes("ăn") || ent.activity.toLowerCase().includes("dinh dưỡng")) existingRecord.eatOnPlan = true;
+      existingRecord.notes = (existingRecord.notes + " " + ent.activity).trim();
+      if (payload.energy) existingRecord.energy = payload.energy;
+
+      updatedState.healthRecords[payload.date] = existingRecord;
+    }
+
+    // G4 - Lifestyle
+    if (ent.goalId === "G4") {
+      const existingLRecord: LifestyleRecord = updatedState.lifestyleRecords[payload.date] || {
+        date: payload.date,
+        homeReset15m: false,
+        kitchenReset: false,
+        laundry: false,
+        mealPrep: false,
+        catCare: false,
+        deepClean: false,
+        declutter: false,
+        dateNight: false,
+        weeklyReview: false
+      };
+
+      const actLower = ent.activity.toLowerCase();
+      if (actLower.includes("reset") || actLower.includes("dọn dẹp")) existingLRecord.homeReset15m = true;
+      if (actLower.includes("bếp") || actLower.includes("rửa bát")) existingLRecord.kitchenReset = true;
+      if (actLower.includes("giặt") || actLower.includes("quần áo")) existingLRecord.laundry = true;
+      if (actLower.includes("nấu") || actLower.includes("chuẩn bị")) existingLRecord.mealPrep = true;
+      if (actLower.includes("mèo") || actLower.includes("cho ăn")) existingLRecord.catCare = true;
+      if (actLower.includes("declutter") || actLower.includes("thanh lý")) existingLRecord.declutter = true;
+      if (actLower.includes("hẹn hò") || actLower.includes("date night")) existingLRecord.dateNight = true;
+
+      updatedState.lifestyleRecords[payload.date] = existingLRecord;
+    }
+
+    // G5 - Trading
+    if (ent.goalId === "G5") {
+      if (out.plannedRisk || out.resultR || ent.activity.toLowerCase().includes("trade") || ent.activity.toLowerCase().includes("giao dịch")) {
+        const tradeId = `trade_${timestamp}_${idx}`;
+        const newTrade: BatchTestRecord = {
+          id: tradeId,
+          date: payload.date,
+          setup: ent.activity,
+          instrument: out.instrument || "BTCUSD",
+          plannedRisk: Number(out.plannedRisk || 1.0),
+          riskRewardRatio: Number(out.riskRewardRatio || 2.0),
+          resultR: Number(out.resultR || 0.0),
+          checklistCompliance: true,
+          ruleViolations: [],
+          simulatedEquity: 10000 + (out.resultR ? Number(out.resultR) * 100 : 0),
+          lessons: ent.insight || "Tuân thủ kế hoạch giao dịch",
+          eligibilityStatus: "eligible"
+        };
+        updatedState.batchTestRecords = [newTrade, ...updatedState.batchTestRecords];
+      }
+    }
+
+    // Update the goal's nextAction and currentProgress slightly
+    const targetGoal = updatedState.goals.find(g => g.id === ent.goalId);
+    if (targetGoal) {
+      if (ent.nextAction) {
+        targetGoal.nextAction = ent.nextAction;
+      }
+      // Add small progress
+      targetGoal.currentProgress = Math.min(90, targetGoal.currentProgress + 2);
+    }
+  });
+
+  // Automatically check off today's routines if the activities match keywords
+  payload.entries.forEach(ent => {
+    updatedState.routines = updatedState.routines.map(rot => {
+      if (rot.goalId === ent.goalId) {
+        const keywords = rot.name.toLowerCase().split(' ');
+        const matches = keywords.some(k => k.length > 2 && ent.activity.toLowerCase().includes(k));
+        if (matches) {
+          return { ...rot, status: 'completed' as const };
+        }
+      }
+      return rot;
+    });
+  });
+
+  return updatedState;
+}
+
+// Generate recommendations based on goal priority and recent activity
+export function getRecommendations(state: AppState): Recommendation[] {
+  const recommendations: Recommendation[] = [];
+
+  // Goal Priorities
+  const g1 = state.goals.find(g => g.id === "G1");
+  const g2 = state.goals.find(g => g.id === "G2");
+  const g3 = state.goals.find(g => g.id === "G3");
+  const g4 = state.goals.find(g => g.id === "G4");
+  const g5 = state.goals.find(g => g.id === "G5");
+
+  // Recommendation 1: G1 Outreach
+  const g1Acts = state.activities.filter(a => a.goalId === "G1");
+  if (g1Acts.length === 0) {
+    recommendations.push({
+      id: "rec_g1_start",
+      goalId: "G1",
+      title: "Khởi động tiếp cận khách hàng B2B",
+      reason: "B2B SaaS là mục tiêu có độ ưu tiên cao nhất của bạn. Bạn chưa ghi nhận hoạt động outreach nào trong chu kỳ này.",
+      minimumDayAlternative: "Lưu thông tin 1 lead tiềm năng và viết 1 câu mở đầu độc đáo.",
+      type: "outreach"
+    });
+  } else {
+    recommendations.push({
+      id: "rec_g1_continue",
+      goalId: "G1",
+      title: "Gửi 15 email tiếp cận theo ICP",
+      reason: "Tăng lượng outreach đều đặn để lấp đầy phễu khách hàng. G1 đang có sự tiến triển tốt.",
+      minimumDayAlternative: "Gửi duy nhất 1 email chất lượng cao đã cá nhân hóa.",
+      type: "outreach"
+    });
+  }
+
+  // Recommendation 2: Check health status / warning or recovery
+  const healthLogs = Object.values(state.healthRecords);
+  const consecutiveSteps = healthLogs.slice(0, 3).filter(h => h.steps && h.steps < 3000);
+  const lowEnergy = healthLogs.some(h => h.energy && h.energy <= 2);
+
+  if (lowEnergy) {
+    recommendations.push({
+      id: "rec_g3_recovery",
+      goalId: "G3",
+      title: "Hồi phục sức khỏe & Ưu tiên giấc ngủ",
+      reason: "Bạn ghi nhận mức năng lượng thấp gần đây. Đừng cố gắng ép bản thân quá mức.",
+      minimumDayAlternative: "Ngủ trước 11h30 tối, bỏ qua buổi tập nặng, chỉ đi bộ nhẹ nhàng 2000 bước.",
+      type: "recuperate"
+    });
+  } else {
+    recommendations.push({
+      id: "rec_g3_routine",
+      goalId: "G3",
+      title: "Duy trì đi bộ 6.000 bước",
+      reason: "Duy trì hoạt động thể chất giúp duy trì năng lượng làm việc cho mục tiêu G1 và G2.",
+      minimumDayAlternative: "Đi bộ nhẹ nhàng 10-15 phút quanh phòng làm việc (3.000 bước).",
+      type: "health"
+    });
+  }
+
+  // Recommendation 3: Neglected Goals check
+  const now = Date.now();
+  const goalLastAct: Record<string, number> = { G1: 0, G2: 0, G3: 0, G4: 0, G5: 0 };
+  state.activities.forEach(act => {
+    if (act.createdTimestamp > goalLastAct[act.goalId]) {
+      goalLastAct[act.goalId] = act.createdTimestamp;
+    }
+  });
+
+  const neglectedGoal = Object.entries(goalLastAct).find(([gid, ts]) => {
+    // If no activities or last was more than 3 days ago (259200000 ms)
+    return ts === 0 || (now - ts) > (3 * 24 * 60 * 60 * 1000);
+  });
+
+  if (neglectedGoal) {
+    const gid = neglectedGoal[0];
+    const targetGoalObj = state.goals.find(g => g.id === gid);
+    if (targetGoalObj && targetGoalObj.status === 'active') {
+      recommendations.push({
+        id: `rec_neg_${gid}`,
+        goalId: gid,
+        title: `Phục hồi sự tập trung cho: ${targetGoalObj.name}`,
+        reason: `Mục tiêu này đã bị bỏ quên hơn 3 ngày qua. Hãy kích hoạt lại bằng một hành động nhỏ nhất.`,
+        minimumDayAlternative: `Thực hiện phiên bản tối thiểu (Minimum Day) của routine liên quan trong 5-10 phút.`,
+        type: "warning"
+      });
+    }
+  }
+
+  // Ensure maximum 3 recommendations
+  return recommendations.slice(0, 3);
+}
+
+// Seed complete simulated database for Vietnamese user demonstration (past 14 days)
+export function getSeededAppState(): AppState {
+  const base = getDefaultAppState();
+  const start = new Date(base.startDate);
+  const now = new Date("2026-07-13");
+
+  // Setup some leads
+  base.b2bLeads = [
+    { id: "lead_1", companyName: "SaaSify Vietnam", contactPerson: "Nguyễn Văn A (CEO)", status: "proposal", notes: "Đã gửi báo giá tối ưu hóa chuyển đổi landing page.", updatedAt: "2026-07-10" },
+    { id: "lead_2", companyName: "LogiTech Solutions", contactPerson: "Trần Thị B (COO)", status: "meeting", notes: "Lên lịch demo cuộc gọi ngày 15/07.", updatedAt: "2026-07-12" },
+    { id: "lead_3", companyName: "HRCloud Corp", contactPerson: "Lê Minh C (HR Manager)", status: "outreached", notes: "Đã gửi email cá nhân hóa đầu tiên.", updatedAt: "2026-07-11" },
+    { id: "lead_4", companyName: "EduViet App", contactPerson: "Phạm Hùng (Founder)", status: "paying", notes: "Khách hàng đầu tiên chịu thanh toán gói pilot 5 triệu VND/tháng.", updatedAt: "2026-07-12" }
+  ];
+
+  // Setup some job applications
+  base.jobApplications = [
+    { id: "app_1", companyName: "VNG Group", role: "Product Owner SaaS", salary: "35,000,000 VND", status: "applied", notes: "Nộp qua LinkedIn, đang chờ phản hồi.", updatedAt: "2026-07-08" },
+    { id: "app_2", companyName: "OneMount Group", role: "Senior Marketing Analyst", salary: "32,000,000 VND", status: "interviewing", notes: "Đã hoàn thành bài test năng lực, chuẩn bị phỏng vấn vòng 1 ngày 16/07.", updatedAt: "2026-07-12" }
+  ];
+
+  // Populate activities for the past 10 days to make progress dashboard look amazing and realistic
+  const entriesList: ActivityEntry[] = [];
+  const healthRecs: Record<string, HealthRecord> = {};
+  const lifestyleRecs: Record<string, LifestyleRecord> = {};
+  const batchRecords: BatchTestRecord[] = [];
+
+  const daysToSeed = 10;
+  for (let i = 0; i < daysToSeed; i++) {
+    const seedDate = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000));
+    const dStr = formatDateStr(seedDate);
+
+    // Health records
+    healthRecs[dStr] = {
+      date: dStr,
+      weight: 64.0 - (i * 0.05), // weight loss trend!
+      sleepHours: 7 + (i % 2 === 0 ? 0.5 : -0.5),
+      energy: i % 3 === 0 ? 3 : (i % 4 === 0 ? 5 : 4),
+      steps: 4500 + (i * 250), // increasing activity trend!
+      strengthSession: i % 3 === 0,
+      eatOnPlan: i % 4 !== 0,
+      skincare: true,
+      styleAndAppearance: i % 2 === 0,
+      notes: "Ăn đúng giờ, uống nhiều nước."
+    };
+
+    // Lifestyle records
+    lifestyleRecs[dStr] = {
+      date: dStr,
+      homeReset15m: i % 2 === 0,
+      kitchenReset: true,
+      laundry: i % 3 === 0,
+      mealPrep: i % 2 === 1,
+      catCare: true,
+      deepClean: i === 6,
+      declutter: i === 3,
+      dateNight: i === 5,
+      weeklyReview: i === 7
+    };
+
+    // Activities
+    entriesList.push({
+      id: `act_seed_g1_${i}`,
+      date: dStr,
+      goalId: "G1",
+      source: "voice",
+      activity: `Gửi tiếp cận email B2B cho ${5 + i} leads và làm sâu nghiên cứu ICP khách hàng.`,
+      output: { outreach: 5 + i },
+      outcome: { replies: i % 4 === 0 ? 1 : 0 },
+      insight: "Tập trung viết tiêu đề email ngắn gọn kích thích tò mò sẽ nâng cao tỉ lệ mở.",
+      nextAction: "Viết sẵn các mẫu follow-up cho ngày mai",
+      confidence: 0.95,
+      createdTimestamp: seedDate.getTime(),
+      updatedTimestamp: seedDate.getTime()
+    });
+
+    if (i % 2 === 0) {
+      entriesList.push({
+        id: `act_seed_g3_${i}`,
+        date: dStr,
+        goalId: "G3",
+        source: "text",
+        activity: `Đi bộ ${4500 + i * 250} bước và duy trì ăn thâm hụt calo, dưỡng da tối.`,
+        output: { steps: 4500 + i * 250, weightKg: 64.0 - (i * 0.05) },
+        outcome: {},
+        insight: "Nên mang giày chạy bộ êm chân để hạn chế đau gót chân khi đi bộ.",
+        nextAction: "Duy trì đi bộ đúng lộ trình",
+        confidence: 0.98,
+        createdTimestamp: seedDate.getTime(),
+        updatedTimestamp: seedDate.getTime()
+      });
+    }
+
+    if (i % 3 === 0) {
+      entriesList.push({
+        id: `act_seed_g5_${i}`,
+        date: dStr,
+        goalId: "G5",
+        source: "manual",
+        activity: "Giao dịch 1 lệnh Gold cặp XAUUSD tuân thủ nghiêm ngặt checklist giao dịch.",
+        output: { plannedRisk: 0.5, riskRewardRatio: 2.0 },
+        outcome: { resultR: i === 0 ? -1 : 2 },
+        insight: "Không FOMO khi nến chưa đóng cửa là quyết định chính xác giữ vững kỷ luật.",
+        nextAction: "Bảo toàn số vốn, phân tích kỹ nhật ký",
+        confidence: 0.9,
+        createdTimestamp: seedDate.getTime(),
+        updatedTimestamp: seedDate.getTime()
+      });
+
+      batchRecords.push({
+        id: `trade_seed_${i}`,
+        date: dStr,
+        setup: "Gold Pinbar pullback m15",
+        instrument: "XAUUSD",
+        plannedRisk: 0.5,
+        riskRewardRatio: 2.0,
+        resultR: i === 0 ? -1 : 2,
+        checklistCompliance: true,
+        ruleViolations: [],
+        simulatedEquity: 10000 + (i === 0 ? -100 : 200),
+        lessons: "Điểm vào hoàn hảo, quản lý khối lượng chặt chẽ.",
+        eligibilityStatus: "eligible"
+      });
+    }
+  }
+
+  // Setup sample experiments
+  base.experiments = [
+    {
+      id: "exp_1",
+      goalId: "G1",
+      hypothesis: "Chèn tiêu đề email cá nhân hóa chứa TÊN CEO sẽ cải thiện tỷ lệ mở & trả lời lên 15%.",
+      variable: "Tiêu đề email chứa tên CEO (ví dụ: 'Xin chào anh A - Giải pháp SaaS cho...')",
+      startDate: "2026-07-05",
+      reviewDate: "2026-07-20",
+      mainMetric: "Reply rate",
+      guardrail: "Nếu tỷ lệ report spam tăng > 2% thì dừng.",
+      baseline: "Tỷ lệ trả lời hiện tại: 5%",
+      result: "Tỷ lệ trả lời đạt 12% sau khi thử nghiệm gửi 25 emails",
+      confidence: 0.85,
+      decision: "continue",
+      reason: "Kết quả tốt vượt bậc so với baseline, tiếp tục áp dụng rộng rãi."
+    }
+  ];
+
+  // Setup sample weekly review
+  base.weeklyReviews = [
+    {
+      id: "rev_1",
+      weekNumber: 1,
+      startDate: "2026-07-06",
+      endDate: "2026-07-12",
+      planned: "Nghiên cứu ICP B2B, chuẩn bị Portfolio mẫu, nộp 1 CV và tập strength 2 buổi.",
+      actual: "Đã gửi 32 emails tiếp cận (có 1 deal trả phí), nộp CV OneMount, duy trì sức khỏe tốt và giảm cân.",
+      outputs: { outreach: 32, applications: 1, strength: 2, steps: 38000 },
+      outcomes: { replies: 3, payingClients: 1, revenue: 5000000 },
+      timeAllocation: { G1: 45, G2: 15, G3: 20, G4: 15, G5: 5 },
+      wins: "Có được khách hàng trả phí pilot đầu tiên trị giá 5 triệu VND!",
+      problems: "Vẫn thỉnh thoảng ngủ hơi muộn (khoảng 12h30).",
+      lessons: "Cần chuẩn bị bữa tối sớm hơn để reset nhà cửa và thư giãn sớm.",
+      adjustments: "Tập trung nguồn lực chăm sóc khách hàng pilot này thật tốt làm case study xuất sắc.",
+      status: "continue",
+      submitted: true
+    }
+  ];
+
+  base.activities = entriesList;
+  base.healthRecords = healthRecs;
+  base.lifestyleRecords = lifestyleRecs;
+  base.batchTestRecords = batchRecords;
+
+  // Set goals progress based on simulated records
+  base.goals[0].currentProgress = 35; // G1
+  base.goals[1].currentProgress = 20; // G2
+  base.goals[2].currentProgress = 18; // G3
+  base.goals[3].currentProgress = 40; // G4
+  base.goals[4].currentProgress = 15; // G5
+
+  base.evidenceRecommendations = [
+    {
+      id: "rec_seed_1",
+      goalId: "G1",
+      recommendedAction: "Thực hiện phỏng vấn khách hàng đối tác SaaSify Vietnam trước khi nâng cấp offer.",
+      reason: "Cần lấy feedback trực tiếp về pain point của họ thay vì tự suy đoán.",
+      userEvidence: "Dữ liệu cho thấy SaaSify Vietnam đang ở trạng thái 'proposal' (gửi báo cáo giá) từ ngày 10/07/2026.",
+      patternOrPrinciple: "Xác thực giả thuyết trực tiếp với khách hàng trước khi xây dựng/mở rộng giải pháp.",
+      expectedOutcome: "Xác định rõ mong muốn thực sự của đối tác để chốt hợp đồng pilot.",
+      successMetric: "Hoàn thành 1 cuộc gọi phỏng vấn 15 phút.",
+      reviewDate: "2026-07-15",
+      confidence: "High",
+      minimumDay: "Nhắn tin hỏi đối tác xem có thắc mắc gì về proposal không.",
+      status: "accepted",
+      createdDate: "2026-07-11",
+      decisionNotes: "Đồng ý, đã nhắn tin hẹn lịch gọi phỏng vấn."
+    },
+    {
+      id: "rec_seed_2",
+      goalId: "G3",
+      recommendedAction: "Nghỉ ngơi sớm và chỉ đi bộ nhẹ nhàng 2,000 bước.",
+      reason: "Ghi nhận năng lượng giảm xuống còn 3/5 vào ngày 12/07 và có dấu hiệu mỏi mệt.",
+      userEvidence: "Bản ghi ngày 12/07 ghi nhận năng lượng đạt 3/5, giấc ngủ chỉ đạt 6.5 tiếng.",
+      patternOrPrinciple: "Hồi phục chủ động (Active Recovery) để ngăn ngừa kiệt sức.",
+      expectedOutcome: "Phục hồi năng lượng lên 4/5 vào ngày hôm sau.",
+      successMetric: "Mức năng lượng ngày tiếp theo >= 4/5.",
+      reviewDate: "2026-07-13",
+      confidence: "Medium",
+      minimumDay: "Chỉ tập trung ngủ đủ giấc và rửa mặt sạch dưỡng da trước khi ngủ.",
+      status: "postponed",
+      createdDate: "2026-07-12",
+      decisionNotes: "Lùi lại vì hôm đó vẫn cố gắng đi bộ đủ chỉ tiêu."
+    }
+  ];
+
+  return base;
+}
+
+// Export All Data as JSON
+export function exportStateToJSON(state: AppState): string {
+  return JSON.stringify(state, null, 2);
+}
+
+// Convert data list to CSV string
+export function convertToCSV(data: any[], headers: string[], keys: string[]): string {
+  const rowSeparator = "\r\n";
+  const headerLine = headers.join(",");
+  const bodyLines = data.map(item => {
+    return keys.map(key => {
+      let val = item[key];
+      if (val === undefined || val === null) {
+        val = "";
+      } else if (typeof val === "object") {
+        val = JSON.stringify(val);
+      }
+      // Escape commas and quotes
+      const stringified = String(val).replace(/"/g, '""');
+      if (stringified.includes(",") || stringified.includes("\n") || stringified.includes('"')) {
+        return `"${stringified}"`;
+      }
+      return stringified;
+    }).join(",");
+  });
+  
+  return [headerLine, ...bodyLines].join(rowSeparator);
+}
+
+// Download dynamic file trigger
+export function triggerFileDownload(content: string, filename: string, contentType: string) {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
