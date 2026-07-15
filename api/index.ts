@@ -7,6 +7,18 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+// Vercel invokes this Express app at /api. Preserve the requested sub-route
+// from the rewrite query so /api/health, /api/classify, etc. reach Express.
+app.use((req, _res, next) => {
+  const rewrittenPath = req.query.__path;
+  if (typeof rewrittenPath === "string" && req.path === "/api") {
+    const queryIndex = req.url.indexOf("?");
+    const queryString = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
+    req.url = `/api/${rewrittenPath}${queryString}`;
+  }
+  next();
+});
+
 // Helper to get current date/offset in Asia/Ho_Chi_Minh timezone
 function getHoChiMinhDate(daysOffset = 0) {
   const date = new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000);
@@ -117,7 +129,7 @@ NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác với responseSchema.`;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: [{ text: prompt }],
       config: {
         responseMimeType: "application/json",
