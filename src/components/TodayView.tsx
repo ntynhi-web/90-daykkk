@@ -516,13 +516,113 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   return (
     <div id="today-dashboard-view" className="space-y-8">
       
-      {/* 1. VIỆC ƯU TIÊN HÔM NAY (PRIORITY BOARD 2X2) */}
+      {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
+      <section id="section-quick-input" className="space-y-4 rounded-[24px] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 md:p-6 shadow-sm">
+        <div>
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100"><MessageSquareText className="h-4 w-4" /></span>
+            1. Check-in nhanh bằng giọng nói hoặc văn bản
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">Trí tuệ nhân tạo Gemini tự động phân loại, cập nhật cột mốc và tích hợp lịch làm việc.</p>
+        </div>
+
+        <div className="bg-white/90 rounded-2xl p-5 md:p-6 border border-indigo-100 shadow-sm space-y-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span>Đọc nhật ký check-in (ví dụ: "Hôm nay tôi hoàn thành cột mốc nộp hồ sơ, đã đi bộ 30 phút và muốn lên lịch backtest ngày mai từ 9 giờ đến 10 giờ")</span>
+          </div>
+
+          <div className="space-y-3">
+            <textarea
+              id="txt-transcript-input"
+              rows={3}
+              placeholder="Nhập nội dung nhật ký thô tại đây hoặc nhấn nút Microphone để nói..."
+              value={transcript}
+              onChange={e => setTranscript(e.target.value)}
+              className="w-full text-xs border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 bg-slate-50/30 focus:outline-none focus:ring-1 focus:ring-indigo-100 transition-all font-medium leading-relaxed"
+            />
+
+            {micError && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{micError}</span>
+              </div>
+            )}
+
+            {refineError && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{refineError}</span>
+              </div>
+            )}
+
+            {/* BUTTON CONTROLS */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              
+              {/* Mic buttons */}
+              <div className="flex items-center gap-2">
+                {speechSupported ? (
+                  isRecording ? (
+                    <button
+                      id="btn-stop-mic"
+                      onClick={stopRecording}
+                      className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer animate-pulse"
+                    >
+                      <MicOff className="w-4 h-4" />
+                      <span>Đang nghe... ({recordingSeconds}s) - Bấm để dừng</span>
+                    </button>
+                  ) : (
+                    <button
+                      id="btn-start-mic"
+                      onClick={startRecording}
+                      className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold px-4 py-2.5 rounded-xl border border-indigo-150 transition-all cursor-pointer"
+                    >
+                      <Mic className="w-4 h-4 text-indigo-500" />
+                      <span>Bắt đầu Nói</span>
+                    </button>
+                  )
+                ) : (
+                  <span className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    Trình duyệt không hỗ trợ Mic
+                  </span>
+                )}
+
+                {transcript.trim() && (
+                  <button
+                    id="btn-refine-spelling"
+                    disabled={isRefining}
+                    onClick={handleRefineTranscript}
+                    className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-250 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isRefining ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>Sửa Chính Tả AI</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Submit / Analyze button */}
+              <button
+                id="btn-analyze-input"
+                disabled={!transcript.trim() || isClassifying}
+                onClick={() => handleAnalyzeTranscript(transcript)}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Gửi phân tích AI</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      {/* 2. VIỆC ƯU TIÊN HÔM NAY (PRIORITY BOARD 2X2) */}
       <section id="section-priority-board" className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"><ListTodo className="h-4 w-4" /></span>
-              1. Việc ưu tiên hôm nay
+              2. Việc ưu tiên hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Xếp việc theo Ma trận Eisenhower để tập trung tối đa tâm trí.</p>
           </div>
@@ -788,13 +888,13 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
-      {/* 2. LỊCH HÔM NAY */}
+      {/* 3. LỊCH HÔM NAY */}
       <section id="section-today-schedule" className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100"><Calendar className="h-4 w-4" /></span>
-              2. Lịch hôm nay
+              3. Lịch hôm nay
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">Quản lý block thời gian Deep Work và phát hiện trùng lặp.</p>
           </div>
@@ -844,12 +944,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
-      {/* 3. CÁC HÀNH TRÌNH MỤC TIÊU */}
+      {/* 4. CÁC HÀNH TRÌNH MỤC TIÊU */}
       <section id="section-goal-journeys" className="space-y-4">
         <div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
-            3. Các hành trình mục tiêu
+            4. Các hành trình mục tiêu
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Tiến trình đạt các mốc cột mốc trong chu kỳ 90 ngày của bạn.</p>
         </div>
@@ -915,12 +1015,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         )}
       </section>
 
-      {/* 4. THÓI QUEN NÊN DUY TRÌ */}
+      {/* 5. THÓI QUEN NÊN DUY TRÌ */}
       <section id="section-routines" className="space-y-4">
         <div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Repeat2 className="h-4 w-4" /></span>
-            4. Thói quen nên duy trì
+            5. Thói quen nên duy trì
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Thực thi kỷ luật thép mỗi ngày để tự động hóa thành công của các hành trình mục tiêu.</p>
         </div>
@@ -963,105 +1063,6 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           ) : (
             <p className="text-xs text-slate-400 italic text-center py-6">Chưa có thói quen nào được cấu hình.</p>
           )}
-        </div>
-      </section>
-
-      {/* 5. CẬP NHẬT NHANH BẰNG GIỌNG NÓI HOẶC VĂN BẢN */}
-      <section id="section-quick-input" className="space-y-4">
-        <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100"><MessageSquareText className="h-4 w-4" /></span>
-            5. Cập nhật nhanh bằng giọng nói hoặc văn bản
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Trí tuệ nhân tạo Gemini tự động phân loại, cập nhật cột mốc và tích hợp lịch làm việc.</p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-indigo-100 shadow-3xs space-y-4">
-          <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
-            <Sparkles className="w-4 h-4 shrink-0" />
-            <span>Đọc nhật ký check-in (ví dụ: "Hôm nay tôi hoàn thành cột mốc nộp hồ sơ, đã đi bộ 30 phút và muốn lên lịch backtest ngày mai từ 9 giờ đến 10 giờ")</span>
-          </div>
-
-          <div className="space-y-3">
-            <textarea
-              id="txt-transcript-input"
-              rows={3}
-              placeholder="Nhập nội dung nhật ký thô tại đây hoặc nhấn nút Microphone để nói..."
-              value={transcript}
-              onChange={e => setTranscript(e.target.value)}
-              className="w-full text-xs border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 bg-slate-50/30 focus:outline-none focus:ring-1 focus:ring-indigo-100 transition-all font-medium leading-relaxed"
-            />
-
-            {micError && (
-              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{micError}</span>
-              </div>
-            )}
-
-            {refineError && (
-              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{refineError}</span>
-              </div>
-            )}
-
-            {/* BUTTON CONTROLS */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              
-              {/* Mic buttons */}
-              <div className="flex items-center gap-2">
-                {speechSupported ? (
-                  isRecording ? (
-                    <button
-                      id="btn-stop-mic"
-                      onClick={stopRecording}
-                      className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer animate-pulse"
-                    >
-                      <MicOff className="w-4 h-4" />
-                      <span>Đang nghe... ({recordingSeconds}s) - Bấm để dừng</span>
-                    </button>
-                  ) : (
-                    <button
-                      id="btn-start-mic"
-                      onClick={startRecording}
-                      className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold px-4 py-2.5 rounded-xl border border-indigo-150 transition-all cursor-pointer"
-                    >
-                      <Mic className="w-4 h-4 text-indigo-500" />
-                      <span>Bắt đầu Nói</span>
-                    </button>
-                  )
-                ) : (
-                  <span className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    Trình duyệt không hỗ trợ Mic
-                  </span>
-                )}
-
-                {transcript.trim() && (
-                  <button
-                    id="btn-refine-spelling"
-                    disabled={isRefining}
-                    onClick={handleRefineTranscript}
-                    className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-250 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {isRefining ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-                    <span>Sửa Chính Tả AI</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Submit / Analyze button */}
-              <button
-                id="btn-analyze-input"
-                disabled={!transcript.trim() || isClassifying}
-                onClick={() => handleAnalyzeTranscript(transcript)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-                <span>Gửi phân tích AI</span>
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
