@@ -5,11 +5,12 @@ import {
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb
 } from "lucide-react";
-import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } from "../types";
+import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import DailyRoutineCheckin from "./DailyRoutineCheckin";
+import LifeMaintenance from "./LifeMaintenance";
 
 interface TodayViewProps {
   state: AppState;
@@ -80,6 +81,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     routineUpdates: Array<{
       routineId: string;
       suggestedStatus: string;
+      confidence: number;
+      evidence: string;
+    }>;
+    choreUpdates: Array<{
+      choreId: string | null;
+      title: string;
+      category: ChoreCategory;
+      frequency: ChoreFrequency;
+      dueDate: string | null;
+      suggestedStatus: 'completed' | 'create';
       confidence: number;
       evidence: string;
     }>;
@@ -227,7 +238,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           transcript: textToAnalyze,
           currentDate: todayStr,
           goals: activeGoals,
-          routines: activeRoutines
+          routines: activeRoutines,
+          chores: state.chores || []
         })
       });
 
@@ -272,6 +284,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           confidence: r.confidence || 0.9,
           evidence: r.evidence || ""
         })),
+        choreUpdates: (data.choreUpdates || []).map((chore: any) => ({
+          choreId: chore.choreId && chore.choreId !== "null" ? chore.choreId : null,
+          title: chore.title || "Chore chưa đặt tên",
+          category: chore.category || "home",
+          frequency: chore.frequency || "one_time",
+          dueDate: chore.dueDate || todayStr,
+          suggestedStatus: chore.suggestedStatus || "completed",
+          confidence: chore.confidence || 0.9,
+          evidence: chore.evidence || ""
+        })),
         unclassifiedItems: data.unclassifiedItems || []
       });
 
@@ -295,6 +317,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         taskSuggestions: [],
         scheduleSuggestions: [],
         routineUpdates: [],
+        choreUpdates: [],
         unclassifiedItems: []
       });
     } finally {
@@ -380,6 +403,34 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       }
     });
 
+    // 2b. Complete an existing chore or create a newly recognized life-maintenance item.
+    editableCheckIn.choreUpdates.forEach((update, index) => {
+      const existing = (updatedState.chores || []).find(chore =>
+        chore.id === update.choreId || chore.title.trim().toLowerCase() === update.title.trim().toLowerCase()
+      );
+      if (existing && update.suggestedStatus === "completed") {
+        updatedState.chores = (updatedState.chores || []).map(chore => {
+          if (chore.id !== existing.id) return chore;
+          return chore.frequency === "one_time"
+            ? { ...chore, completed: true, lastCompletedDate: todayStr }
+            : { ...chore, lastCompletedDate: todayStr };
+        });
+      } else if (!existing) {
+        const nextChore: Chore = {
+          id: `chore_ai_${Date.now()}_${index}`,
+          title: update.title,
+          category: update.category,
+          frequency: update.frequency,
+          dueDate: update.dueDate || todayStr,
+          completed: update.suggestedStatus === "completed",
+          lastCompletedDate: update.suggestedStatus === "completed" ? todayStr : null,
+          notes: update.evidence,
+          createdAt: new Date().toISOString()
+        };
+        updatedState.chores = [...(updatedState.chores || []), nextChore];
+      }
+    });
+
     // 3. Apply milestone updates
     editableCheckIn.milestoneUpdates.forEach(mu => {
       updatedState.goals = updatedState.goals.map(g => {
@@ -445,7 +496,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     setShowConfirmModal(false);
     setTranscript("");
     setEditableCheckIn(null);
-    alert("Cập nhật thành công! Dữ liệu hành trình, thói quen và lịch trình đã được đồng bộ hoá.");
+    alert("Cập nhật thành công! Mục tiêu, thói quen, chores và lịch trình đã được đồng bộ hoá.");
   };
 
   // Section 1 Helpers: Priority Board
@@ -516,7 +567,10 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       .filter(milestone => !milestone.achieved && !!milestone.dueDate && milestone.dueDate < todayStr)
       .map(milestone => ({ ...milestone, journeyName: goal.name }))
   );
-  const attentionCount = overdueTasks.length + unfinishedPastSchedule.length + overdueMilestones.length;
+  const overdueChores = (state.chores || []).filter(chore =>
+    !chore.completed && chore.lastCompletedDate !== todayStr && !!chore.dueDate && chore.dueDate < todayStr
+  );
+  const attentionCount = overdueTasks.length + unfinishedPastSchedule.length + overdueMilestones.length + overdueChores.length;
 
   const handleToggleScheduleItem = (itemId: string) => {
     const target = (state.scheduleItems || []).find(item => item.id === itemId);
@@ -784,6 +838,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         onChangeState={onChangeState}
       />
 
+      <LifeMaintenance
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
+
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
         <div className="life-panel p-5 md:p-6 space-y-4">
@@ -847,6 +907,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               {unfinishedPastSchedule.slice(0, 2).map(item => <p key={item.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Lịch chưa hoàn thành: {item.title}</p>)}
               {overdueTasks.slice(0, 2).map(task => <p key={task.id} className="rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800">Việc đã quá hạn: {task.title}</p>)}
               {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-800">Cột mốc trễ: {milestone.title} · {milestone.journeyName}</p>)}
+              {overdueChores.slice(0, 2).map(chore => <p key={chore.id} className="rounded-xl bg-teal-50 px-3 py-2 text-[11px] font-semibold text-teal-800">Chore quá hạn: {chore.title}</p>)}
             </div>
           ) : (
             <p className="rounded-2xl bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">Không có lịch bỏ sót, task quá hạn hoặc milestone trễ. Bạn chỉ cần tập trung vào việc đang làm.</p>
@@ -1483,6 +1544,32 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                                   setEditableCheckIn({ ...editableCheckIn, routineUpdates: updates });
                                 }}
                                 className="text-slate-400 hover:text-rose-600 font-bold p-1 hover:bg-white rounded cursor-pointer"
+                              >
+                                Bỏ đề xuất
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chores được AI nhận diện */}
+                    {editableCheckIn.choreUpdates.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+                          Life maintenance ({editableCheckIn.choreUpdates.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {editableCheckIn.choreUpdates.map((chore, idx) => (
+                            <div key={`${chore.choreId || chore.title}_${idx}`} className="flex items-center justify-between gap-3 rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-xs font-medium text-slate-700">
+                              <div>
+                                <span><strong>{chore.title}</strong> · {chore.suggestedStatus === "create" ? "Tạo chore mới" : "Đánh dấu hoàn thành"}</span>
+                                <p className="mt-0.5 text-[10px] italic text-slate-400">{chore.evidence}</p>
+                              </div>
+                              <button
+                                onClick={() => setEditableCheckIn({ ...editableCheckIn, choreUpdates: editableCheckIn.choreUpdates.filter((_, i) => i !== idx) })}
+                                className="cursor-pointer rounded p-1 font-bold text-slate-400 hover:bg-white hover:text-rose-600"
                               >
                                 Bỏ đề xuất
                               </button>
