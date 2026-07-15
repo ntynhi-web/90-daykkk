@@ -170,6 +170,7 @@ export function getDefaultAppState(): AppState {
     }),
     activities: [],
     routines,
+    routineLogs: [],
     experiments: [],
     weeklyReviews: [],
     b2bLeads: [],
@@ -362,6 +363,9 @@ export function migrateAppState(rawState: any): AppState {
   // 2. Ensure routines are present
   if (!Array.isArray(migrated.routines)) {
     migrated.routines = getDefaultAppState().routines;
+  }
+  if (!Array.isArray(migrated.routineLogs)) {
+    migrated.routineLogs = [];
   }
 
   // 3. Ensure priorityTasks is present
