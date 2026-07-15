@@ -5,9 +5,12 @@ import {
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb
 } from "lucide-react";
-import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } from "../types";
+import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
+import FocusOverview from "./FocusOverview";
+import DailyRoutineCheckin from "./DailyRoutineCheckin";
+import LifeMaintenance from "./LifeMaintenance";
 
 interface TodayViewProps {
   state: AppState;
@@ -78,6 +81,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     routineUpdates: Array<{
       routineId: string;
       suggestedStatus: string;
+      confidence: number;
+      evidence: string;
+    }>;
+    choreUpdates: Array<{
+      choreId: string | null;
+      title: string;
+      category: ChoreCategory;
+      frequency: ChoreFrequency;
+      dueDate: string | null;
+      suggestedStatus: 'completed' | 'create';
       confidence: number;
       evidence: string;
     }>;
@@ -225,7 +238,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           transcript: textToAnalyze,
           currentDate: todayStr,
           goals: activeGoals,
-          routines: activeRoutines
+          routines: activeRoutines,
+          chores: state.chores || []
         })
       });
 
@@ -270,6 +284,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           confidence: r.confidence || 0.9,
           evidence: r.evidence || ""
         })),
+        choreUpdates: (data.choreUpdates || []).map((chore: any) => ({
+          choreId: chore.choreId && chore.choreId !== "null" ? chore.choreId : null,
+          title: chore.title || "Chore chưa đặt tên",
+          category: chore.category || "home",
+          frequency: chore.frequency || "one_time",
+          dueDate: chore.dueDate || todayStr,
+          suggestedStatus: chore.suggestedStatus || "completed",
+          confidence: chore.confidence || 0.9,
+          evidence: chore.evidence || ""
+        })),
         unclassifiedItems: data.unclassifiedItems || []
       });
 
@@ -293,6 +317,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         taskSuggestions: [],
         scheduleSuggestions: [],
         routineUpdates: [],
+        choreUpdates: [],
         unclassifiedItems: []
       });
     } finally {
@@ -351,6 +376,59 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         }
         return r;
       });
+
+      const routine = updatedState.routines.find(r => r.id === ru.routineId);
+      if (routine && ru.suggestedStatus === "completed") {
+        const existingLog = (updatedState.routineLogs || []).find(log =>
+          log.routineId === ru.routineId && log.date === todayStr
+        );
+        const linkedActivity = newActivities.find(activity => activity.goalId === routine.goalId);
+        const now = Date.now();
+        const nextLog = {
+          id: existingLog?.id || `routine_log_${ru.routineId}_${todayStr}`,
+          routineId: ru.routineId,
+          goalId: routine.goalId,
+          date: todayStr,
+          status: "completed" as const,
+          source: "ai" as const,
+          evidence: ru.evidence || linkedActivity?.activity || routine.target,
+          activityId: linkedActivity?.id || existingLog?.activityId || null,
+          createdTimestamp: existingLog?.createdTimestamp || now,
+          updatedTimestamp: now
+        };
+        updatedState.routineLogs = [
+          nextLog,
+          ...(updatedState.routineLogs || []).filter(log => !(log.routineId === ru.routineId && log.date === todayStr))
+        ];
+      }
+    });
+
+    // 2b. Complete an existing chore or create a newly recognized life-maintenance item.
+    editableCheckIn.choreUpdates.forEach((update, index) => {
+      const existing = (updatedState.chores || []).find(chore =>
+        chore.id === update.choreId || chore.title.trim().toLowerCase() === update.title.trim().toLowerCase()
+      );
+      if (existing && update.suggestedStatus === "completed") {
+        updatedState.chores = (updatedState.chores || []).map(chore => {
+          if (chore.id !== existing.id) return chore;
+          return chore.frequency === "one_time"
+            ? { ...chore, completed: true, lastCompletedDate: todayStr }
+            : { ...chore, lastCompletedDate: todayStr };
+        });
+      } else if (!existing) {
+        const nextChore: Chore = {
+          id: `chore_ai_${Date.now()}_${index}`,
+          title: update.title,
+          category: update.category,
+          frequency: update.frequency,
+          dueDate: update.dueDate || todayStr,
+          completed: update.suggestedStatus === "completed",
+          lastCompletedDate: update.suggestedStatus === "completed" ? todayStr : null,
+          notes: update.evidence,
+          createdAt: new Date().toISOString()
+        };
+        updatedState.chores = [...(updatedState.chores || []), nextChore];
+      }
     });
 
     // 3. Apply milestone updates
@@ -370,6 +448,23 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         }
         return g;
       });
+    });
+
+    // Recalculate journey progress immediately after confirmed milestone updates.
+    // This keeps every activity check-in, milestone and dashboard percentage in sync.
+    updatedState.goals = updatedState.goals.map(goal => {
+      const milestones = goal.milestones || [];
+      if (milestones.length === 0) return goal;
+      const completedCount = milestones.filter(m => m.achieved).length;
+      const nextMilestone = milestones.find(m => !m.achieved) || null;
+      const progress = Math.round((completedCount / milestones.length) * 100);
+      return {
+        ...goal,
+        currentProgress: progress,
+        currentMilestone: nextMilestone?.title || "Đã hoàn thành",
+        currentMilestoneId: nextMilestone?.id || null,
+        status: progress === 100 ? "completed" as const : goal.status
+      };
     });
 
     // 4. Add task suggestions as real priority tasks
@@ -401,7 +496,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     setShowConfirmModal(false);
     setTranscript("");
     setEditableCheckIn(null);
-    alert("Cập nhật thành công! Dữ liệu hành trình, thói quen và lịch trình đã được đồng bộ hoá.");
+    alert("Cập nhật thành công! Mục tiêu, thói quen, chores và lịch trình đã được đồng bộ hoá.");
   };
 
   // Section 1 Helpers: Priority Board
@@ -453,6 +548,44 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   // Section 2: Today's Schedule and Overlaps
   const todaySchedule = (state.scheduleItems || []).filter(item => item.date === todayStr)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  const currentTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date());
+
+  const overdueTasks = (state.priorityTasks || []).filter(task =>
+    !task.completed && !!task.dueDate && task.dueDate < todayStr
+  );
+  const unfinishedPastSchedule = todaySchedule.filter(item =>
+    !item.completed && item.endTime < currentTime
+  );
+  const overdueMilestones = (state.goals || []).flatMap(goal =>
+    (goal.milestones || [])
+      .filter(milestone => !milestone.achieved && !!milestone.dueDate && milestone.dueDate < todayStr)
+      .map(milestone => ({ ...milestone, journeyName: goal.name }))
+  );
+  const overdueChores = (state.chores || []).filter(chore =>
+    !chore.completed && chore.lastCompletedDate !== todayStr && !!chore.dueDate && chore.dueDate < todayStr
+  );
+  const attentionCount = overdueTasks.length + unfinishedPastSchedule.length + overdueMilestones.length + overdueChores.length;
+
+  const handleToggleScheduleItem = (itemId: string) => {
+    const target = (state.scheduleItems || []).find(item => item.id === itemId);
+    if (!target) return;
+    const completed = !target.completed;
+    onChangeState({
+      ...state,
+      scheduleItems: (state.scheduleItems || []).map(item =>
+        item.id === itemId ? { ...item, completed } : item
+      ),
+      priorityTasks: (state.priorityTasks || []).map(task =>
+        target.taskId && task.id === target.taskId ? { ...task, completed } : task
+      )
+    });
+  };
 
   // Overlap checker for today
   const getOverlappingToday = () => {
@@ -538,19 +671,20 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   };
 
   return (
-    <div id="today-dashboard-view" className="space-y-7">
+    <div id="today-dashboard-view" className="space-y-8">
       
       {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
-      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[30px] border border-white/10 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 md:p-7 shadow-[0_24px_70px_rgba(99,102,241,0.28)]">
+      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[28px] border border-slate-800 bg-slate-950 p-5 md:p-7 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl">
         <div>
-          <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white border border-white/20 shadow-inner"><MessageSquareText className="h-5 w-5" /></span>
-            Hôm nay của bạn thế nào?
+          <p className="life-kicker text-indigo-300 mb-3">01 · Voice & text check-in</p>
+          <h2 className="font-display text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
+            Bạn đã tiến được gì hôm nay?
           </h2>
-          <p className="text-sm text-indigo-100 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. Gemini sẽ biến nội dung thành tiến độ, việc cần làm và lịch phù hợp.</p>
+          <p className="text-sm text-slate-300 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. AI sẽ phân loại tiến độ, phát hiện thông tin còn thiếu và đề xuất bước tiếp theo.</p>
         </div>
 
-        <div className="bg-white rounded-[22px] p-4 md:p-5 border border-white/70 shadow-xl space-y-4">
+        <div className="relative bg-white rounded-[22px] p-4 md:p-5 border border-slate-200 shadow-2xl space-y-4">
           <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
             <Sparkles className="w-4 h-4 shrink-0" />
             <span>Ví dụ: “Tôi đã hoàn thành 3 backtests, đi bộ 6.000 bước và muốn làm website B2B lúc 14:00 ngày mai.”</span>
@@ -691,16 +825,107 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
+      <FocusOverview
+        state={state}
+        today={todayStr}
+        currentDay={currentDay}
+        onChangeState={onChangeState}
+      />
+
+      <DailyRoutineCheckin
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
+
+      <LifeMaintenance
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
+
+      {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
+      <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
+        <div className="life-panel p-5 md:p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="life-kicker text-indigo-600 mb-2">02 · Lịch hôm nay</p>
+              <h2 className="font-display text-lg font-extrabold text-slate-950">Nhịp công việc hôm nay</h2>
+              <p className="text-xs text-slate-400 mt-1">Chỉ hiển thị những block bạn cần thực hiện trong ngày.</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-700 border border-indigo-100">
+              {todaySchedule.filter(item => item.completed).length}/{todaySchedule.length} xong
+            </span>
+          </div>
+
+          {todaySchedule.length > 0 ? (
+            <div className="space-y-2">
+              {todaySchedule.slice(0, 5).map(item => {
+                const isPast = !item.completed && item.endTime < currentTime;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleToggleScheduleItem(item.id)}
+                    className={`w-full flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                      item.completed ? "border-emerald-100 bg-emerald-50/70" : isPast ? "border-amber-200 bg-amber-50/60" : "border-slate-100 bg-slate-50/70 hover:border-indigo-200"
+                    }`}
+                  >
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${item.completed ? "border-emerald-200 bg-white text-emerald-600" : "border-slate-200 bg-white text-slate-400"}`}>
+                      {item.completed ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-xs font-bold ${item.completed ? "text-emerald-800 line-through" : "text-slate-800"}`}>{item.title}</span>
+                      <span className="mt-0.5 block text-[10px] text-slate-400 font-mono">{item.startTime}–{item.endTime} · {getJourneyName(item.journeyId)}</span>
+                    </span>
+                    {isPast && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700">Chưa xong</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+              <Calendar className="mx-auto h-5 w-5 text-slate-300" />
+              <p className="mt-2 text-xs font-semibold text-slate-500">Hôm nay chưa có lịch công việc.</p>
+              <p className="mt-1 text-[10px] text-slate-400">Bạn có thể nói: “Xếp lịch làm portfolio lúc 14:00”.</p>
+            </div>
+          )}
+        </div>
+
+        <div className={`life-panel p-5 md:p-6 space-y-4 ${attentionCount > 0 ? "border-amber-200" : "border-emerald-100"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className={`life-kicker mb-2 ${attentionCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>Cảnh báo ngoại lệ</p>
+              <h2 className="font-display text-lg font-extrabold text-slate-950">{attentionCount > 0 ? `${attentionCount} việc cần xem lại` : "Mọi thứ đang ổn"}</h2>
+            </div>
+            <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${attentionCount > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+              {attentionCount > 0 ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+            </span>
+          </div>
+
+          {attentionCount > 0 ? (
+            <div className="space-y-2">
+              {unfinishedPastSchedule.slice(0, 2).map(item => <p key={item.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Lịch chưa hoàn thành: {item.title}</p>)}
+              {overdueTasks.slice(0, 2).map(task => <p key={task.id} className="rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800">Việc đã quá hạn: {task.title}</p>)}
+              {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-800">Cột mốc trễ: {milestone.title} · {milestone.journeyName}</p>)}
+              {overdueChores.slice(0, 2).map(chore => <p key={chore.id} className="rounded-xl bg-teal-50 px-3 py-2 text-[11px] font-semibold text-teal-800">Chore quá hạn: {chore.title}</p>)}
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">Không có lịch bỏ sót, task quá hạn hoặc milestone trễ. Bạn chỉ cần tập trung vào việc đang làm.</p>
+          )}
+          <p className="text-[10px] leading-relaxed text-slate-400">App chỉ đưa những phần lệch khỏi kế hoạch lên đây, nên các mục tiêu khác vẫn được giám sát mà không làm dashboard bị ngợp.</p>
+        </div>
+      </section>
+
 
       {/* 2. VIỆC ƯU TIÊN HÔM NAY (PRIORITY BOARD 2X2) */}
-      <section id="section-priority-board" className="space-y-4">
+      <section id="section-priority-board" className="hidden space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100"><ListTodo className="h-4 w-4" /></span>
-              Việc đáng tập trung hôm nay
+              Ưu tiên hôm nay
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">Xếp việc theo Ma trận Eisenhower để tập trung tối đa tâm trí.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Chỉ giữ những việc thật sự cần sự chú ý của bạn.</p>
           </div>
 
           {/* Quick-add Task Form */}
@@ -965,7 +1190,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 3. LỊCH HÔM NAY */}
-      <section id="section-today-schedule" className="space-y-4">
+      <section id="section-today-schedule" className="hidden space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -1021,7 +1246,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 4. CÁC HÀNH TRÌNH MỤC TIÊU */}
-      <section id="section-goal-journeys" className="space-y-4">
+      <section id="section-goal-journeys" className="hidden space-y-4">
         <div>
           <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
@@ -1092,7 +1317,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 5. THÓI QUEN NÊN DUY TRÌ */}
-      <section id="section-routines" className="space-y-4">
+      <section id="section-routines" className="hidden space-y-4">
         <div>
           <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Repeat2 className="h-4 w-4" /></span>
@@ -1319,6 +1544,32 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                                   setEditableCheckIn({ ...editableCheckIn, routineUpdates: updates });
                                 }}
                                 className="text-slate-400 hover:text-rose-600 font-bold p-1 hover:bg-white rounded cursor-pointer"
+                              >
+                                Bỏ đề xuất
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chores được AI nhận diện */}
+                    {editableCheckIn.choreUpdates.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+                          Life maintenance ({editableCheckIn.choreUpdates.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {editableCheckIn.choreUpdates.map((chore, idx) => (
+                            <div key={`${chore.choreId || chore.title}_${idx}`} className="flex items-center justify-between gap-3 rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-xs font-medium text-slate-700">
+                              <div>
+                                <span><strong>{chore.title}</strong> · {chore.suggestedStatus === "create" ? "Tạo chore mới" : "Đánh dấu hoàn thành"}</span>
+                                <p className="mt-0.5 text-[10px] italic text-slate-400">{chore.evidence}</p>
+                              </div>
+                              <button
+                                onClick={() => setEditableCheckIn({ ...editableCheckIn, choreUpdates: editableCheckIn.choreUpdates.filter((_, i) => i !== idx) })}
+                                className="cursor-pointer rounded p-1 font-bold text-slate-400 hover:bg-white hover:text-rose-600"
                               >
                                 Bỏ đề xuất
                               </button>

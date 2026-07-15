@@ -76,10 +76,24 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
   const b2bMindshare = mindsharePercent(b2bGoal?.id, 33);
   const healthMindshare = mindsharePercent(healthGoal?.id, 33);
 
-  // Calculate routine consistency
-  const totalRoutinesTracked = state.routines.length;
-  const completedRoutinesCount = state.routines.filter(r => r.status === 'completed').length;
-  const routinesRatio = totalRoutinesTracked > 0 ? Math.round((completedRoutinesCount / totalRoutinesTracked) * 100) : 0;
+  // Calculate real routine consistency from dated logs (never generated/demo history).
+  const last15Days = [...Array(15)].map((_, i) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(Date.now() - (14 - i) * 86_400_000)));
+  const eligibleRoutineDays = last15Days.filter(day => day >= state.startDate);
+  const routineLogs = state.routineLogs || [];
+  const completedRoutineLogs = routineLogs.filter(log =>
+    eligibleRoutineDays.includes(log.date) &&
+    (log.status === 'minimum' || log.status === 'completed') &&
+    state.routines.some(routine => routine.id === log.routineId)
+  );
+  const totalRoutineOpportunities = eligibleRoutineDays.length * state.routines.length;
+  const routinesRatio = totalRoutineOpportunities > 0
+    ? Math.round((completedRoutineLogs.length / totalRoutineOpportunities) * 100)
+    : 0;
 
   const g5TotalTradeR = state.batchTestRecords.reduce((acc, curr) => acc + curr.resultR, 0);
   const g5CompliantCount = state.batchTestRecords.filter(t => t.checklistCompliance).length;
@@ -212,19 +226,12 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
 
   // Generate Routine Contribution Heatmap Grid
   const renderRoutineHeatmap = () => {
-    // We render a grid of last 15 days for each routine
-    const last15Days = [...Array(15)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (14 - i));
-      return d.toISOString().split('T')[0];
-    });
-
     return (
       <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
         <div className="flex justify-between items-center border-b border-slate-100 pb-3">
           <div>
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Routine Consistency contribution grid</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Mức độ đều đặn thói quen trong 15 ngày qua</p>
+            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Lịch sử routine thực tế</h4>
+            <p className="text-xs text-slate-500 mt-0.5">Dữ liệu được ghi từ Cập nhật tiến độ hôm nay hoặc Voice/Text Check-in — không dùng dữ liệu giả lập.</p>
           </div>
           <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-bold border border-emerald-100 uppercase">
             Consistency: {routinesRatio}%
@@ -240,28 +247,42 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 <div key={rot.id} className="flex items-center gap-4 text-xs">
                   <div className="w-40 shrink-0 flex items-center justify-between pr-2 border-r border-slate-100">
                     <span className="font-bold text-slate-800 truncate" title={rot.name}>{rot.name}</span>
-                    <span className="text-[9px] font-mono px-1 bg-slate-100 rounded text-slate-500">{rot.goalId}</span>
+                    <span className="max-w-20 truncate text-[9px] font-mono px-1 bg-slate-100 rounded text-slate-500" title={linkedGoal?.name}>{linkedGoal?.name || rot.goalId}</span>
                   </div>
 
                   <div className="flex gap-1.5 flex-1 items-center">
-                    {last15Days.map((dayStr, dIdx) => {
-                      // We can check if today complete, for past days we generate a deterministic pseudo-completion based on day string
-                      const hash = dayStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                      const completed = dayStr === new Date().toISOString().split('T')[0]
-                        ? rot.status === 'completed'
-                        : (hash + rot.id.charCodeAt(0)) % 3 !== 0; // pseudo-realistic historic consistency
+                    {last15Days.map(dayStr => {
+                      const log = routineLogs.find(item => item.routineId === rot.id && item.date === dayStr);
+                      const completed = log?.status === 'completed';
+                      const minimum = log?.status === 'minimum';
+                      const beforeCycle = dayStr < state.startDate;
+                      const statusLabel = beforeCycle
+                        ? "Chưa bắt đầu chu kỳ"
+                        : completed
+                          ? "Hoàn thành target"
+                          : minimum
+                            ? "Hoàn thành Minimum Day"
+                            : log?.status === 'skipped'
+                              ? "Chủ động nghỉ"
+                              : log?.status === 'missed'
+                                ? "Bỏ lỡ"
+                                : "Chưa có dữ liệu";
 
                       return (
                         <div key={dayStr} className="group relative">
                           <div 
                             className={`w-6 h-6 rounded-md border transition-all ${
                               completed 
-                                ? "bg-indigo-600/90 border-indigo-500" 
-                                : "bg-slate-50 border-slate-200"
+                                ? "bg-emerald-600 border-emerald-500"
+                                : minimum
+                                  ? "bg-amber-300 border-amber-400"
+                                  : beforeCycle
+                                    ? "bg-slate-100 border-slate-100"
+                                    : "bg-white border-dashed border-slate-300"
                             }`}
                           />
                           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block bg-[#0b0f19] text-white text-[9px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap z-20">
-                            {formatDisplayDate(dayStr)}: {completed ? "Hoàn thành" : "Bỏ lỡ"}
+                            {formatDisplayDate(dayStr)}: {statusLabel}{log?.evidence ? ` · ${log.evidence}` : ""}
                           </div>
                         </div>
                       );
@@ -271,6 +292,11 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               );
             })}
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 border-t border-slate-100 pt-3 text-[10px] text-slate-500">
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-600" /> Hoàn thành target</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-300" /> Minimum Day</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-dashed border-slate-300 bg-white" /> Chưa có dữ liệu</span>
         </div>
       </div>
     );

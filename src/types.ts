@@ -96,6 +96,35 @@ export interface Routine {
   status: 'completed' | 'pending' | 'missed';
 }
 
+export interface RoutineLog {
+  id: string;
+  routineId: string;
+  goalId: string;
+  date: string;
+  status: 'minimum' | 'completed' | 'missed' | 'skipped';
+  source: 'manual' | 'voice' | 'text' | 'ai';
+  evidence?: string;
+  activityId?: string | null;
+  createdTimestamp: number;
+  updatedTimestamp: number;
+}
+
+export type ChoreCategory = 'home' | 'pet' | 'errand' | 'self_care' | 'admin';
+export type ChoreFrequency = 'daily' | 'weekly' | 'one_time';
+
+export interface Chore {
+  id: string;
+  title: string;
+  category: ChoreCategory;
+  frequency: ChoreFrequency;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  completed: boolean;
+  lastCompletedDate?: string | null;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Experiment {
   id: string;
   goalId: string;
@@ -254,9 +283,13 @@ export interface ScheduleItem {
 export interface AppState {
   startDate: string;
   endDate: string;
+  dailyFocusGoalId?: string | null;
+  dailyFocusDate?: string | null;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
+  routineLogs?: RoutineLog[];
+  chores?: Chore[];
   experiments: Experiment[];
   weeklyReviews: WeeklyReview[];
   b2bLeads: B2BLead[];
