@@ -7,6 +7,24 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function generateWithRetry(request: any, attempts = 3) {
+  let lastError: any;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await aiClient!.models.generateContent(request);
+    } catch (error: any) {
+      lastError = error;
+      const message = String(error?.message || error);
+      const transient = message.includes('503') || message.includes('UNAVAILABLE') || message.includes('429') || message.includes('RESOURCE_EXHAUSTED');
+      if (!transient || attempt === attempts - 1) throw error;
+      await wait(600 * Math.pow(2, attempt));
+    }
+  }
+  throw lastError;
+}
+
 // Vercel invokes this Express app at /api. Preserve the requested sub-route
 // from the rewrite query so /api/health, /api/classify, etc. reach Express.
 app.use((req, _res, next) => {
@@ -128,7 +146,7 @@ NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 
 Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác với responseSchema.`;
 
-    const response = await aiClient.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-3.5-flash",
       contents: [{ text: prompt }],
       config: {
@@ -266,7 +284,7 @@ Văn bản thô cần hiệu đính:
 
 Hãy trả về duy nhất văn bản kết quả đã được hiệu đính hoàn chỉnh, không kèm bất kỳ giải thích, tiêu đề hay từ ngữ dẫn dắt nào khác.`;
 
-    const response = await aiClient.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-3.5-flash",
       contents: [{ text: prompt }]
     });
@@ -473,7 +491,7 @@ Yêu cầu cực kỳ quan trọng và nghiêm ngặt khi đề xuất:
 
 Hãy thực hiện phân tích logic, khách quan, chính xác để đưa ra kết quả.`;
 
-    const response = await aiClient.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-3.5-flash",
       contents: [{ text: prompt }],
       config: {
@@ -568,7 +586,7 @@ CÂU HỎI:
 "${question.trim()}"`;
 
   try {
-    const response = await aiClient.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-3.5-flash",
       contents: [{ text: prompt }],
       config: {
