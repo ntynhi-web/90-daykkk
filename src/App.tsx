@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, BarChart3, ListTodo, RefreshCw, Calendar, Clock, Layout, Settings, Plus } from "lucide-react";
+import { Sparkles, BarChart3, ListTodo, RefreshCw, Calendar, Clock, Layout, Settings, Plus, CircleCheckBig } from "lucide-react";
 import { AppState } from "./types";
 import { getDefaultAppState, getCycleStats, formatDateStr, migrateAppState } from "./utils";
 import TodayView from "./components/TodayView";
@@ -44,22 +44,25 @@ export default function App() {
   const cyclePercentage = Math.round((stats.currentDay / stats.totalDays) * 100);
 
   return (
-    <div id="app-root" className="min-h-screen bg-[#f8f9fa] text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-100 selection:text-indigo-950">
+    <div id="app-root" className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/40 text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-100 selection:text-indigo-950">
       
       {/* DESKTOP SIDEBAR (SLIM WHITE STYLE) */}
-      <aside className="hidden md:flex flex-col w-64 bg-white text-slate-800 h-screen sticky top-0 shrink-0 border-r border-slate-200/80 z-40 shadow-2xs">
+      <aside className="hidden md:flex flex-col w-64 bg-white/90 backdrop-blur-xl text-slate-800 h-screen sticky top-0 shrink-0 border-r border-white z-40 shadow-[8px_0_30px_rgba(79,70,229,0.05)]">
         {/* Sidebar Header: Logo & Branding */}
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-center gap-2">
+        <div className="p-6 border-b border-slate-100/80">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200">
+              <CircleCheckBig className="h-5 w-5" />
+            </span>
+            <div>
             <span className="font-display font-black text-lg tracking-tight text-slate-900">
               90-Day Life OS
             </span>
-            <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-lg border border-indigo-100">
-              v2.0
-            </span>
+            <p className="text-[10px] font-semibold text-indigo-500">Your focus companion</p>
+            </div>
           </div>
-          <p className="text-[11px] text-slate-400 font-medium italic mt-1">
-            “Nói một phút. Hiểu tiến độ.”
+          <p className="text-[11px] text-slate-400 font-medium mt-3 leading-relaxed">
+            Nói một phút. Biến tiến độ thành hành động.
           </p>
         </div>
 
@@ -70,7 +73,7 @@ export default function App() {
             onClick={() => setActiveTab('today')}
             className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'today'
-                ? "bg-indigo-50 text-indigo-600 shadow-3xs"
+                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-100"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
@@ -132,7 +135,7 @@ export default function App() {
         </nav>
 
         {/* Sidebar Footer: Cycle Progress */}
-        <div className="p-5 border-t border-slate-100 bg-slate-50/50">
+        <div className="m-4 p-4 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50">
           <div className="space-y-2">
             <div className="flex justify-between items-center text-[11px]">
               <span className="font-bold text-slate-500">Chu kỳ 90 ngày</span>
@@ -156,7 +159,7 @@ export default function App() {
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="flex md:hidden items-center justify-between px-5 py-4 bg-white border-b border-slate-200 sticky top-0 z-40">
+      <header className="flex md:hidden items-center justify-between px-5 py-4 bg-white/90 backdrop-blur-xl border-b border-white sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="font-display font-black text-base tracking-tight text-slate-900">
             90-Day Life OS
@@ -175,11 +178,11 @@ export default function App() {
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         
         {/* MAIN TOP BAR */}
-        <div className="hidden md:flex items-center justify-between px-8 py-5 bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-2xs">
+        <div className="hidden md:flex items-center justify-between px-8 py-5 bg-white/75 backdrop-blur-xl border-b border-white sticky top-0 z-30">
           {activeTab === 'today' ? (
             <div className="space-y-1">
-              <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                Chào ngày mới! ☀️
+              <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                Hôm nay mình tiến một bước nhỏ ✨
               </h1>
               <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium">
                 <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100 font-bold">
@@ -217,7 +220,7 @@ export default function App() {
                 setActiveTab('journeys');
                 setAutoOpenCreateModal(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer border border-indigo-700 active:scale-95"
+              className="bg-slate-950 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>+ Tạo hành trình</span>
@@ -232,8 +235,8 @@ export default function App() {
         </div>
 
         {/* WORKSPACE AREA */}
-        <main className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-8">
-          <div className="max-w-6xl mx-auto transition-all duration-150">
+        <main className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-10">
+          <div className="max-w-7xl mx-auto transition-all duration-150">
             {activeTab === 'today' && (
               <TodayView 
                 state={state} 
