@@ -254,6 +254,8 @@ export interface ScheduleItem {
 export interface AppState {
   startDate: string;
   endDate: string;
+  dailyFocusGoalId?: string | null;
+  dailyFocusDate?: string | null;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
