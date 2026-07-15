@@ -8,6 +8,7 @@ import {
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem } from "../types";
 import { getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
+import FocusOverview from "./FocusOverview";
 
 interface TodayViewProps {
   state: AppState;
@@ -744,6 +745,13 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
+      <FocusOverview
+        state={state}
+        today={todayStr}
+        currentDay={currentDay}
+        onChangeState={onChangeState}
+      />
+
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
         <div className="life-panel p-5 md:p-6 space-y-4">
@@ -817,7 +825,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
 
       {/* 2. VIỆC ƯU TIÊN HÔM NAY (PRIORITY BOARD 2X2) */}
-      <section id="section-priority-board" className="space-y-4">
+      <section id="section-priority-board" className="hidden space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -1145,7 +1153,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 4. CÁC HÀNH TRÌNH MỤC TIÊU */}
-      <section id="section-goal-journeys" className="space-y-4">
+      <section id="section-goal-journeys" className="hidden space-y-4">
         <div>
           <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
@@ -1216,7 +1224,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       </section>
 
       {/* 5. THÓI QUEN NÊN DUY TRÌ */}
-      <section id="section-routines" className="space-y-4">
+      <section id="section-routines" className="hidden space-y-4">
         <div>
           <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Repeat2 className="h-4 w-4" /></span>
