@@ -96,6 +96,19 @@ export interface Routine {
   status: 'completed' | 'pending' | 'missed';
 }
 
+export interface RoutineLog {
+  id: string;
+  routineId: string;
+  goalId: string;
+  date: string;
+  status: 'minimum' | 'completed' | 'missed' | 'skipped';
+  source: 'manual' | 'voice' | 'text' | 'ai';
+  evidence?: string;
+  activityId?: string | null;
+  createdTimestamp: number;
+  updatedTimestamp: number;
+}
+
 export interface Experiment {
   id: string;
   goalId: string;
@@ -259,6 +272,7 @@ export interface AppState {
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
+  routineLogs?: RoutineLog[];
   experiments: Experiment[];
   weeklyReviews: WeeklyReview[];
   b2bLeads: B2BLead[];
