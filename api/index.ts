@@ -324,6 +324,9 @@ app.post("/api/generate-recommendations", async (req, res) => {
   // Create highly customized rule-based fallback recommendations in Vietnamese
   const generateFallbackRecommendations = () => {
     const list = [];
+    const fundGoal = goals.find((g: any) => g.category === "fund_backtest") || goals[0];
+    const b2bGoal = goals.find((g: any) => g.category === "business" || g.category === "marketing") || goals[1];
+    const healthGoal = goals.find((g: any) => g.category === "health") || goals[2];
 
     if (activities.length === 0) {
       list.push({
@@ -339,26 +342,26 @@ app.post("/api/generate-recommendations", async (req, res) => {
         minimumDay: "Dùng giọng nói hoặc nhập tay 1 dòng nhật ký ngắn cho ngày hôm nay."
       });
     } else {
-      // 1. Goal G1 Outreach Recommendation
-      const g1Count = recentActivities7.filter((a: any) => a.goalId === "G1").length;
+      // 1. Highest-priority Fund & Backtest recommendation
+      const fundCount = recentActivities7.filter((a: any) => a.goalId === fundGoal?.id).length;
       list.push({
-        goalId: "G1",
-        recommendedAction: "Tăng tốc độ gửi email và tin nhắn tiếp cận (outreach) đến nhóm khách hàng SaaS mục tiêu.",
-        reason: "G1 là mục tiêu có độ ưu tiên cao nhất của bạn. Việc tiếp cận liên tục hàng tuần giúp xây dựng và duy trì phễu cơ hội ổn định.",
-        userEvidence: `Dữ liệu 7 ngày qua ghi nhận ${g1Count} hoạt động thuộc nhóm B2B SaaS.`,
-        patternOrPrinciple: "Consistent customer outreach is the leading indicator of sales pipeline health (Tiếp cận khách hàng liên tục là chỉ số dẫn dắt sức khỏe của phễu bán hàng).",
-        expectedOutcome: "Tìm được thêm khách hàng phản hồi và gia tăng số lượng cuộc hẹn demo dịch vụ.",
-        successMetric: "Gửi 15 email/tin nhắn tiếp cận chất lượng cao trong ngày.",
+        goalId: fundGoal?.id || "G1",
+        recommendedAction: "Hoàn thành một backtest đúng checklist và ghi lại bài học trong Trading Journal.",
+        reason: "Fund & Backtest là hành trình ưu tiên cao nhất; tính nhất quán quan trọng hơn số lượng hoặc kết quả ngắn hạn.",
+        userEvidence: `Dữ liệu 7 ngày qua ghi nhận ${fundCount} hoạt động thuộc Fund & Backtest.`,
+        patternOrPrinciple: "Process consistency before outcome optimization (Ưu tiên tính nhất quán của quy trình trước khi tối ưu kết quả).",
+        expectedOutcome: "Tăng chất lượng bộ dữ liệu và giảm quyết định cảm tính.",
+        successMetric: "Hoàn thành 1 backtest với 100% mục trong checklist.",
         reviewDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         confidence: "High",
-        minimumDay: "Gửi tối thiểu 1 email tiếp cận đã cá nhân hóa sâu sắc cho một lead tiềm năng nhất."
+        minimumDay: "Mở Setup 1, kiểm tra một mẫu và ghi lại đúng 1 bài học."
       });
 
       // 2. Health / Well-being Recommendation
       const lowEnergyDays = recentHealth7.filter((h: any) => h.energy && h.energy <= 3).length;
       if (lowEnergyDays >= 2) {
         list.push({
-          goalId: "G3",
+          goalId: healthGoal?.id || "G3",
           recommendedAction: "Ưu tiên hồi phục năng lượng bằng cách ngủ đủ 7-8 tiếng và ngủ trước 23:30.",
           reason: "Năng lượng cơ thể là nền tảng cốt lõi cho mọi mục tiêu deep work. Bạn đang có dấu hiệu mệt mỏi.",
           userEvidence: `Ghi nhận ${lowEnergyDays} ngày có năng lượng ở mức trung bình/thấp (<= 3/5) trong tuần qua.`,
@@ -371,7 +374,7 @@ app.post("/api/generate-recommendations", async (req, res) => {
         });
       } else {
         list.push({
-          goalId: "G3",
+          goalId: healthGoal?.id || "G3",
           recommendedAction: "Duy trì thói quen vận động nhẹ bằng cách đi bộ tối thiểu 6,000 bước hàng ngày.",
           reason: "Vận động thể chất nhẹ nhàng giúp duy trì tuần hoàn máu tốt, tỉnh táo tinh thần cho công việc trí óc.",
           userEvidence: `Ghi nhận trung bình năng lượng đạt ${averageEnergy}/5 trong tuần qua, thói quen đi bộ đang được duy trì tốt.`,
@@ -415,18 +418,18 @@ app.post("/api/generate-recommendations", async (req, res) => {
           minimumDay: "Kiểm tra nhanh số liệu phản hồi thô của thử nghiệm trong 5 phút."
         });
       } else {
-        // G2 Fallback recommendation
+        // B2B Marketing fallback recommendation
         list.push({
-          goalId: "G2",
-          recommendedAction: "Rà soát CV tiếng Anh và tiếp cận 1-2 công ty SaaS tuyển dụng phù hợp.",
-          reason: "Đây là mục tiêu dự phòng rủi ro tài chính song song xuất sắc của bạn.",
-          userEvidence: `Hệ thống ghi nhận mục tiêu dự phòng G2 hiện ở mức tiến độ ${goals.find((g: any) => g.id === "G2")?.currentProgress || 15}%.`,
-          patternOrPrinciple: "Parallel de-risking: Build alternatives while pursuing high-growth goals (Giảm thiểu rủi ro song song: Xây dựng phương án dự phòng khi theo đuổi mục tiêu tăng trưởng cao).",
-          expectedOutcome: "Nâng cao cơ hội phỏng vấn dự bị.",
-          successMetric: "Nộp tối thiểu 1 bộ hồ sơ ứng tuyển chất lượng.",
+          goalId: b2bGoal?.id || "G2",
+          recommendedAction: "Hoàn thiện một phần tài sản B2B đang hoạt động: Website, Social hoặc Portfolio.",
+          reason: "Tài sản marketing rõ ràng giúp outreach đáng tin cậy hơn và rút ngắn thời gian giải thích dịch vụ.",
+          userEvidence: `B2B Marketing hiện ở mức tiến độ ${b2bGoal?.currentProgress || 0}%.`,
+          patternOrPrinciple: "Build proof before scaling outreach (Xây bằng chứng trước khi mở rộng tiếp cận).",
+          expectedOutcome: "Tăng độ tin cậy của lời đề nghị B2B.",
+          successMetric: "Xuất bản hoặc hoàn thiện 1 phần Website, Social hay Portfolio.",
           reviewDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           confidence: "Medium",
-          minimumDay: "Dành 10 phút tìm kiếm và đánh giá 1 tin tuyển dụng phù hợp trên thị trường."
+          minimumDay: "Viết một đoạn mô tả khách hàng mục tiêu và vấn đề bạn giải quyết."
         });
       }
     }

@@ -56,62 +56,71 @@ export function getCycleStats(startDateStr: string, currentDateStr: string): { c
 
 // Get Default App State
 export function getDefaultAppState(): AppState {
-  const startDate = "2026-07-13";
+  const startDate = formatDateStr(new Date());
   const endDate = calculateEndDate(startDate);
+
+  const dateAfter = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return formatDateStr(date);
+  };
 
   const goals: Goal[] = [
     {
       id: "G1",
-      name: "B2B SaaS & Marketing",
-      desiredOutcome: "Tạo dịch vụ B2B marketing cho SaaS, đạt ít nhất 1 khách hàng trả phí hoặc pilot.",
+      name: "Fund & Backtest",
+      desiredOutcome: "Xây dựng một hệ thống backtest có kỷ luật, hoàn thành 100 mẫu thử trước khi đánh giá thử thách quỹ.",
       priority: "highest",
       deadline: endDate,
-      mainMetric: "Paying clients & Revenue",
-      currentProgress: 20,
-      currentMilestone: "Hoàn thành Portfolio dịch vụ & Outreach 50 leads",
+      mainMetric: "Số backtest & mức tuân thủ checklist",
+      currentProgress: 0,
+      currentMilestone: "Hoàn thiện Setup 1 và backtest mẫu đầu tiên",
       status: "active",
-      nextAction: "Sửa lại mẫu email tiếp cận và gửi cho 15 leads mới",
-      accentColor: "blue",
-      category: "business",
-      icon: "briefcase",
-      notes: "Cần tập trung cao độ vào nhóm khách hàng SaaS nhỏ và vừa, cung cấp gói dịch vụ tối ưu.",
+      nextAction: "Viết checklist Setup 1 và hoàn thành backtest đầu tiên",
+      accentColor: "purple",
+      category: "fund_backtest",
+      icon: "chart",
+      notes: "Ưu tiên quy trình, quản trị rủi ro và chất lượng dữ liệu; không khuyến khích giao dịch mạo hiểm.",
       milestones: [
-        { id: "m1_1", title: "ICP & Nghiên cứu thị trường", targetValue: "Hoàn thành", currentValue: "Hoàn thành", achieved: true, dueDate: "2026-07-20" },
-        { id: "m1_2", title: "Xây dựng Offer & Portfolio mẫu", targetValue: "Đạt 3 case study", currentValue: "1 case study", achieved: false, dueDate: "2026-08-05" },
-        { id: "m1_3", title: "Gửi 100 email tiếp cận", targetValue: "100 email", currentValue: "15 email", achieved: false, dueDate: "2026-08-25" },
-        { id: "m1_4", title: "Khách hàng trả phí đầu tiên", targetValue: "1 client", currentValue: "0", achieved: false, dueDate: "2026-09-15" }
+        { id: "m1_1", title: "Hoàn thiện Setup 1", targetValue: "Checklist hoàn chỉnh", currentValue: "Chưa bắt đầu", achieved: false, dueDate: dateAfter(7) },
+        { id: "m1_2", title: "Backtest đầu tiên", targetValue: "1 backtest", currentValue: "0", achieved: false, dueDate: dateAfter(10) },
+        { id: "m1_3", title: "Xác nhận tính nhất quán", targetValue: "10 backtests", currentValue: "0", achieved: false, dueDate: dateAfter(25) },
+        { id: "m1_4", title: "Mở rộng bộ dữ liệu", targetValue: "50 backtests", currentValue: "0", achieved: false, dueDate: dateAfter(55) },
+        { id: "m1_5", title: "Hoàn thành vòng đánh giá", targetValue: "100 backtests", currentValue: "0", achieved: false, dueDate: dateAfter(85) }
       ]
     },
     {
       id: "G2",
-      name: "Công việc trên 30 triệu",
-      desiredOutcome: "Nhận được một lời mời nhận việc phù hợp với mức lương trên 30 triệu VND làm phương án dự phòng.",
+      name: "B2B Marketing",
+      desiredOutcome: "Xây dựng hiện diện B2B rõ ràng và tạo được khách hàng pilot hoặc khách hàng trả phí đầu tiên.",
       priority: "secondary",
       deadline: endDate,
-      mainMetric: "Offers & Expected salary",
-      currentProgress: 15,
-      currentMilestone: "Cập nhật CV, Portfolio & Tiếp cận 10 công ty mục tiêu",
+      mainMetric: "Tài sản marketing, leads & khách hàng",
+      currentProgress: 0,
+      currentMilestone: "Hoàn thiện website giới thiệu dịch vụ",
       status: "active",
-      nextAction: "Cập nhật phần kinh nghiệm dự án SaaS vào CV",
+      nextAction: "Viết nội dung trang chủ và lời đề nghị giá trị",
       accentColor: "emerald",
-      category: "career",
-      icon: "career",
-      notes: "Kế hoạch song song với G1 để phòng ngừa rủi ro tài chính.",
+      category: "business",
+      icon: "briefcase",
+      notes: "Tập trung vào một phân khúc khách hàng và một lời đề nghị có thể kiểm chứng.",
       milestones: [
-        { id: "m2_1", title: "Cập nhật CV & Portfolio", targetValue: "Xong CV tiếng Anh", currentValue: "Đang sửa", achieved: false, dueDate: "2026-07-25" },
-        { id: "m2_2", title: "Nộp hồ sơ 15 công ty mục tiêu", targetValue: "15 ứng tuyển", currentValue: "1 ứng tuyển", achieved: false, dueDate: "2026-08-15" },
-        { id: "m2_3", title: "Vượt qua vòng phỏng vấn kỹ thuật", targetValue: "Đạt 3 cuộc phỏng vấn", currentValue: "0", achieved: false, dueDate: "2026-09-10" }
+        { id: "m2_1", title: "Website", targetValue: "Website xuất bản", currentValue: "Chưa bắt đầu", achieved: false, dueDate: dateAfter(14) },
+        { id: "m2_2", title: "Social", targetValue: "3 kênh được chuẩn hóa", currentValue: "0", achieved: false, dueDate: dateAfter(28) },
+        { id: "m2_3", title: "Portfolio", targetValue: "3 case study", currentValue: "0", achieved: false, dueDate: dateAfter(42) },
+        { id: "m2_4", title: "Outreach", targetValue: "50 leads phù hợp", currentValue: "0", achieved: false, dueDate: dateAfter(65) },
+        { id: "m2_5", title: "Khách hàng đầu tiên", targetValue: "1 khách hàng", currentValue: "0", achieved: false, dueDate: dateAfter(85) }
       ]
     },
     {
       id: "G3",
-      name: "Sức khỏe và ngoại hình",
+      name: "Health & Beauty",
       desiredOutcome: "Cải thiện sức khỏe, vóc dáng, giảm cân từ 64 kg về 55 kg một cách an toàn.",
       priority: "normal",
       deadline: endDate,
       mainMetric: "Cân nặng (kg) & Số bước chân",
       currentProgress: 10,
-      currentMilestone: "Duy trì thói quen đi bộ 6000 bước & ăn uống đúng kế hoạch",
+      currentMilestone: "Giảm từ 64 kg xuống 62 kg an toàn",
       status: "active",
       nextAction: "Chuẩn bị bữa ăn lành mạnh cho ngày mai và skincare tối",
       accentColor: "rose",
@@ -119,64 +128,23 @@ export function getDefaultAppState(): AppState {
       icon: "heart",
       notes: "Không ép cân cực đoan. Lắng nghe cơ thể, nếu chóng mặt mệt mỏi kéo dài cần điều chỉnh ngay.",
       milestones: [
-        { id: "m3_1", title: "Giảm cân giai đoạn 1", targetValue: "61 kg", currentValue: "63.8 kg", achieved: false, dueDate: "2026-08-10" },
-        { id: "m3_2", title: "Duy trì thói quen thể chất", targetValue: "30 buổi strength", currentValue: "2 buổi", achieved: false, dueDate: "2026-09-15" },
-        { id: "m3_3", title: "Đạt mục tiêu cân nặng", targetValue: "55 kg", currentValue: "63.8 kg", achieved: false, dueDate: "2026-10-10" }
-      ]
-    },
-    {
-      id: "G4",
-      name: "Lifestyle & Không gian sống",
-      desiredOutcome: "Duy trì căn hộ 40m² gọn gàng, ấm cúng với bạn đời và 2 chú mèo, giữ vững thời gian cá nhân.",
-      priority: "normal",
-      deadline: endDate,
-      mainMetric: "Routines consistency",
-      currentProgress: 25,
-      currentMilestone: "Thực hiện dọn dẹp nhanh 15 phút mỗi ngày và date night hàng tuần",
-      status: "active",
-      nextAction: "Dọn dẹp nhanh phòng khách & cho mèo ăn đúng giờ",
-      accentColor: "amber",
-      category: "home",
-      icon: "home",
-      notes: "Tổ ấm là điểm tựa tinh thần. Phân chia công việc nhà hài hòa.",
-      milestones: [
-        { id: "m4_1", title: "Thanh lý đồ đạc dư thừa (Declutter)", targetValue: "Gọn gàng tủ quần áo", currentValue: "Đã làm 50%", achieved: false, dueDate: "2026-07-30" },
-        { id: "m4_2", title: "Hệ thống hóa lịch dọn dẹp hàng tuần", targetValue: "100% hoàn thành lịch dọn dẹp", currentValue: "Chưa ổn định", achieved: false, dueDate: "2026-08-20" }
-      ]
-    },
-    {
-      id: "G5",
-      name: "Batch Test & Fund",
-      desiredOutcome: "Hoàn thành bài kiểm tra quỹ có kỷ luật trước khi thử nghiệm các yêu cầu DAO hoặc STMO.",
-      priority: "normal",
-      deadline: endDate,
-      mainMetric: "Độ tuân thủ checklist & Kết quả R",
-      currentProgress: 5,
-      currentMilestone: "Tuân thủ tuyệt đối quy tắc quản lý rủi ro và ghi nhật ký giao dịch",
-      status: "active",
-      nextAction: "Ghi chép bài học từ lệnh giao dịch hôm nay vào journal",
-      accentColor: "purple",
-      category: "fund_backtest",
-      icon: "chart",
-      notes: "Tuyệt đối không vi phạm giới hạn rủi ro. Không khuyến khích giao dịch mạo hiểm.",
-      milestones: [
-        { id: "m5_1", title: "Thiết lập hệ thống & Quản trị rủi ro", targetValue: "100% tuân thủ trong 10 trades", currentValue: "2 trades tuân thủ", achieved: false, dueDate: "2026-07-28" },
-        { id: "m5_2", title: "Đạt điều kiện tài khoản demo", targetValue: "+5% Equity", currentValue: "0%", achieved: false, dueDate: "2026-08-25" }
+        { id: "m3_1", title: "Mốc 62 kg", targetValue: "62 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(20) },
+        { id: "m3_2", title: "Mốc 60 kg", targetValue: "60 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(40) },
+        { id: "m3_3", title: "Mốc 58 kg", targetValue: "58 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(60) },
+        { id: "m3_4", title: "Mốc 56 kg", targetValue: "56 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(78) },
+        { id: "m3_5", title: "Mục tiêu 55 kg", targetValue: "55 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(89) }
       ]
     }
   ];
 
   const routines: Routine[] = [
-    { id: "r1", goalId: "G1", name: "Deep work B2B", frequency: "Hàng ngày", minimumDay: "Làm việc tập trung 30 phút", target: "Làm việc tập trung 90 phút", evidence: "Minutes of deep work", status: "pending" },
-    { id: "r2", goalId: "G1", name: "B2B Outreach", frequency: "Hàng ngày", minimumDay: "Gửi 1 tin nhắn/email tiếp cận", target: "Gửi 15 tin nhắn/email tiếp cận", evidence: "Number of outreach emails", status: "pending" },
-    { id: "r3", goalId: "G2", name: "Hành động Tìm việc", frequency: "Hàng ngày", minimumDay: "Xem 1 tin tuyển dụng phù hợp", target: "Nộp ít nhất 1 hồ sơ CV chất lượng", evidence: "Applications submitted", status: "pending" },
-    { id: "r4", goalId: "G3", name: "Giấc ngủ ngon", frequency: "Hàng ngày", minimumDay: "Ngủ trước 12h đêm", target: "Ngủ đủ 7-8 tiếng, dậy đúng giờ", evidence: "Sleep hours", status: "pending" },
-    { id: "r5", goalId: "G3", name: "Đi bộ vận động", frequency: "Hàng ngày", minimumDay: "Đi bộ 3,000 bước", target: "Đi bộ 6,000 bước trở lên", evidence: "Steps counted", status: "pending" },
-    { id: "r6", goalId: "G3", name: "Tập luyện Strength", frequency: "Hàng tuần", minimumDay: "Tập 15 phút giãn cơ tại nhà", target: "Tập 3 buổi strength 45 phút/tuần", evidence: "Strength sessions completed", status: "pending" },
-    { id: "r7", goalId: "G3", name: "Skincare & Ngoại hình", frequency: "Hàng ngày", minimumDay: "Rửa mặt sạch trước khi ngủ", target: "Đầy đủ dưỡng da sáng/tối và chọn trang phục tươm tất", evidence: "Skincare checklist", status: "pending" },
-    { id: "r8", goalId: "G4", name: "Dọn dẹp nhanh (Home reset)", frequency: "Hàng ngày", minimumDay: "Dọn dẹp rác & lau bàn ăn 5 phút", target: "Reset nhà cửa gọn gàng 15 phút", evidence: "Reset done", status: "pending" },
-    { id: "r9", goalId: "G4", name: "Chăm sóc mèo cưng", frequency: "Hàng ngày", minimumDay: "Cho mèo ăn đầy đủ", target: "Dọn khay cát, chải lông và cho ăn", evidence: "Cat care done", status: "pending" },
-    { id: "r10", goalId: "G5", name: "Ghi nhật ký Trading (Journal)", frequency: "Hàng ngày", minimumDay: "Ghi lại kết quả trade trong ngày", target: "Phân tích kỹ setup, rủi ro, bài học trade", evidence: "Trades logged", status: "pending" }
+    { id: "r1", goalId: "G1", name: "Backtest có checklist", frequency: "Hàng ngày", minimumDay: "Hoàn thành 1 backtest", target: "Hoàn thành 3 backtests chất lượng", evidence: "Số backtest và checklist", status: "pending" },
+    { id: "r2", goalId: "G1", name: "Trading Journal", frequency: "Hàng ngày", minimumDay: "Ghi 1 bài học", target: "Ghi đầy đủ setup, rủi ro và kết quả", evidence: "Nhật ký đã lưu", status: "pending" },
+    { id: "r3", goalId: "G2", name: "Deep work B2B", frequency: "Hàng ngày", minimumDay: "Tập trung 30 phút", target: "Tập trung 90 phút", evidence: "Số phút deep work", status: "pending" },
+    { id: "r4", goalId: "G2", name: "B2B Outreach", frequency: "Hàng ngày", minimumDay: "Liên hệ 1 lead", target: "Liên hệ 5 leads phù hợp", evidence: "Số leads đã liên hệ", status: "pending" },
+    { id: "r5", goalId: "G3", name: "Giấc ngủ phục hồi", frequency: "Hàng ngày", minimumDay: "Ngủ trước 00:00", target: "Ngủ đủ 7-8 tiếng", evidence: "Số giờ ngủ", status: "pending" },
+    { id: "r6", goalId: "G3", name: "Đi bộ vận động", frequency: "Hàng ngày", minimumDay: "Đi bộ 3.000 bước", target: "Đi bộ 6.000 bước", evidence: "Số bước", status: "pending" },
+    { id: "r7", goalId: "G3", name: "Health & Beauty routine", frequency: "Hàng ngày", minimumDay: "Rửa mặt và uống đủ nước", target: "Ăn đúng kế hoạch và skincare sáng/tối", evidence: "Checklist hoàn thành", status: "pending" }
   ];
 
   return {
@@ -213,10 +181,10 @@ export function getDefaultAppState(): AppState {
     priorityTasks: [
       {
         id: "task_default_1",
-        title: "Soạn và gửi 5 email outreach chất lượng cho leads SaaS",
-        description: "Tập trung vào giải pháp tiếp thị tự động hóa",
+        title: "Hoàn thiện checklist Setup 1 và chạy backtest đầu tiên",
+        description: "Ghi rõ điều kiện vào lệnh, thoát lệnh và quản trị rủi ro",
         goalId: "G1",
-        milestoneId: "m1_3",
+        milestoneId: "m1_1",
         priority: "important_urgent",
         estimatedMinutes: 45,
         scheduledStart: "14:00",
@@ -226,11 +194,11 @@ export function getDefaultAppState(): AppState {
       },
       {
         id: "task_default_2",
-        title: "Hoàn thiện 10 backtests với cặp BTCUSD",
-        description: "Tuân thủ chặt chẽ quy tắc dừng lỗ và ghi chép nhật ký đầy đủ",
-        goalId: "G5",
-        milestoneId: "m5_1",
-        priority: "important",
+        title: "Viết nội dung trang chủ B2B Marketing",
+        description: "Làm rõ khách hàng mục tiêu, vấn đề và lời đề nghị giá trị",
+        goalId: "G2",
+        milestoneId: "m2_1",
+        priority: "important_urgent",
         estimatedMinutes: 60,
         scheduledStart: "09:00",
         scheduledEnd: "10:00",
@@ -239,8 +207,8 @@ export function getDefaultAppState(): AppState {
       },
       {
         id: "task_default_3",
-        title: "Đi bộ nhẹ nhàng 6,000 bước quanh công viên",
-        description: "Vừa đi cùng bạn đời ngắm hoàng hôn",
+        title: "Đi bộ 6.000 bước và chuẩn bị bữa ăn lành mạnh",
+        description: "Ưu tiên tiến độ bền vững thay vì ép cân",
         goalId: "G3",
         milestoneId: "m3_1",
         priority: "urgent",
@@ -249,46 +217,33 @@ export function getDefaultAppState(): AppState {
         scheduledEnd: "18:30",
         completed: false,
         createdAt: new Date().toISOString()
-      },
-      {
-        id: "task_default_4",
-        title: "Home reset: Dọn dẹp phòng khách & cho mèo cưng ăn",
-        description: "Hút bụi thảm và lau dọn bàn làm việc",
-        goalId: "G4",
-        milestoneId: "m4_1",
-        priority: "later",
-        estimatedMinutes: 15,
-        scheduledStart: "20:00",
-        scheduledEnd: "20:15",
-        completed: false,
-        createdAt: new Date().toISOString()
       }
     ],
     scheduleItems: [
       {
         id: "sched_default_1",
-        title: "Thực hiện Backtest Setup 1",
-        date: "2026-07-14",
+        title: "Fund: Setup 1 & Backtest",
+        date: startDate,
         startTime: "09:00",
         endTime: "10:00",
         estimatedMinutes: 60,
-        goalId: "G5",
-        milestoneId: "m5_1",
-        taskId: "task_default_2",
+        goalId: "G1",
+        milestoneId: "m1_1",
+        taskId: "task_default_1",
         type: "task",
         notes: "Ghi chép đầy đủ rủi ro và tỷ lệ R/R.",
         completed: false
       },
       {
         id: "sched_default_2",
-        title: "B2B Outreach & Mail gửi khách hàng",
-        date: "2026-07-14",
+        title: "B2B: Website & Offer",
+        date: startDate,
         startTime: "14:00",
         endTime: "15:30",
         estimatedMinutes: 90,
-        goalId: "G1",
-        milestoneId: "m1_3",
-        taskId: "task_default_1",
+        goalId: "G2",
+        milestoneId: "m2_1",
+        taskId: "task_default_2",
         type: "task",
         notes: "Tìm leads trên LinkedIn và gửi.",
         completed: false
@@ -296,7 +251,7 @@ export function getDefaultAppState(): AppState {
       {
         id: "sched_default_3",
         title: "Đi bộ thể thao 30 phút",
-        date: "2026-07-14",
+        date: startDate,
         startTime: "18:00",
         endTime: "18:30",
         estimatedMinutes: 30,

@@ -65,6 +65,17 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     ? Math.round(healthLogsSorted.reduce((acc, curr) => acc + (curr.steps || 0), 0) / healthLogsSorted.length)
     : 0;
 
+  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
+  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
+  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
+  const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
+  const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
+    ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
+    : fallback;
+  const fundMindshare = mindsharePercent(fundGoal?.id, 34);
+  const b2bMindshare = mindsharePercent(b2bGoal?.id, 33);
+  const healthMindshare = mindsharePercent(healthGoal?.id, 33);
+
   // Calculate routine consistency
   const totalRoutinesTracked = state.routines.length;
   const completedRoutinesCount = state.routines.filter(r => r.status === 'completed').length;
@@ -291,7 +302,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             >
               {tab === 'overview' ? "Tổng quan" :
                tab === 'pipelines' ? "B2B & Tìm việc" :
-               tab === 'health' ? "Sức khỏe" : "Trading (G5)"}
+               tab === 'health' ? "Health & Beauty" : "Fund & Backtest"}
             </button>
           ))}
         </div>
@@ -373,26 +384,26 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                   <div className="relative w-28 h-28 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                       <path className="text-slate-100" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="text-indigo-600" strokeDasharray="65, 100" strokeWidth="3.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                      <path className="text-purple-600" strokeDasharray={`${fundMindshare}, 100`} strokeWidth="3.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
                     <div className="absolute text-center space-y-0.5">
-                      <span className="text-xl font-black text-slate-900 font-mono">65%</span>
-                      <span className="text-[8px] uppercase font-bold tracking-widest text-slate-400 block font-mono">Chặng 1</span>
+                      <span className="text-xl font-black text-slate-900 font-mono">{fundMindshare}%</span>
+                      <span className="text-[8px] uppercase font-bold tracking-widest text-slate-400 block font-mono">Fund</span>
                     </div>
                   </div>
 
                   <div className="space-y-1.5 w-full text-xs">
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-2"><BriefcaseBusiness className="w-4 h-4 text-indigo-600" /> B2B SaaS & Job Search</span>
-                      <span className="font-bold">65%</span>
+                      <span className="flex items-center gap-2"><CandlestickChart className="w-4 h-4 text-purple-500" /> Fund & Backtest</span>
+                      <span className="font-bold">{fundMindshare}%</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-2"><HeartPulse className="w-4 h-4 text-emerald-500" /> Sức khỏe & Lối sống</span>
-                      <span className="font-bold">25%</span>
+                      <span className="flex items-center gap-2"><BriefcaseBusiness className="w-4 h-4 text-indigo-600" /> B2B Marketing</span>
+                      <span className="font-bold">{b2bMindshare}%</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-2"><CandlestickChart className="w-4 h-4 text-purple-500" /> Trading & Quỹ</span>
-                      <span className="font-bold">10%</span>
+                      <span className="flex items-center gap-2"><HeartPulse className="w-4 h-4 text-emerald-500" /> Health & Beauty</span>
+                      <span className="font-bold">{healthMindshare}%</span>
                     </div>
                   </div>
                 </div>
@@ -545,7 +556,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Column 2: Job Applications pipeline */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="font-display font-bold text-lg text-slate-900">Theo dõi Ứng tuyển Việc làm (G2)</h3>
+                <h3 className="font-display font-bold text-lg text-slate-900">B2B Pipeline & Cơ hội khách hàng</h3>
                 <p className="text-xs text-slate-500 mt-1">Đảm bảo mục tiêu phương án phòng vệ dự phòng trên 30 triệu VND.</p>
               </div>
 
@@ -640,7 +651,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Weight trends card */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
               <div>
-                <h3 className="font-display font-bold text-lg text-slate-900">Lịch sử Cân nặng & Thể lực (G3)</h3>
+                <h3 className="font-display font-bold text-lg text-slate-900">Lịch sử Health & Beauty</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Biểu đồ biểu diễn sự sụt giảm an toàn từ 64 kg về 55 kg.</p>
               </div>
               {renderWeightChart()}
@@ -690,7 +701,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="font-display font-bold text-lg text-slate-900">Báo cáo Kiểm tra Quỹ & Kỷ luật (G5)</h3>
+                  <h3 className="font-display font-bold text-lg text-slate-900">Báo cáo Fund & Backtest</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Yêu cầu kỷ luật và quản trị rủi ro tuyệt đối trước khi thi tuyển.</p>
                 </div>
                 <div className="text-right">
