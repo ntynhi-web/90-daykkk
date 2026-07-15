@@ -109,6 +109,22 @@ export interface RoutineLog {
   updatedTimestamp: number;
 }
 
+export type ChoreCategory = 'home' | 'pet' | 'errand' | 'self_care' | 'admin';
+export type ChoreFrequency = 'daily' | 'weekly' | 'one_time';
+
+export interface Chore {
+  id: string;
+  title: string;
+  category: ChoreCategory;
+  frequency: ChoreFrequency;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  completed: boolean;
+  lastCompletedDate?: string | null;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Experiment {
   id: string;
   goalId: string;
@@ -273,6 +289,7 @@ export interface AppState {
   activities: ActivityEntry[];
   routines: Routine[];
   routineLogs?: RoutineLog[];
+  chores?: Chore[];
   experiments: Experiment[];
   weeklyReviews: WeeklyReview[];
   b2bLeads: B2BLead[];
