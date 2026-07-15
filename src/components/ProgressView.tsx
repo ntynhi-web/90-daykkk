@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   TrendingDown, Award, AlertTriangle, Check, ShieldAlert, BarChart3, PieChart, Info, Heart, 
-  Coffee, ShieldCheck, HelpCircle, Activity, Target, Zap, Compass, Sparkles, Scale, Plus, Trash2, ArrowRight
+  Coffee, ShieldCheck, HelpCircle, Activity, Target, Zap, Compass, Sparkles, Scale, Plus, Trash2, ArrowRight,
+  BriefcaseBusiness, HeartPulse, CandlestickChart
 } from "lucide-react";
 import { AppState, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord } from "../types";
 import { formatDisplayDate } from "../utils";
@@ -382,15 +383,15 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
 
                   <div className="space-y-1.5 w-full text-xs">
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-600" /> B2B SaaS & Job Search</span>
+                      <span className="flex items-center gap-2"><BriefcaseBusiness className="w-4 h-4 text-indigo-600" /> B2B SaaS & Job Search</span>
                       <span className="font-bold">65%</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Sức khỏe & Lối sống</span>
+                      <span className="flex items-center gap-2"><HeartPulse className="w-4 h-4 text-emerald-500" /> Sức khỏe & Lối sống</span>
                       <span className="font-bold">25%</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600">
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-500" /> Trading & Quỹ</span>
+                      <span className="flex items-center gap-2"><CandlestickChart className="w-4 h-4 text-purple-500" /> Trading & Quỹ</span>
                       <span className="font-bold">10%</span>
                     </div>
                   </div>
