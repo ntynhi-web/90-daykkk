@@ -38,6 +38,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [classificationError, setClassificationError] = useState<string | null>(null);
@@ -70,6 +71,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       journeyId: string | null;
       priority: 'important_urgent' | 'important' | 'urgent' | 'later';
       estimatedMinutes: number;
+      dueDate: string | null;
+      timeframe: 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'specific_date' | 'no_date';
     }>;
     scheduleSuggestions: Array<{
       title: string;
@@ -109,6 +112,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   // Speech recognition ref
   const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef("");
+  const interimTranscriptRef = useRef("");
+  const analyzeAfterStopRef = useRef(false);
 
   useEffect(() => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -142,6 +148,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   const startRecording = () => {
     setMicError(null);
+    setVoiceNotice(null);
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
       setMicError("Nhận diện giọng nói không được hỗ trợ trên trình duyệt này. Vui lòng thử trên Google Chrome hoặc Safari.");
@@ -155,16 +162,29 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       recognition.lang = "vi-VN";
 
       recognition.onstart = () => {
+        finalTranscriptRef.current = transcript.trim();
+        interimTranscriptRef.current = "";
+        analyzeAfterStopRef.current = false;
         setIsRecording(true);
         setMicError(null);
         setRecordingSeconds(0);
       };
 
       recognition.onresult = (event: any) => {
-        const currentResult = Array.from(event.results)
-          .map((res: any) => res[0].transcript)
-          .join(" ");
-        setTranscript(currentResult);
+        let interim = "";
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const phrase = event.results[index][0]?.transcript?.trim();
+          if (!phrase) continue;
+          if (event.results[index].isFinal) {
+            finalTranscriptRef.current = `${finalTranscriptRef.current} ${phrase}`.trim();
+          } else {
+            interim += `${phrase} `;
+          }
+        }
+        interimTranscriptRef.current = interim.trim();
+        const captured = `${finalTranscriptRef.current} ${interimTranscriptRef.current}`.trim();
+        setTranscript(captured);
+        setVoiceNotice(captured ? "Đang ghi nhận nội dung giọng nói…" : null);
       };
 
       recognition.onerror = (event: any) => {
@@ -177,7 +197,16 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       };
 
       recognition.onend = () => {
+        const captured = `${finalTranscriptRef.current} ${interimTranscriptRef.current}`.trim();
+        if (captured) {
+          setTranscript(captured);
+          setVoiceNotice(analyzeAfterStopRef.current ? "Đã ghi nhận. Đang phân tích nội dung…" : "Đã ghi nhận giọng nói. Bạn có thể kiểm tra rồi gửi phân tích AI.");
+        }
         setIsRecording(false);
+        if (analyzeAfterStopRef.current && captured) {
+          analyzeAfterStopRef.current = false;
+          handleAnalyzeTranscript(captured);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -192,6 +221,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   const stopRecording = () => {
     if (recognitionRef.current) {
+      analyzeAfterStopRef.current = true;
       recognitionRef.current.stop();
     }
     setIsRecording(false);
@@ -275,7 +305,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           title: t.title,
           journeyId: t.journeyId && t.journeyId !== "null" ? t.journeyId : null,
           priority: t.priority || 'important_urgent',
-          estimatedMinutes: t.estimatedMinutes || 30
+          estimatedMinutes: t.estimatedMinutes || 30,
+          dueDate: t.dueDate || null,
+          timeframe: t.timeframe || "no_date"
         })),
         scheduleSuggestions: (data.scheduleSuggestions || []).map((s: any) => ({
           title: s.title,
@@ -526,7 +558,10 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         title: t.title,
         priority: t.priority,
         completed: false,
-        journeyId: t.journeyId
+        journeyId: t.journeyId,
+        dueDate: t.dueDate,
+        estimatedMinutes: t.estimatedMinutes,
+        createdAt: new Date().toISOString()
       }));
       updatedState.priorityTasks = [...(updatedState.priorityTasks || []), ...newTasks];
     }
@@ -759,6 +794,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               </div>
             )}
 
+            {voiceNotice && !micError && (
+              <div className="flex items-center gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3 text-xs font-semibold text-sky-700">
+                <Mic className="h-4 w-4 shrink-0" /> {voiceNotice}
+              </div>
+            )}
+
             {refineError && (
               <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -779,7 +820,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer animate-pulse"
                     >
                       <MicOff className="w-4 h-4" />
-                      <span>Đang nghe... ({recordingSeconds}s) - Bấm để dừng</span>
+                      <span>Đang nghe... ({recordingSeconds}s) · Dừng & phân tích</span>
                     </button>
                   ) : (
                     <button
@@ -1660,7 +1701,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                             <div key={idx} className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl flex items-center justify-between gap-3 text-xs text-slate-700 font-medium">
                               <div>
                                 <span>Lên danh sách việc: <strong>{t.title}</strong></span>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">Thời gian dự kiến: {t.estimatedMinutes} phút • Độ ưu tiên: {t.priority}</span>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">{t.dueDate ? `Hạn: ${formatDisplayDate(t.dueDate)} • ` : ""}Thời gian dự kiến: {t.estimatedMinutes} phút • Độ ưu tiên: {t.priority}</span>
                               </div>
                               <button
                                 onClick={() => {
