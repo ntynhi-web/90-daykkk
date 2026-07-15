@@ -129,7 +129,7 @@ NỘI DUNG NHẬT KÝ (TRANSCRIPT):
 Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác với responseSchema.`;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [{ text: prompt }],
       config: {
         responseMimeType: "application/json",
@@ -267,7 +267,7 @@ Văn bản thô cần hiệu đính:
 Hãy trả về duy nhất văn bản kết quả đã được hiệu đính hoàn chỉnh, không kèm bất kỳ giải thích, tiêu đề hay từ ngữ dẫn dắt nào khác.`;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: [{ text: prompt }]
     });
 
