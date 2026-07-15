@@ -1,4 +1,4 @@
-import { AppState, Goal, Routine, ActivityEntry, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, Experiment, WeeklyReview, Recommendation } from "./types";
+import { AppState, Goal, Routine, ActivityEntry, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, Experiment, WeeklyReview, Recommendation, Chore } from "./types";
 
 // Helper to format Date to YYYY-MM-DD
 export function formatDateStr(date: Date): string {
@@ -147,6 +147,30 @@ export function getDefaultAppState(): AppState {
     { id: "r7", goalId: "G3", name: "Health & Beauty routine", frequency: "Hàng ngày", minimumDay: "Rửa mặt và uống đủ nước", target: "Ăn đúng kế hoạch và skincare sáng/tối", evidence: "Checklist hoàn thành", status: "pending" }
   ];
 
+  const chores: Chore[] = [
+    {
+      id: "chore_cat_litter",
+      title: "Dọn khay cát cho mèo",
+      category: "pet",
+      frequency: "daily",
+      dueDate: startDate,
+      dueTime: "20:00",
+      completed: false,
+      lastCompletedDate: null,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "chore_buy_body_wash",
+      title: "Mua sữa tắm",
+      category: "errand",
+      frequency: "one_time",
+      dueDate: startDate,
+      completed: false,
+      lastCompletedDate: null,
+      createdAt: new Date().toISOString()
+    }
+  ];
+
   return {
     startDate,
     endDate,
@@ -171,6 +195,7 @@ export function getDefaultAppState(): AppState {
     activities: [],
     routines,
     routineLogs: [],
+    chores,
     experiments: [],
     weeklyReviews: [],
     b2bLeads: [],
@@ -366,6 +391,9 @@ export function migrateAppState(rawState: any): AppState {
   }
   if (!Array.isArray(migrated.routineLogs)) {
     migrated.routineLogs = [];
+  }
+  if (!Array.isArray(migrated.chores)) {
+    migrated.chores = getDefaultAppState().chores || [];
   }
 
   // 3. Ensure priorityTasks is present
