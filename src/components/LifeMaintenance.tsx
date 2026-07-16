@@ -143,7 +143,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
           const done = isCompletedToday(chore, today);
           const overdue = !done && !!chore.dueDate && chore.dueDate < today;
           return (
-            <div key={chore.id} className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl border p-3 shadow-sm transition ${done ? "border-emerald-200 bg-emerald-50/60" : overdue ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/20"}`}>
+            <div key={chore.id} className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border p-3 transition ${done ? "border-emerald-200 bg-emerald-50/60" : overdue ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-slate-50/45 hover:border-indigo-200 hover:bg-white"}`}>
               <span className={`absolute inset-y-0 left-0 w-1 ${done ? "bg-emerald-500" : overdue ? "bg-rose-500" : "bg-slate-200"}`} />
               <button onClick={() => toggleChore(chore)} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${done ? "border-emerald-200 bg-emerald-600 text-white" : overdue ? "border-rose-200 bg-white text-rose-500" : "border-slate-200 bg-slate-50 text-slate-500 hover:border-indigo-300 hover:text-indigo-600"}`} aria-label={done ? "Đánh dấu chưa xong" : "Đánh dấu hoàn thành"}>
                 {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
@@ -151,6 +151,8 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
               <button onClick={() => toggleChore(chore)} className="min-w-0 flex-1 text-left">
                 <span className={`block truncate text-xs font-bold ${done ? "text-emerald-800 line-through" : "text-slate-800"}`}>{chore.title}</span>
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold">
+                  <span className="inline-flex items-center gap-1 font-black uppercase tracking-[0.12em] text-slate-400"><ClipboardList className="h-2.5 w-2.5" /> Chore</span>
+                  <span className="text-slate-300">•</span>
                   <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-slate-600">{config.label}</span>
                   <span className="text-slate-400">{frequencyLabels[chore.frequency]}</span>
                   {overdue && <span className="text-rose-600">Quá hạn</span>}
