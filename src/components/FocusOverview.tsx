@@ -20,6 +20,40 @@ const dateDistance = (from: string, to: string) => {
   return Math.ceil((toTime - fromTime) / 86_400_000);
 };
 
+const taskTone = (priority: PriorityTask["priority"]) => {
+  if (priority === "important_urgent") return {
+    card: "border-rose-200 bg-gradient-to-r from-rose-50 to-white hover:border-rose-300",
+    icon: "border-rose-200 bg-rose-100 text-rose-700",
+    badge: "bg-rose-600 text-white",
+    label: "Khẩn cấp"
+  };
+  if (priority === "urgent") return {
+    card: "border-amber-200 bg-gradient-to-r from-amber-50 to-white hover:border-amber-300",
+    icon: "border-amber-200 bg-amber-100 text-amber-700",
+    badge: "bg-amber-100 text-amber-800",
+    label: "Cần làm sớm"
+  };
+  if (priority === "important") return {
+    card: "border-indigo-200 bg-gradient-to-r from-indigo-50 to-white hover:border-indigo-300",
+    icon: "border-indigo-200 bg-indigo-100 text-indigo-700",
+    badge: "bg-indigo-100 text-indigo-800",
+    label: "Quan trọng"
+  };
+  return {
+    card: "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white hover:border-emerald-300",
+    icon: "border-emerald-200 bg-emerald-100 text-emerald-700",
+    badge: "bg-emerald-100 text-emerald-800",
+    label: "Bình thường"
+  };
+};
+
+const goalTone = (color: string) => {
+  if (color === "rose") return "border-rose-200 bg-gradient-to-br from-rose-50 to-white";
+  if (color === "emerald") return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white";
+  if (color === "amber") return "border-amber-200 bg-gradient-to-br from-amber-50 to-white";
+  return "border-violet-200 bg-gradient-to-br from-violet-50 to-white";
+};
+
 export default function FocusOverview({ state, today, currentDay, onChangeState }: FocusOverviewProps) {
   const activeGoals = state.goals.filter(goal => goal.status === "active");
 
@@ -112,7 +146,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
 
   return (
     <section id="section-daily-focus" className="grid grid-cols-1 xl:grid-cols-[1.5fr_0.8fr] gap-4">
-      <div className="life-panel overflow-hidden">
+      <div className="life-panel overflow-hidden border-t-4 border-t-indigo-600 shadow-[0_20px_50px_rgba(79,70,229,0.10)]">
         <div className="border-b border-slate-100 bg-gradient-to-r from-indigo-50/90 via-white to-white p-5 md:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3">
@@ -154,19 +188,28 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-extrabold text-slate-900">Tối đa 3 hành động tạo tiến bộ</p>
-              <span className="text-[10px] text-slate-400">Không hiển thị toàn bộ backlog</span>
+              <span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black text-white">{focusTasks.length} việc</span>
+            </div>
+            <div className="mb-3 flex flex-wrap gap-1.5 text-[9px] font-bold">
+              <span className="rounded-full bg-rose-600 px-2 py-1 text-white">Đỏ · Khẩn cấp</span>
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Vàng · Cần làm sớm</span>
+              <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-800">Xanh · Quan trọng</span>
+              <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-800">Lá · Bình thường</span>
             </div>
             <div className="space-y-2">
-              {focusTasks.length > 0 ? focusTasks.map(task => (
-                <button key={task.id} onClick={() => toggleTask(task.id)} className="flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50/30">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400"><Check className="h-4 w-4" /></span>
+              {focusTasks.length > 0 ? focusTasks.map(task => {
+                const tone = taskTone(task.priority);
+                return (
+                <button key={task.id} onClick={() => toggleTask(task.id)} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition ${tone.card}`}>
+                  <span className={`absolute inset-y-0 left-0 w-1.5 ${task.priority === "important_urgent" ? "bg-rose-500" : task.priority === "urgent" ? "bg-amber-500" : task.priority === "important" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                  <span className={`ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone.icon}`}><Check className="h-4 w-4" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-bold text-slate-800">{task.title}</span>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">{task.estimatedMinutes || 30} phút · {task.priority === "important_urgent" ? "Ưu tiên cao" : "Tiến bộ duy trì"}</span>
+                    <span className="mt-1 flex items-center gap-2 text-[10px] text-slate-500"><span className={`rounded-full px-2 py-0.5 font-black ${tone.badge}`}>{tone.label}</span>{task.estimatedMinutes || 30} phút</span>
                   </span>
                   <ArrowRight className="h-4 w-4 text-slate-300" />
                 </button>
-              )) : (
+              );}) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-500">Bước tiếp theo: <strong>{focusGoal.nextAction || activeMilestone?.title || "Đánh giá mục tiêu"}</strong></div>
               )}
             </div>
@@ -179,9 +222,9 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         </div>
       </div>
 
-      <div className="life-panel p-5 md:p-6 space-y-5">
+      <div className="life-panel border-t-4 border-t-emerald-500 p-5 md:p-6 space-y-5">
         <div>
-          <p className="life-kicker text-emerald-600">Maintenance goals</p>
+          <div className="flex items-center justify-between gap-3"><p className="life-kicker text-emerald-600">Maintenance goals</p><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800">{maintenanceGoals.length} mục tiêu</span></div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Giữ nhịp, không tạo áp lực</h2>
           <p className="mt-1 text-xs text-slate-400">Mỗi mục tiêu chỉ cần một hành động tối thiểu.</p>
         </div>
@@ -191,14 +234,14 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             const routine = state.routines.find(item => item.goalId === goal.id && item.status !== "completed");
             const task = goalTasks(goal.id)[0];
             return (
-              <div key={goal.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+              <div key={goal.id} className={`rounded-2xl border p-4 shadow-sm ${goalTone(goal.accentColor)}`}>
                 <div className="flex items-center gap-3">
                   <GoalIcon icon={goal.icon} color={goal.accentColor} size={16} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-extrabold text-slate-900">{goal.name}</p>
                     <p className="mt-0.5 truncate text-[10px] text-slate-400">{routine?.minimumDay || task?.title || goal.nextAction || "Duy trì nhịp tối thiểu"}</p>
                   </div>
-                  <span className="text-[10px] font-black text-slate-500">{getProgress(goal)}%</span>
+                  <div className="text-right"><span className="block text-[10px] font-black text-slate-700">{getProgress(goal)}%</span><span className="mt-1 block rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-bold text-slate-500">{goalTasks(goal.id).length} việc</span></div>
                 </div>
               </div>
             );
