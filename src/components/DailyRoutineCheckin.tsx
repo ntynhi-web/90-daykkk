@@ -9,6 +9,14 @@ interface DailyRoutineCheckinProps {
   onChangeState: (state: AppState) => void;
 }
 
+const routineTone = (goalId: string, completed: boolean) => {
+  if (completed) return "border-emerald-300 bg-gradient-to-br from-emerald-100 to-white shadow-sm";
+  if (goalId === "G1") return "border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm";
+  if (goalId === "G2") return "border-sky-200 bg-gradient-to-br from-sky-50 to-white shadow-sm";
+  if (goalId === "G3") return "border-rose-200 bg-gradient-to-br from-rose-50 to-white shadow-sm";
+  return "border-slate-200 bg-gradient-to-br from-slate-50 to-white";
+};
+
 export default function DailyRoutineCheckin({ state, today, onChangeState }: DailyRoutineCheckinProps) {
   const [expanded, setExpanded] = useState(false);
   const activeGoals = state.goals.filter(goal => goal.status === "active");
@@ -62,12 +70,12 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
   };
 
   return (
-    <section id="section-daily-routine-input" className="life-panel overflow-hidden">
+    <section id="section-daily-routine-input" className="life-panel overflow-hidden border-t-4 border-t-emerald-500">
       <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <p className="life-kicker text-emerald-600">04 · Cập nhật tiến độ hôm nay</p>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700">{completedCount}/{routines.length}</span>
+            <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">{completedCount}/{routines.length} xong</span>
           </div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Bạn đã giữ nhịp nào?</h2>
           <p className="mt-1 text-xs text-slate-400">Chọn Minimum Day hoặc Hoàn thành mục tiêu. Dữ liệu này sẽ đi thẳng vào Progress.</p>
@@ -85,14 +93,15 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
           const goal = state.goals.find(item => item.id === routine.goalId);
           const log = getLog(routine.id);
           return (
-            <div key={routine.id} className={`rounded-2xl border p-4 transition ${log ? "border-emerald-200 bg-emerald-50/40" : "border-slate-100 bg-slate-50/60"}`}>
+            <div key={routine.id} className={`relative overflow-hidden rounded-2xl border p-4 transition ${routineTone(routine.goalId, !!log)}`}>
+              <span className={`absolute inset-x-0 top-0 h-1 ${log ? "bg-emerald-500" : routine.goalId === "G1" ? "bg-violet-500" : routine.goalId === "G2" ? "bg-sky-500" : "bg-rose-500"}`} />
               <div className="flex items-start gap-3">
                 <GoalIcon icon={goal?.icon} color={goal?.accentColor} size={15} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-extrabold text-slate-900">{routine.name}</p>
                   <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-400">{log?.evidence || `Tối thiểu: ${routine.minimumDay}`}</p>
                 </div>
-                {log ? <Check className="h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="h-4 w-4 shrink-0 text-slate-300" />}
+                {log ? <span className="rounded-full bg-emerald-600 p-1 text-white"><Check className="h-3 w-3" /></span> : <Circle className="h-4 w-4 shrink-0 text-slate-300" />}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
