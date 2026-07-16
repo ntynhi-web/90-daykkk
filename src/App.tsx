@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search, Cloud, LogOut, LoaderCircle } from "lucide-react";
 import { AppState } from "./types";
 import { getDefaultAppState, getCycleStats, formatDateStr, migrateAppState } from "./utils";
 import TodayView from "./components/TodayView";
@@ -7,6 +7,8 @@ import GoalsView from "./components/GoalsView";
 import ProgressView from "./components/ProgressView";
 import ReviewView from "./components/ReviewView";
 import CalendarView from "./components/CalendarView";
+import AuthScreen from "./components/AuthScreen";
+import { User, firebaseConfigured, loadUserState, observeAuth, saveUserState, signOutCurrentUser } from "./firebase";
 
 const LOCAL_STORAGE_KEY = "90day_life_os_state_v1";
 
@@ -25,15 +27,82 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'today' | 'journeys' | 'calendar' | 'progress' | 'settings'>('today');
   const [autoOpenCreateModal, setAutoOpenCreateModal] = useState(false);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const syncTimerRef = useRef<number | null>(null);
+
+  useEffect(() => observeAuth(user => {
+    setAuthUser(user);
+    setAuthLoading(false);
+    if (!user) setCloudReady(false);
+  }), []);
+
+  useEffect(() => {
+    if (!authUser || !firebaseConfigured) return;
+    let cancelled = false;
+    const hydrate = async () => {
+      setCloudReady(false);
+      setSyncStatus('idle');
+      try {
+        const remoteState = await loadUserState(authUser.uid);
+        if (cancelled) return;
+        if (remoteState) {
+          setState(migrateAppState(remoteState));
+        } else {
+          const personalKey = `${LOCAL_STORAGE_KEY}_${authUser.uid}`;
+          const personalBackup = localStorage.getItem(personalKey);
+          const claimedUid = localStorage.getItem(`${LOCAL_STORAGE_KEY}_claimed_uid`);
+          const initialState = personalBackup
+            ? migrateAppState(JSON.parse(personalBackup))
+            : (!claimedUid || claimedUid === authUser.uid)
+              ? state
+              : migrateAppState(getDefaultAppState());
+          setState(initialState);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_claimed_uid`, authUser.uid);
+          await saveUserState(authUser.uid, initialState);
+        }
+        if (!cancelled) {
+          setCloudReady(true);
+          setSyncStatus('saved');
+        }
+      } catch (error) {
+        console.error("Failed to load personal cloud state:", error);
+        if (!cancelled) {
+          setCloudReady(true);
+          setSyncStatus('error');
+        }
+      }
+    };
+    hydrate();
+    return () => { cancelled = true; };
+  }, [authUser?.uid]);
 
   // Sync state to LocalStorage automatically whenever changed
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      const storageKey = authUser ? `${LOCAL_STORAGE_KEY}_${authUser.uid}` : LOCAL_STORAGE_KEY;
+      localStorage.setItem(storageKey, JSON.stringify(state));
     } catch (e) {
       console.error("Failed to save 90-Day Life OS state:", e);
     }
-  }, [state]);
+    if (!authUser || !cloudReady || !firebaseConfigured) return;
+    if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
+    setSyncStatus('saving');
+    syncTimerRef.current = window.setTimeout(async () => {
+      try {
+        await saveUserState(authUser.uid, state);
+        setSyncStatus('saved');
+      } catch (error) {
+        console.error("Failed to sync personal cloud state:", error);
+        setSyncStatus('error');
+      }
+    }, 800);
+    return () => {
+      if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
+    };
+  }, [state, authUser?.uid, cloudReady]);
 
   const handleUpdateState = (newState: AppState) => {
     setState(newState);
@@ -42,6 +111,16 @@ export default function App() {
   // Live cycle tracking calculations
   const stats = getCycleStats(state.startDate, formatDateStr(new Date()));
   const cyclePercentage = Math.round((stats.currentDay / stats.totalDays) * 100);
+
+  if (authLoading) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white"><LoaderCircle className="h-7 w-7 animate-spin text-indigo-400" /></div>;
+  }
+
+  if (!authUser) return <AuthScreen />;
+
+  if (!cloudReady) {
+    return <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-950 text-white"><LoaderCircle className="h-7 w-7 animate-spin text-indigo-400" /><p className="text-xs font-semibold text-slate-400">Đang mở không gian cá nhân…</p></div>;
+  }
 
   return (
     <div id="app-root" className="life-canvas min-h-screen text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-100 selection:text-indigo-950">
@@ -168,10 +247,10 @@ export default function App() {
             Day {stats.currentDay}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-          <Clock className="w-4 h-4 text-indigo-500" />
-          <span>Còn {stats.daysRemaining} ngày</span>
-        </div>
+        <button onClick={() => signOutCurrentUser()} aria-label="Đăng xuất" className="flex items-center gap-2 rounded-xl p-1 text-xs font-semibold text-slate-500 hover:bg-rose-50">
+          <span className={`h-2 w-2 rounded-full ${syncStatus === 'error' ? 'bg-rose-500' : syncStatus === 'saving' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+          {authUser.photoURL ? <img src={authUser.photoURL} alt={authUser.displayName || "Tài khoản"} className="h-8 w-8 rounded-full border-2 border-white shadow" /> : <Clock className="w-4 h-4 text-indigo-500" />}
+        </button>
       </header>
 
       {/* MAIN CONTAINER CONTENT */}
@@ -216,7 +295,7 @@ export default function App() {
           )}
 
           {activeTab === 'today' ? (
-            <div className="flex items-center gap-2"><button aria-label="Tìm kiếm" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Search className="h-4 w-4" /></button><button aria-label="Thông báo" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Bell className="h-4 w-4" /></button><button
+            <div className="flex items-center gap-2"><div className="mr-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5"><span className={`h-2 w-2 rounded-full ${syncStatus === 'error' ? 'bg-rose-500' : syncStatus === 'saving' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} /><div className="hidden xl:block"><p className="max-w-32 truncate text-[10px] font-black text-slate-700">{authUser.displayName || authUser.email}</p><p className="text-[9px] text-slate-400">{syncStatus === 'saving' ? 'Đang đồng bộ' : syncStatus === 'error' ? 'Lưu cục bộ' : 'Đã đồng bộ'}</p></div>{authUser.photoURL && <img src={authUser.photoURL} alt="" className="h-7 w-7 rounded-lg" />}<button onClick={() => signOutCurrentUser()} aria-label="Đăng xuất" className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><LogOut className="h-3.5 w-3.5" /></button></div><button aria-label="Tìm kiếm" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Search className="h-4 w-4" /></button><button aria-label="Thông báo" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Bell className="h-4 w-4" /></button><button
               onClick={() => {
                 setActiveTab('journeys');
                 setAutoOpenCreateModal(true);
@@ -229,8 +308,9 @@ export default function App() {
           ) : (
             /* Timezone Indicator */
             <div className="flex items-center gap-3 text-xs text-slate-600 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-xl">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold font-mono text-[11px]">Ho Chi Minh (UTC+7)</span>
+              <Cloud className={`h-4 w-4 ${syncStatus === 'error' ? 'text-rose-500' : 'text-emerald-500'}`} />
+              <span className="font-semibold text-[11px]">{syncStatus === 'saving' ? 'Đang đồng bộ…' : syncStatus === 'error' ? 'Chưa đồng bộ cloud' : `Đã đồng bộ · ${authUser.email}`}</span>
+              <button onClick={() => signOutCurrentUser()} className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Đăng xuất"><LogOut className="h-3.5 w-3.5" /></button>
             </div>
           )}
         </div>
