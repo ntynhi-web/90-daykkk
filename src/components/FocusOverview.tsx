@@ -40,19 +40,14 @@ const taskTone = (priority: PriorityTask["priority"]) => {
     label: "Quan trọng"
   };
   return {
-    card: "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white hover:border-emerald-300",
-    icon: "border-emerald-200 bg-emerald-100 text-emerald-700",
-    badge: "bg-emerald-100 text-emerald-800",
-    label: "Bình thường"
+    card: "border-slate-200 bg-white hover:border-slate-300",
+    icon: "border-slate-200 bg-slate-100 text-slate-600",
+    badge: "bg-slate-100 text-slate-700",
+    label: "Có thể để sau"
   };
 };
 
-const goalTone = (color: string) => {
-  if (color === "rose") return "border-rose-200 bg-gradient-to-br from-rose-50 to-white";
-  if (color === "emerald") return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white";
-  if (color === "amber") return "border-amber-200 bg-gradient-to-br from-amber-50 to-white";
-  return "border-violet-200 bg-gradient-to-br from-violet-50 to-white";
-};
+const goalTone = () => "border-slate-200 bg-white hover:border-indigo-200";
 
 export default function FocusOverview({ state, today, currentDay, onChangeState }: FocusOverviewProps) {
   const activeGoals = state.goals.filter(goal => goal.status === "active");
@@ -193,15 +188,15 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             <div className="mb-3 flex flex-wrap gap-1.5 text-[9px] font-bold">
               <span className="rounded-full bg-rose-600 px-2 py-1 text-white">Đỏ · Khẩn cấp</span>
               <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Vàng · Cần làm sớm</span>
-              <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-800">Xanh · Quan trọng</span>
-              <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-800">Lá · Bình thường</span>
+              <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-800">Chàm · Quan trọng</span>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">Xám · Có thể để sau</span>
             </div>
             <div className="space-y-2">
               {focusTasks.length > 0 ? focusTasks.map(task => {
                 const tone = taskTone(task.priority);
                 return (
                 <button key={task.id} onClick={() => toggleTask(task.id)} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition ${tone.card}`}>
-                  <span className={`absolute inset-y-0 left-0 w-1.5 ${task.priority === "important_urgent" ? "bg-rose-500" : task.priority === "urgent" ? "bg-amber-500" : task.priority === "important" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                  <span className={`absolute inset-y-0 left-0 w-1.5 ${task.priority === "important_urgent" ? "bg-rose-500" : task.priority === "urgent" ? "bg-amber-500" : task.priority === "important" ? "bg-indigo-500" : "bg-slate-300"}`} />
                   <span className={`ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone.icon}`}><Check className="h-4 w-4" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-bold text-slate-800">{task.title}</span>
@@ -222,9 +217,9 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         </div>
       </div>
 
-      <div className="life-panel border-t-4 border-t-emerald-500 p-5 md:p-6 space-y-5">
+      <div className="life-panel border-t-4 border-t-slate-300 p-5 md:p-6 space-y-5">
         <div>
-          <div className="flex items-center justify-between gap-3"><p className="life-kicker text-emerald-600">Maintenance goals</p><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800">{maintenanceGoals.length} mục tiêu</span></div>
+          <div className="flex items-center justify-between gap-3"><p className="life-kicker text-slate-500">Maintenance goals</p><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-700">{maintenanceGoals.length} mục tiêu</span></div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Giữ nhịp, không tạo áp lực</h2>
           <p className="mt-1 text-xs text-slate-400">Mỗi mục tiêu chỉ cần một hành động tối thiểu.</p>
         </div>
@@ -234,7 +229,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             const routine = state.routines.find(item => item.goalId === goal.id && item.status !== "completed");
             const task = goalTasks(goal.id)[0];
             return (
-              <div key={goal.id} className={`rounded-2xl border p-4 shadow-sm ${goalTone(goal.accentColor)}`}>
+              <div key={goal.id} className={`rounded-2xl border p-4 shadow-sm transition ${goalTone()}`}>
                 <div className="flex items-center gap-3">
                   <GoalIcon icon={goal.icon} color={goal.accentColor} size={16} />
                   <div className="min-w-0 flex-1">
