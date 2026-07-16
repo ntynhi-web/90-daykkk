@@ -18,12 +18,12 @@ interface LifeMaintenanceProps {
   onChangeState: (newState: AppState) => void;
 }
 
-const categories: Record<ChoreCategory, { label: string; icon: React.ElementType; tone: string }> = {
-  home: { label: "Nhà cửa", icon: Home, tone: "bg-sky-50 text-sky-700 border-sky-100" },
-  pet: { label: "Thú cưng", icon: Cat, tone: "bg-amber-50 text-amber-700 border-amber-100" },
-  errand: { label: "Mua sắm", icon: ShoppingBasket, tone: "bg-violet-50 text-violet-700 border-violet-100" },
-  self_care: { label: "Cá nhân", icon: Sparkles, tone: "bg-rose-50 text-rose-700 border-rose-100" },
-  admin: { label: "Hành chính", icon: ClipboardList, tone: "bg-slate-100 text-slate-700 border-slate-200" }
+const categories: Record<ChoreCategory, { label: string; icon: React.ElementType; tone: string; card: string; accent: string }> = {
+  home: { label: "Nhà cửa", icon: Home, tone: "bg-sky-100 text-sky-800 border-sky-200", card: "border-sky-200 bg-gradient-to-r from-sky-50 to-white", accent: "bg-sky-500" },
+  pet: { label: "Thú cưng", icon: Cat, tone: "bg-amber-100 text-amber-800 border-amber-200", card: "border-amber-200 bg-gradient-to-r from-amber-50 to-white", accent: "bg-amber-500" },
+  errand: { label: "Mua sắm", icon: ShoppingBasket, tone: "bg-violet-100 text-violet-800 border-violet-200", card: "border-violet-200 bg-gradient-to-r from-violet-50 to-white", accent: "bg-violet-500" },
+  self_care: { label: "Cá nhân", icon: Sparkles, tone: "bg-rose-100 text-rose-800 border-rose-200", card: "border-rose-200 bg-gradient-to-r from-rose-50 to-white", accent: "bg-rose-500" },
+  admin: { label: "Hành chính", icon: ClipboardList, tone: "bg-slate-200 text-slate-800 border-slate-300", card: "border-slate-300 bg-gradient-to-r from-slate-100 to-white", accent: "bg-slate-500" }
 };
 
 const frequencyLabels: Record<ChoreFrequency, string> = {
@@ -101,7 +101,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
   };
 
   return (
-    <section id="section-life-maintenance" className="life-panel overflow-hidden">
+    <section id="section-life-maintenance" className="life-panel overflow-hidden border-t-4 border-t-teal-500">
       <div className="flex flex-col gap-4 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between md:px-6">
         <div>
           <p className="life-kicker mb-2 text-teal-600">Life maintenance</p>
@@ -109,7 +109,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
           <p className="mt-1 text-xs text-slate-400">Không tranh vị trí với mục tiêu chính; chỉ nhắc đúng lúc để việc nhỏ không biến thành rắc rối.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-[10px] font-bold text-teal-700">{completedCount}/{visibleChores.length} hôm nay</span>
+          <span className="rounded-full border border-teal-600 bg-teal-600 px-3 py-1.5 text-[10px] font-black text-white shadow-sm">{completedCount}/{visibleChores.length} xong</span>
           <button onClick={() => setShowAdd(value => !value)} className="flex items-center gap-1.5 rounded-xl bg-slate-950 px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-teal-700">
             <Plus className="h-3.5 w-3.5" /> Thêm chore
           </button>
@@ -143,7 +143,8 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
           const done = isCompletedToday(chore, today);
           const overdue = !done && !!chore.dueDate && chore.dueDate < today;
           return (
-            <div key={chore.id} className={`group flex items-center gap-3 rounded-2xl border p-3 transition ${done ? "border-emerald-100 bg-emerald-50/60" : overdue ? "border-rose-200 bg-rose-50/50" : "border-slate-100 bg-white hover:border-teal-200"}`}>
+            <div key={chore.id} className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl border p-3 shadow-sm transition ${done ? "border-emerald-300 bg-gradient-to-r from-emerald-100 to-white" : overdue ? "border-rose-300 bg-gradient-to-r from-rose-100 to-white" : config.card}`}>
+              <span className={`absolute inset-y-0 left-0 w-1.5 ${done ? "bg-emerald-500" : overdue ? "bg-rose-600" : config.accent}`} />
               <button onClick={() => toggleChore(chore)} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${done ? "border-emerald-200 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-400 hover:border-teal-400 hover:text-teal-600"}`} aria-label={done ? "Đánh dấu chưa xong" : "Đánh dấu hoàn thành"}>
                 {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
               </button>
