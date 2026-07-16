@@ -1000,7 +1000,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
-        <div className="life-panel border-t-4 border-t-sky-500 p-5 md:p-6 space-y-4">
+        <div className="life-panel border-t-4 border-t-indigo-500 p-5 md:p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="life-kicker text-indigo-600 mb-2">02 · Lịch hôm nay</p>
@@ -1017,23 +1017,15 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               {todaySchedule.slice(0, 5).map(item => {
                 const isPast = !item.completed && item.endTime < currentTime;
                 const scheduleGoalId = item.journeyId || item.goalId || null;
-                const activeTone = scheduleGoalId === "G1"
-                  ? "border-violet-200 bg-gradient-to-r from-violet-50 to-white hover:border-violet-300"
-                  : scheduleGoalId === "G2"
-                    ? "border-sky-200 bg-gradient-to-r from-sky-50 to-white hover:border-sky-300"
-                    : scheduleGoalId === "G3"
-                      ? "border-rose-200 bg-gradient-to-r from-rose-50 to-white hover:border-rose-300"
-                      : "border-emerald-200 bg-gradient-to-r from-emerald-50 to-white hover:border-emerald-300";
-                const accentTone = scheduleGoalId === "G1" ? "bg-violet-500" : scheduleGoalId === "G2" ? "bg-sky-500" : scheduleGoalId === "G3" ? "bg-rose-500" : "bg-emerald-500";
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleToggleScheduleItem(item.id)}
                     className={`relative w-full flex items-center gap-3 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition-all ${
-                      item.completed ? "border-emerald-300 bg-gradient-to-r from-emerald-100 to-white" : isPast ? "border-rose-300 bg-gradient-to-r from-rose-100 to-white" : activeTone
+                      item.completed ? "border-emerald-200 bg-emerald-50/60" : isPast ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/20"
                     }`}
                   >
-                    <span className={`absolute inset-y-0 left-0 w-1.5 ${item.completed ? "bg-emerald-500" : isPast ? "bg-rose-600" : accentTone}`} />
+                    <span className={`absolute inset-y-0 left-0 w-1 ${item.completed ? "bg-emerald-500" : isPast ? "bg-rose-500" : "bg-indigo-500"}`} />
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${item.completed ? "border-emerald-200 bg-white text-emerald-600" : "border-slate-200 bg-white text-slate-400"}`}>
                       {item.completed ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                     </span>
@@ -1055,7 +1047,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           )}
         </div>
 
-        <div className={`life-panel border-t-4 p-5 md:p-6 space-y-4 ${attentionCount > 0 ? "border-rose-200 border-t-rose-500 bg-gradient-to-br from-rose-50/70 to-white" : "border-emerald-100 border-t-emerald-500 bg-gradient-to-br from-emerald-50/60 to-white"}`}>
+        <div className={`life-panel border-t-4 p-5 md:p-6 space-y-4 ${attentionCount > 0 ? "border-amber-200 border-t-amber-400 bg-white" : "border-emerald-100 border-t-emerald-500 bg-white"}`}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className={`life-kicker mb-2 ${attentionCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>Cảnh báo ngoại lệ</p>
@@ -1070,8 +1062,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
             <div className="flex flex-wrap gap-1.5 text-[9px] font-black">
               {unfinishedPastSchedule.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{unfinishedPastSchedule.length} lịch</span>}
               {overdueTasks.length > 0 && <span className="rounded-full bg-rose-600 px-2 py-1 text-white">{overdueTasks.length} task</span>}
-              {overdueMilestones.length > 0 && <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-800">{overdueMilestones.length} cột mốc</span>}
-              {overdueChores.length > 0 && <span className="rounded-full bg-teal-100 px-2 py-1 text-teal-800">{overdueChores.length} chore</span>}
+              {overdueMilestones.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{overdueMilestones.length} cột mốc</span>}
+              {overdueChores.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{overdueChores.length} chore</span>}
             </div>
           )}
 
@@ -1079,8 +1071,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
             <div className="space-y-2">
               {unfinishedPastSchedule.slice(0, 2).map(item => <p key={item.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Lịch chưa hoàn thành: {item.title}</p>)}
               {overdueTasks.slice(0, 2).map(task => <p key={task.id} className="rounded-xl bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800">Việc đã quá hạn: {task.title}</p>)}
-              {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-800">Cột mốc trễ: {milestone.title} · {milestone.journeyName}</p>)}
-              {overdueChores.slice(0, 2).map(chore => <p key={chore.id} className="rounded-xl bg-teal-50 px-3 py-2 text-[11px] font-semibold text-teal-800">Chore quá hạn: {chore.title}</p>)}
+              {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Cột mốc trễ: {milestone.title} · {milestone.journeyName}</p>)}
+              {overdueChores.slice(0, 2).map(chore => <p key={chore.id} className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">Chore quá hạn: {chore.title}</p>)}
             </div>
           ) : (
             <p className="rounded-2xl bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">Không có lịch bỏ sót, task quá hạn hoặc milestone trễ. Bạn chỉ cần tập trung vào việc đang làm.</p>
