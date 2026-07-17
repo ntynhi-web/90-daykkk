@@ -198,6 +198,7 @@ export function getDefaultAppState(): AppState {
     endDate,
     weeklyFocusGoalId: "G1",
     weeklySupportGoalIds: ["G2", "G3"],
+    onboardingCompleted: false,
     goals: goals.map((g, index) => {
       // Ensure description and milestones types/statuses are properly configured
       const updatedMilestones = g.milestones.map((m, idx) => ({
@@ -463,6 +464,8 @@ export function migrateAppState(rawState: any): AppState {
   if (!Array.isArray(migrated.weeklySupportGoalIds)) {
     migrated.weeklySupportGoalIds = migrated.goals.filter((goal: Goal) => goal.status === 'active' && goal.id !== migrated.weeklyFocusGoalId).slice(0, 2).map((goal: Goal) => goal.id);
   }
+  // Existing users should not be interrupted. Only a genuinely new default state starts onboarding.
+  if (typeof migrated.onboardingCompleted !== 'boolean') migrated.onboardingCompleted = true;
 
   // Fallback for other arrays
   if (!migrated.activities) migrated.activities = [];
