@@ -931,9 +931,14 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   };
 
   const dueOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending' && activity.outcomeReviewDate && activity.outcomeReviewDate <= todayStr);
+  const todayAvailability = (state.weeklyAvailability || []).find(day => day.dayOfWeek === new Date(`${todayStr}T12:00:00`).getDay());
+  const suggestedMode = todayAvailability?.mode === 'office' ? 'busy' : todayAvailability?.mode === 'rest' ? 'recovery' : 'normal';
+  const dailyMode = state.dailyModeDate === todayStr ? state.dailyMode || suggestedMode : suggestedMode;
 
   return (
     <div id="today-dashboard-view" className="space-y-8">
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div><p className="text-sm font-black text-slate-900">Nhịp hôm nay</p><p className="text-xs text-slate-500">Chỉ điều chỉnh số việc hỗ trợ, không thay đổi mục tiêu.</p></div><div className="flex rounded-xl bg-slate-100 p-1">{([['normal','Bình thường'],['busy','Bận'],['recovery','Phục hồi']] as const).map(([mode,label]) => <button key={mode} onClick={() => onChangeState({ ...state, dailyMode: mode, dailyModeDate: todayStr })} className={`rounded-lg px-3 py-2 text-xs font-black transition ${dailyMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>{label}</button>)}</div></div>
 
       <FocusOverview
         state={state}
@@ -945,15 +950,15 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       {dueOutcomes.length > 0 && <section className="flex flex-col gap-3 rounded-[22px] border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white"><CalendarClock className="h-4 w-4" /></span><div><p className="text-xs font-black text-violet-950">{dueOutcomes.length} kết quả cần kiểm tra hôm nay</p><p className="mt-1 text-xs text-violet-700">{dueOutcomes.slice(0, 2).map(item => item.activity).join(' · ')}{dueOutcomes.length > 2 ? ` · +${dueOutcomes.length - 2} việc` : ''}</p></div></div><button onClick={onOpenProgress} className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white">Cập nhật kết quả</button></section>}
       
       {/* 2. VOICE / TEXT CHECK-IN — CAPTURE AFTER THE USER KNOWS WHAT TO DO */}
-      <section id="section-quick-input" className={`relative overflow-hidden rounded-[28px] border border-slate-800 bg-slate-950 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl ${captureExpanded ? "space-y-5 p-5 md:p-7" : "p-4 md:p-5"}`}>
+      <section id="section-quick-input" className={`relative overflow-hidden rounded-[24px] border shadow-sm ${captureExpanded ? "space-y-5 border-slate-800 bg-slate-950 p-5 md:p-7" : "border-indigo-100 bg-white p-4"}`}>
         <div className="relative flex items-start justify-between gap-4">
           <div>
-          <p className="life-kicker text-indigo-300 mb-2">02 · Ghi nhận hoặc điều chỉnh</p>
-          <h2 className={`font-display font-extrabold text-white tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl md:text-2xl" : "text-base md:text-lg"}`}>
+          <p className={`mb-2 text-xs font-black uppercase tracking-[0.16em] ${captureExpanded ? 'text-indigo-300' : 'text-indigo-600'}`}>02 · Ghi nhận hoặc điều chỉnh</p>
+          <h2 className={`font-display font-extrabold tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl text-white md:text-2xl" : "text-lg text-slate-950"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
           </h2>
-          <p className="text-xs md:text-sm text-slate-300 mt-2 max-w-2xl">{captureExpanded ? "Nói tự nhiên hoặc gõ vài dòng. AI sẽ phân loại tiến độ, thời gian và đề xuất bước tiếp theo." : "Nói hoặc nhập một câu; app sẽ đưa thông tin vào đúng mục."}</p>
+          <p className={`mt-2 max-w-2xl text-sm ${captureExpanded ? 'text-slate-300' : 'text-slate-500'}`}>{captureExpanded ? "Nói tự nhiên hoặc gõ vài dòng. AI sẽ tự nhận diện loại cập nhật." : "Một ô duy nhất cho tiến độ, lịch, việc mới hoặc câu hỏi."}</p>
           </div>
           {captureExpanded && <button onClick={() => setCaptureExpanded(false)} className="relative shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-300 hover:bg-slate-800">Thu gọn</button>}
         </div>
@@ -1190,7 +1195,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
           {todaySchedule.length > 0 ? (
             <div className="space-y-2">
-              {todaySchedule.slice(0, 5).map(item => {
+              {todaySchedule.slice(0, 3).map(item => {
                 const isPast = !item.completed && item.endTime < currentTime;
                 const scheduleGoalId = item.journeyId || item.goalId || null;
                 return (
@@ -1214,6 +1219,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
                   </button>
                 );
               })}
+              {todaySchedule.length > 3 && <p className="pt-2 text-center text-xs font-bold text-indigo-600">+{todaySchedule.length - 3} block khác · xem toàn bộ trong Lịch biểu</p>}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
@@ -1246,10 +1252,10 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
           {attentionCount > 0 ? (
             <div className="space-y-2">
-              {unfinishedPastSchedule.slice(0, 2).map(item => <p key={item.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-[11px] font-semibold text-amber-950"><CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" /><span><strong className="block text-[9px] uppercase tracking-wider text-amber-600">Lịch bỏ lỡ</strong>{item.title}</span></p>)}
-              {overdueTasks.slice(0, 2).map(task => <p key={task.id} className="flex items-start gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-[11px] font-semibold text-rose-900"><Siren className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" /><span><strong className="block text-[9px] uppercase tracking-wider text-rose-600">Việc quá hạn</strong>{task.title}</span></p>)}
-              {overdueMilestones.slice(0, 2).map(milestone => <p key={milestone.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-[11px] font-semibold text-amber-950"><Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" /><span><strong className="block text-[9px] uppercase tracking-wider text-amber-600">Cột mốc trễ</strong>{milestone.title} · {milestone.journeyName}</span></p>)}
-              {overdueChores.slice(0, 2).map(chore => <p key={chore.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-[11px] font-semibold text-amber-950"><ListTodo className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" /><span><strong className="block text-[9px] uppercase tracking-wider text-amber-600">Chore quá hạn</strong>{chore.title}</span></p>)}
+              {overdueTasks.slice(0, 1).map(task => <p key={task.id} className="flex items-start gap-2 rounded-xl border border-rose-200 bg-white px-3 py-3 text-sm font-semibold text-rose-900"><Siren className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" /><span><strong className="block text-xs uppercase tracking-wider text-rose-600">Cần xử lý ngay · Việc quá hạn</strong>{task.title}</span></p>)}
+              {overdueMilestones.slice(0, 1).map(milestone => <p key={milestone.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm font-semibold text-amber-950"><Target className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><span><strong className="block text-xs uppercase tracking-wider text-amber-600">Cần quyết định · Cột mốc trễ</strong>{milestone.title} · {milestone.journeyName}</span></p>)}
+              {unfinishedPastSchedule.slice(0, 1).map(item => <p key={item.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm font-semibold text-amber-950"><CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><span><strong className="block text-xs uppercase tracking-wider text-amber-600">Cần quyết định · Lịch bỏ lỡ</strong>{item.title}</span></p>)}
+              {overdueChores.slice(0, 1).map(chore => <p key={chore.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700"><ListTodo className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" /><span><strong className="block text-xs uppercase tracking-wider text-slate-500">Nhắc nhẹ · Việc nhà</strong>{chore.title}</span></p>)}
             </div>
           ) : (
             <p className="rounded-2xl bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">Không có lịch bỏ sót, task quá hạn hoặc milestone trễ. Bạn chỉ cần tập trung vào việc đang làm.</p>
