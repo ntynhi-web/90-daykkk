@@ -417,7 +417,7 @@ export default function App() {
           }`}
         >
           <Settings className="w-5 h-5 shrink-0" />
-          <span>Cài đặt</span>
+          <span>Đánh giá</span>
         </button>
       </nav>
 
