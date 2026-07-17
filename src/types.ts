@@ -291,6 +291,8 @@ export interface PriorityTask {
   createdAt?: string;
   completedAt?: string | null;
   startedAt?: string | null;
+  status?: 'ready' | 'in_progress' | 'blocked' | 'waiting' | 'completed' | 'dropped';
+  blockedReason?: string | null;
 }
 
 export interface FocusSession {
