@@ -36,6 +36,7 @@ const isCompletedToday = (chore: Chore, today: string) =>
   chore.frequency === "one_time" ? chore.completed : chore.lastCompletedDate === today;
 
 export default function LifeMaintenance({ state, today, onChangeState }: LifeMaintenanceProps) {
+  const [expanded, setExpanded] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<ChoreCategory>("home");
@@ -102,21 +103,22 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
 
   return (
     <section id="section-life-maintenance" className="life-panel overflow-hidden border-t-4 border-t-indigo-500">
-      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between md:px-6">
+      <div className={`flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:px-6 ${expanded ? "border-b border-slate-100" : ""}`}>
         <div>
-          <p className="life-kicker mb-2 text-indigo-600">Life maintenance</p>
-          <h2 className="font-display text-lg font-extrabold text-slate-950">Chores giữ cuộc sống vận hành</h2>
-          <p className="mt-1 text-xs text-slate-400">Không tranh vị trí với mục tiêu chính; chỉ nhắc đúng lúc để việc nhỏ không biến thành rắc rối.</p>
+          <p className="life-kicker mb-2 text-slate-500">06 · Việc duy trì cuộc sống</p>
+          <h2 className="font-display text-lg font-extrabold text-slate-950">Những việc nhỏ cần được xử lý</h2>
+          <p className="mt-1 text-xs text-slate-400">Nhà cửa, mua sắm và việc lặt vặt — luôn có chỗ riêng nhưng không lấn át trọng tâm.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-[10px] font-black text-slate-600">{completedCount}/{visibleChores.length} xong</span>
-          <button onClick={() => setShowAdd(value => !value)} className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-indigo-700">
-            <Plus className="h-3.5 w-3.5" /> Thêm chore
+          <button onClick={() => setExpanded(value => !value)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50">
+            {expanded ? "Thu gọn" : `Mở ${visibleChores.length} việc`} <ChevronDown className={`h-3.5 w-3.5 transition ${expanded ? "rotate-180" : ""}`} />
           </button>
+          {expanded && <button onClick={() => setShowAdd(value => !value)} className="flex items-center gap-1.5 rounded-xl bg-slate-950 px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-slate-800"><Plus className="h-3.5 w-3.5" /> Thêm việc</button>}
         </div>
       </div>
 
-      {showAdd && (
+      {expanded && showAdd && (
         <form onSubmit={addChore} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-4 md:grid-cols-[1fr_150px_140px_145px_auto] md:px-6">
           <input value={title} onChange={event => setTitle(event.target.value)} autoFocus placeholder="Ví dụ: mua thức ăn cho mèo" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" />
           <label className="relative">
@@ -136,7 +138,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
         </form>
       )}
 
-      <div className="grid gap-2 p-4 md:grid-cols-2 md:p-6">
+      {expanded && <div className="grid gap-2 p-4 md:grid-cols-2 md:p-6">
         {visibleChores.length > 0 ? visibleChores.map(chore => {
           const config = categories[chore.category];
           const Icon = config.icon;
@@ -168,7 +170,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
             <p className="mt-2 text-xs font-semibold text-slate-500">Không có chore nào đến hạn hôm nay.</p>
           </div>
         )}
-      </div>
+      </div>}
     </section>
   );
 }

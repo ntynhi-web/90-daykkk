@@ -125,6 +125,18 @@ export interface Chore {
   createdAt: string;
 }
 
+export type LifeAnchorIcon = 'cat' | 'spiritual' | 'meal' | 'self_care' | 'connection';
+
+export interface LifeAnchor {
+  id: string;
+  title: string;
+  description: string;
+  icon: LifeAnchorIcon;
+  frequency: 'daily' | 'weekly';
+  lastCompletedDate?: string | null;
+  active: boolean;
+}
+
 export interface Experiment {
   id: string;
   goalId: string;
@@ -289,6 +301,7 @@ export interface AppState {
   activities: ActivityEntry[];
   routines: Routine[];
   routineLogs?: RoutineLog[];
+  lifeAnchors?: LifeAnchor[];
   chores?: Chore[];
   experiments: Experiment[];
   weeklyReviews: WeeklyReview[];

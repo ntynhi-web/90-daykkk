@@ -74,11 +74,11 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
       <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <p className="life-kicker text-emerald-600">04 · Cập nhật tiến độ hôm nay</p>
+            <p className="life-kicker text-emerald-600">05 · Thói quen giữ nhịp</p>
             <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">{completedCount}/{routines.length} xong</span>
           </div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Bạn đã giữ nhịp nào?</h2>
-          <p className="mt-1 text-xs text-slate-400">Chọn Minimum Day hoặc Hoàn thành mục tiêu. Dữ liệu này sẽ đi thẳng vào Progress.</p>
+          <p className="mt-1 text-xs text-slate-400">Chọn mức tối thiểu hoặc hoàn thành. Dữ liệu này sẽ đi thẳng vào Kết quả.</p>
         </div>
         {routines.length > recommendedIds.size && (
           <button onClick={() => setExpanded(value => !value)} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50">

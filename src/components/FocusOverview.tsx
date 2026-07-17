@@ -147,7 +147,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             <div className="flex items-start gap-3">
               <GoalIcon icon={focusGoal.icon} color={focusGoal.accentColor} size={20} className="rounded-2xl p-3" />
               <div>
-                <p className="life-kicker text-indigo-600">03 · Main focus hôm nay</p>
+        <p className="life-kicker text-indigo-600">02 · Trọng tâm hôm nay</p>
                 <h2 className="mt-2 font-display text-xl font-extrabold tracking-tight text-slate-950">{focusGoal.name}</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">{focusGoal.desiredOutcome}</p>
               </div>

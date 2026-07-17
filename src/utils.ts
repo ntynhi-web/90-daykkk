@@ -147,6 +147,27 @@ export function getDefaultAppState(): AppState {
     { id: "r7", goalId: "G3", name: "Health & Beauty routine", frequency: "Hàng ngày", minimumDay: "Rửa mặt và uống đủ nước", target: "Ăn đúng kế hoạch và skincare sáng/tối", evidence: "Checklist hoàn thành", status: "pending" }
   ];
 
+  const lifeAnchors = [
+    {
+      id: "anchor_cats",
+      title: "Chăm sóc và yêu thương hai bé mèo",
+      description: "Cho ăn, quan sát sức khỏe và dành thời gian kết nối.",
+      icon: "cat" as const,
+      frequency: "daily" as const,
+      lastCompletedDate: null,
+      active: true
+    },
+    {
+      id: "anchor_spiritual",
+      title: "Khoảng lặng tinh thần",
+      description: "Thắp nhang và dành vài phút tĩnh tâm.",
+      icon: "spiritual" as const,
+      frequency: "daily" as const,
+      lastCompletedDate: null,
+      active: true
+    }
+  ];
+
   const chores: Chore[] = [
     {
       id: "chore_cat_litter",
@@ -195,6 +216,7 @@ export function getDefaultAppState(): AppState {
     activities: [],
     routines,
     routineLogs: [],
+    lifeAnchors,
     chores,
     experiments: [],
     weeklyReviews: [],
@@ -392,6 +414,9 @@ export function migrateAppState(rawState: any): AppState {
   if (!Array.isArray(migrated.routineLogs)) {
     migrated.routineLogs = [];
   }
+  if (!Array.isArray(migrated.lifeAnchors)) {
+    migrated.lifeAnchors = getDefaultAppState().lifeAnchors || [];
+  }
   if (!Array.isArray(migrated.chores)) {
     migrated.chores = getDefaultAppState().chores || [];
   }
@@ -467,9 +492,12 @@ export function saveCheckInToState(state: AppState, payload: {
     // Propagate updates to corresponding specific data structures
     const out = ent.output || {};
     const otc = ent.outcome || {};
+    const targetGoal = updatedState.goals.find(goal => goal.id === ent.goalId);
+    const goalCategory = targetGoal?.category;
+    const activityLower = ent.activity.toLowerCase();
 
-    // G1 - B2B SaaS
-    if (ent.goalId === "G1") {
+    // B2B / marketing: never infer this from a fixed G-number.
+    if (goalCategory === "business" || goalCategory === "marketing") {
       // If outreach or replies are logged, we can dynamically add a generic lead or update goals progress
       if (out.outreach) {
         const leadId = `lead_${timestamp}_${idx}`;
@@ -485,9 +513,9 @@ export function saveCheckInToState(state: AppState, payload: {
       }
     }
 
-    // G2 - Jobs
-    if (ent.goalId === "G2") {
-      if (out.applications || ent.activity.toLowerCase().includes("ứng tuyển") || ent.activity.toLowerCase().includes("nộp")) {
+    // Career / job applications.
+    if (goalCategory === "career") {
+      if (out.applications || activityLower.includes("ứng tuyển") || activityLower.includes("nộp")) {
         const appId = `app_${timestamp}_${idx}`;
         const newApp: JobApplication = {
           id: appId,
@@ -502,8 +530,8 @@ export function saveCheckInToState(state: AppState, payload: {
       }
     }
 
-    // G3 - S Health
-    if (ent.goalId === "G3") {
+    // Health & beauty.
+    if (goalCategory === "health") {
       const existingRecord: HealthRecord = updatedState.healthRecords[payload.date] || {
         date: payload.date,
         weight: null,
@@ -521,16 +549,16 @@ export function saveCheckInToState(state: AppState, payload: {
       if (out.weightKg) existingRecord.weight = Number(out.weightKg);
       if (out.sleepHours) existingRecord.sleepHours = Number(out.sleepHours);
       if (out.strengthMinutes) existingRecord.strengthSession = true;
-      if (ent.activity.toLowerCase().includes("skincare") || out.skincare) existingRecord.skincare = true;
-      if (ent.activity.toLowerCase().includes("ăn") || ent.activity.toLowerCase().includes("dinh dưỡng")) existingRecord.eatOnPlan = true;
+      if (activityLower.includes("skincare") || out.skincare) existingRecord.skincare = true;
+      if (activityLower.includes("ăn") || activityLower.includes("dinh dưỡng")) existingRecord.eatOnPlan = true;
       existingRecord.notes = (existingRecord.notes + " " + ent.activity).trim();
       if (payload.energy) existingRecord.energy = payload.energy;
 
       updatedState.healthRecords[payload.date] = existingRecord;
     }
 
-    // G4 - Lifestyle
-    if (ent.goalId === "G4") {
+    // Home and lifestyle maintenance.
+    if (goalCategory === "home" || goalCategory === "habit") {
       const existingLRecord: LifestyleRecord = updatedState.lifestyleRecords[payload.date] || {
         date: payload.date,
         homeReset15m: false,
@@ -544,21 +572,20 @@ export function saveCheckInToState(state: AppState, payload: {
         weeklyReview: false
       };
 
-      const actLower = ent.activity.toLowerCase();
-      if (actLower.includes("reset") || actLower.includes("dọn dẹp")) existingLRecord.homeReset15m = true;
-      if (actLower.includes("bếp") || actLower.includes("rửa bát")) existingLRecord.kitchenReset = true;
-      if (actLower.includes("giặt") || actLower.includes("quần áo")) existingLRecord.laundry = true;
-      if (actLower.includes("nấu") || actLower.includes("chuẩn bị")) existingLRecord.mealPrep = true;
-      if (actLower.includes("mèo") || actLower.includes("cho ăn")) existingLRecord.catCare = true;
-      if (actLower.includes("declutter") || actLower.includes("thanh lý")) existingLRecord.declutter = true;
-      if (actLower.includes("hẹn hò") || actLower.includes("date night")) existingLRecord.dateNight = true;
+      if (activityLower.includes("reset") || activityLower.includes("dọn dẹp")) existingLRecord.homeReset15m = true;
+      if (activityLower.includes("bếp") || activityLower.includes("rửa bát")) existingLRecord.kitchenReset = true;
+      if (activityLower.includes("giặt") || activityLower.includes("quần áo")) existingLRecord.laundry = true;
+      if (activityLower.includes("nấu") || activityLower.includes("chuẩn bị")) existingLRecord.mealPrep = true;
+      if (activityLower.includes("mèo") || activityLower.includes("cho ăn")) existingLRecord.catCare = true;
+      if (activityLower.includes("declutter") || activityLower.includes("thanh lý")) existingLRecord.declutter = true;
+      if (activityLower.includes("hẹn hò") || activityLower.includes("date night")) existingLRecord.dateNight = true;
 
       updatedState.lifestyleRecords[payload.date] = existingLRecord;
     }
 
-    // G5 - Trading
-    if (ent.goalId === "G5") {
-      if (out.plannedRisk || out.resultR || ent.activity.toLowerCase().includes("trade") || ent.activity.toLowerCase().includes("giao dịch")) {
+    // Fund, backtest and trading evidence.
+    if (goalCategory === "fund_backtest") {
+      if (out.plannedRisk || out.resultR || activityLower.includes("trade") || activityLower.includes("giao dịch") || activityLower.includes("backtest")) {
         const tradeId = `trade_${timestamp}_${idx}`;
         const newTrade: BatchTestRecord = {
           id: tradeId,
@@ -578,8 +605,14 @@ export function saveCheckInToState(state: AppState, payload: {
       }
     }
 
+    // Caring for the cats is a life anchor, not a performance KPI.
+    if (activityLower.includes("mèo") || activityLower.includes("cho ăn")) {
+      updatedState.lifeAnchors = (updatedState.lifeAnchors || []).map(anchor =>
+        anchor.id === "anchor_cats" ? { ...anchor, lastCompletedDate: payload.date } : anchor
+      );
+    }
+
     // Update the goal's nextAction and currentProgress slightly
-    const targetGoal = updatedState.goals.find(g => g.id === ent.goalId);
     if (targetGoal) {
       if (ent.nextAction) {
         targetGoal.nextAction = ent.nextAction;

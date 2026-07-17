@@ -196,7 +196,7 @@ export default function App() {
             }`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
-            <span>Tiến độ</span>
+            <span>Kết quả</span>
           </button>
 
           <button
@@ -209,7 +209,7 @@ export default function App() {
             }`}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            <span>Cài đặt & Đánh giá</span>
+            <span>Đánh giá</span>
           </button>
         </nav>
 
@@ -282,8 +282,8 @@ export default function App() {
               <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 {activeTab === 'journeys' && "Các Hành Trình Mục Tiêu"}
                 {activeTab === 'calendar' && "Lịch Biểu & Phân Bổ Thời Gian"}
-                {activeTab === 'progress' && "Bảng Theo Dõi Tiến Độ Thực Tế"}
-                {activeTab === 'settings' && "Cài Đặt & Đánh Giá Định Kỳ"}
+                {activeTab === 'progress' && "Kết Quả Theo Mục Tiêu"}
+                {activeTab === 'settings' && "Đánh Giá & Điều Chỉnh"}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 {activeTab === 'journeys' && "Hành trình bento 90 ngày của bạn với lộ trình cột mốc chi tiết."}
@@ -405,7 +405,7 @@ export default function App() {
           }`}
         >
           <BarChart3 className="w-5 h-5 shrink-0" />
-          <span>Tiến độ</span>
+          <span>Kết quả</span>
         </button>
 
         <button
