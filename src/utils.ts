@@ -196,6 +196,8 @@ export function getDefaultAppState(): AppState {
   return {
     startDate,
     endDate,
+    weeklyFocusGoalId: "G1",
+    weeklySupportGoalIds: ["G2", "G3"],
     goals: goals.map((g, index) => {
       // Ensure description and milestones types/statuses are properly configured
       const updatedMilestones = g.milestones.map((m, idx) => ({
@@ -227,6 +229,8 @@ export function getDefaultAppState(): AppState {
     lifestyleRecords: {},
     batchTestRecords: [],
     evidenceRecommendations: [],
+    aiChangeHistory: [],
+    coachHistory: [],
     priorityTasks: [
       {
         id: "task_default_1",
@@ -453,6 +457,12 @@ export function migrateAppState(rawState: any): AppState {
   if (!Array.isArray(migrated.weeklyAvailability) || migrated.weeklyAvailability.length === 0) {
     migrated.weeklyAvailability = getDefaultAppState().weeklyAvailability;
   }
+  if (!migrated.weeklyFocusGoalId || !migrated.goals.some((goal: Goal) => goal.id === migrated.weeklyFocusGoalId && goal.status === 'active')) {
+    migrated.weeklyFocusGoalId = migrated.goals.find((goal: Goal) => goal.status === 'active')?.id || null;
+  }
+  if (!Array.isArray(migrated.weeklySupportGoalIds)) {
+    migrated.weeklySupportGoalIds = migrated.goals.filter((goal: Goal) => goal.status === 'active' && goal.id !== migrated.weeklyFocusGoalId).slice(0, 2).map((goal: Goal) => goal.id);
+  }
 
   // Fallback for other arrays
   if (!migrated.activities) migrated.activities = [];
@@ -464,6 +474,8 @@ export function migrateAppState(rawState: any): AppState {
   if (!migrated.lifestyleRecords) migrated.lifestyleRecords = {};
   if (!migrated.batchTestRecords) migrated.batchTestRecords = [];
   if (!migrated.evidenceRecommendations) migrated.evidenceRecommendations = [];
+  if (!Array.isArray(migrated.aiChangeHistory)) migrated.aiChangeHistory = [];
+  if (!Array.isArray(migrated.coachHistory)) migrated.coachHistory = [];
 
   return migrated;
 }
