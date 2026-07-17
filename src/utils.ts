@@ -115,12 +115,12 @@ export function getDefaultAppState(): AppState {
     {
       id: "G3",
       name: "Health & Beauty",
-      desiredOutcome: "Cải thiện sức khỏe, vóc dáng, giảm cân từ 64 kg về 55 kg một cách an toàn.",
+      desiredOutcome: "Cải thiện sức khỏe, vóc dáng, giảm cân từ 64,5 kg về 54 kg một cách an toàn.",
       priority: "normal",
       deadline: endDate,
       mainMetric: "Cân nặng (kg) & Số bước chân",
       currentProgress: 10,
-      currentMilestone: "Giảm từ 64 kg xuống 62 kg an toàn",
+      currentMilestone: "Giảm từ 64,5 kg xuống 62 kg an toàn",
       status: "active",
       nextAction: "Chuẩn bị bữa ăn lành mạnh cho ngày mai và skincare tối",
       accentColor: "rose",
@@ -128,11 +128,11 @@ export function getDefaultAppState(): AppState {
       icon: "heart",
       notes: "Không ép cân cực đoan. Lắng nghe cơ thể, nếu chóng mặt mệt mỏi kéo dài cần điều chỉnh ngay.",
       milestones: [
-        { id: "m3_1", title: "Mốc 62 kg", targetValue: "62 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(20) },
-        { id: "m3_2", title: "Mốc 60 kg", targetValue: "60 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(40) },
-        { id: "m3_3", title: "Mốc 58 kg", targetValue: "58 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(60) },
-        { id: "m3_4", title: "Mốc 56 kg", targetValue: "56 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(78) },
-        { id: "m3_5", title: "Mục tiêu 55 kg", targetValue: "55 kg", currentValue: "64 kg", achieved: false, dueDate: dateAfter(89) }
+        { id: "m3_1", title: "Mốc 62 kg", targetValue: "62 kg", currentValue: "64,5 kg", achieved: false, dueDate: dateAfter(20) },
+        { id: "m3_2", title: "Mốc 60 kg", targetValue: "60 kg", currentValue: "64,5 kg", achieved: false, dueDate: dateAfter(40) },
+        { id: "m3_3", title: "Mốc 58 kg", targetValue: "58 kg", currentValue: "64,5 kg", achieved: false, dueDate: dateAfter(60) },
+        { id: "m3_4", title: "Mốc 56 kg", targetValue: "56 kg", currentValue: "64,5 kg", achieved: false, dueDate: dateAfter(78) },
+        { id: "m3_5", title: "Mục tiêu 54 kg", targetValue: "54 kg", currentValue: "64,5 kg", achieved: false, dueDate: dateAfter(89) }
       ]
     }
   ];
@@ -143,7 +143,8 @@ export function getDefaultAppState(): AppState {
     { id: "r3", goalId: "G2", name: "Deep work B2B", frequency: "Hàng ngày", minimumDay: "Tập trung 30 phút", target: "Tập trung 90 phút", evidence: "Số phút deep work", status: "pending" },
     { id: "r4", goalId: "G2", name: "B2B Outreach", frequency: "Hàng ngày", minimumDay: "Liên hệ 1 lead", target: "Liên hệ 5 leads phù hợp", evidence: "Số leads đã liên hệ", status: "pending" },
     { id: "r5", goalId: "G3", name: "Giấc ngủ phục hồi", frequency: "Hàng ngày", minimumDay: "Ngủ trước 00:00", target: "Ngủ đủ 7-8 tiếng", evidence: "Số giờ ngủ", status: "pending" },
-    { id: "r6", goalId: "G3", name: "Đi bộ vận động", frequency: "Hàng ngày", minimumDay: "Đi bộ 3.000 bước", target: "Đi bộ 6.000 bước", evidence: "Số bước", status: "pending" },
+    { id: "r6", goalId: "G3", name: "Đi bộ vận động", frequency: "Ngày không tập yoga hoặc dọn nhà nặng", minimumDay: "Đi bộ 15 phút", target: "Đi bộ 30 phút", evidence: "Số phút hoặc số bước", status: "pending", substitutionGroup: "movement" },
+    { id: "r8", goalId: "G3", name: "Yoga", frequency: "3 buổi/tuần · T2, T3, T5", minimumDay: "Tập yoga 15 phút", target: "Hoàn thành buổi yoga theo lịch", evidence: "Số phút tập", status: "pending", scheduleDays: [1, 2, 4], timeOfDay: "any", substitutionGroup: "movement" },
     { id: "r7", goalId: "G3", name: "Health & Beauty routine", frequency: "Hàng ngày", minimumDay: "Rửa mặt và uống đủ nước", target: "Ăn đúng kế hoạch và skincare sáng/tối", evidence: "Checklist hoàn thành", status: "pending" }
   ];
 
@@ -310,6 +311,15 @@ export function getDefaultAppState(): AppState {
         notes: "Uông nước và nghe nhạc nhẹ nhàng.",
         completed: false
       }
+    ],
+    weeklyAvailability: [
+      { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:00", blockedEnd: "18:40" },
+      { dayOfWeek: 2, mode: "home", label: "Làm việc tại nhà" },
+      { dayOfWeek: 3, mode: "office", label: "Làm tại công ty", blockedStart: "08:00", blockedEnd: "18:40" },
+      { dayOfWeek: 4, mode: "home", label: "Làm việc tại nhà" },
+      { dayOfWeek: 5, mode: "office", label: "Làm tại công ty", blockedStart: "08:00", blockedEnd: "18:40" },
+      { dayOfWeek: 6, mode: "rest", label: "Nghỉ và phục hồi" },
+      { dayOfWeek: 0, mode: "rest", label: "Nghỉ và chuẩn bị tuần mới" }
     ]
   };
 }
@@ -408,8 +418,18 @@ export function migrateAppState(rawState: any): AppState {
   }
 
   // 2. Ensure routines are present
+  const defaultRoutines = getDefaultAppState().routines;
   if (!Array.isArray(migrated.routines)) {
-    migrated.routines = getDefaultAppState().routines;
+    migrated.routines = defaultRoutines;
+  } else {
+    const defaultsById = new Map(defaultRoutines.map(routine => [routine.id, routine]));
+    migrated.routines = migrated.routines.map((routine: any) => ({
+      ...(defaultsById.get(routine.id) || {}),
+      ...routine
+    }));
+    defaultRoutines.forEach(routine => {
+      if (!migrated.routines.some((item: any) => item.id === routine.id)) migrated.routines.push(routine);
+    });
   }
   if (!Array.isArray(migrated.routineLogs)) {
     migrated.routineLogs = [];
@@ -429,6 +449,9 @@ export function migrateAppState(rawState: any): AppState {
   // 4. Ensure scheduleItems is present
   if (!Array.isArray(migrated.scheduleItems) || migrated.scheduleItems.length === 0) {
     migrated.scheduleItems = getDefaultAppState().scheduleItems;
+  }
+  if (!Array.isArray(migrated.weeklyAvailability) || migrated.weeklyAvailability.length === 0) {
+    migrated.weeklyAvailability = getDefaultAppState().weeklyAvailability;
   }
 
   // Fallback for other arrays
@@ -622,18 +645,49 @@ export function saveCheckInToState(state: AppState, payload: {
     }
   });
 
-  // Automatically check off today's routines if the activities match keywords
+  // Turn matching check-ins into dated routine evidence. Substitutions are explicit,
+  // so Yoga or a heavy cleaning day does not lower the walking consistency score.
   payload.entries.forEach(ent => {
+    const activityLower = ent.activity.toLowerCase();
+    const upsertRoutineLog = (routine: Routine, status: 'completed' | 'skipped', evidence: string) => {
+      const existing = (updatedState.routineLogs || []).find(log => log.routineId === routine.id && log.date === payload.date);
+      const nextLog = {
+        id: existing?.id || `routine_log_${routine.id}_${payload.date}`,
+        routineId: routine.id,
+        goalId: routine.goalId,
+        date: payload.date,
+        status,
+        source: 'ai' as const,
+        evidence,
+        activityId: null,
+        createdTimestamp: existing?.createdTimestamp || timestamp,
+        updatedTimestamp: timestamp
+      };
+      updatedState.routineLogs = [nextLog, ...(updatedState.routineLogs || []).filter(log => !(log.routineId === routine.id && log.date === payload.date))];
+    };
+
     updatedState.routines = updatedState.routines.map(rot => {
       if (rot.goalId === ent.goalId) {
         const keywords = rot.name.toLowerCase().split(' ');
-        const matches = keywords.some(k => k.length > 2 && ent.activity.toLowerCase().includes(k));
+        const matches = keywords.some(k => k.length > 2 && activityLower.includes(k));
         if (matches) {
+          upsertRoutineLog(rot, 'completed', `AI nhận diện từ check-in: ${ent.activity}`);
           return { ...rot, status: 'completed' as const };
         }
       }
       return rot;
     });
+
+    const yogaRoutine = updatedState.routines.find(rot => rot.substitutionGroup === 'movement' && rot.name.toLowerCase().includes('yoga'));
+    const walkingRoutine = updatedState.routines.find(rot => rot.substitutionGroup === 'movement' && rot.name.toLowerCase().includes('đi bộ'));
+    const didYoga = activityLower.includes('yoga');
+    const didHeavyCleaning = ['dọn dẹp nhiều', 'dọn nhà nhiều', 'lau dọn nhà', 'tổng vệ sinh', 'deep clean'].some(term => activityLower.includes(term));
+    if (didYoga && yogaRoutine) upsertRoutineLog(yogaRoutine, 'completed', `Hoàn thành Yoga từ check-in: ${ent.activity}`);
+    if ((didYoga || didHeavyCleaning) && walkingRoutine) {
+      upsertRoutineLog(walkingRoutine, 'skipped', didYoga
+        ? 'Được thay bằng Yoga — không tính là bỏ thói quen.'
+        : 'Được thay bằng buổi dọn dẹp nhiều vận động — không tính là bỏ thói quen.');
+    }
   });
 
   return updatedState;
