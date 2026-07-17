@@ -81,6 +81,7 @@ export interface ActivityEntry {
   outcome: Record<string, any>;
   outcomeStatus?: 'pending' | 'measured' | 'not_applicable';
   outcomeReviewDate?: string | null;
+  outcomeDecision?: 'continue' | 'adjust' | 'pause' | 'insufficient_data' | null;
   insight: string | null;
   nextAction: string | null;
   confidence: number;
