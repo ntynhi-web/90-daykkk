@@ -38,36 +38,24 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .sort((a, b) => a.date.localeCompare(b.date));
   const weightRecords = healthLogsSorted.filter(h => h.weight !== null) as Array<HealthRecord & { weight: number }>;
 
-  // Compute activity vs outcome stats
-  const g1Id = state.goals[0]?.id || "G1";
-  const g2Id = state.goals[1]?.id || "G2";
-  const totalG1Activities = state.activities.filter(a => a.goalId === g1Id).length;
-  const totalG1Outcomes = state.activities.filter(a => a.goalId === g1Id && Object.keys(a.outcome).length > 0).length;
+  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
+  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
+  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
+  const careerGoal = state.goals.find(g => g.category === 'career');
 
-  const totalG2Activities = state.activities.filter(a => a.goalId === g2Id).length;
-  const totalG2Outcomes = state.activities.filter(a => a.goalId === g2Id && Object.keys(a.outcome).length > 0).length;
-
-  // Bento Grid helper statistics
-  const g1TotalLeads = state.b2bLeads.length;
-  const g1Paying = state.b2bLeads.filter(l => l.status === "paying").length;
-  const g1Meeting = state.b2bLeads.filter(l => l.status === "meeting").length;
-  const g1Proposal = state.b2bLeads.filter(l => l.status === "proposal").length;
-
-  const g2TotalApplications = state.jobApplications.length;
-  const g2Interviewing = state.jobApplications.filter(j => j.status === "interviewing").length;
-  const g2Offered = state.jobApplications.filter(j => j.status === "offered").length;
-
-  const g3CurrentWeight = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1].weight : 63.8;
-  const g3InitialWeight = 64.0;
-  const g3TargetWeight = 55.0;
+  const parseNumbers = (value: string) => (value.match(/\d+(?:[.,]\d+)?/g) || []).map(item => Number(item.replace(',', '.')));
+  const healthNumbers = parseNumbers(`${healthGoal?.desiredOutcome || ''} ${healthGoal?.milestones.map(m => m.targetValue).join(' ') || ''}`);
+  const g3InitialWeight = healthNumbers[0] || weightRecords[0]?.weight || 64.5;
+  const g3TargetWeight = healthNumbers.length > 1 ? Math.min(...healthNumbers) : 54;
+  const g3CurrentWeight = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1].weight : g3InitialWeight;
   const g3WeightLoss = Math.round((g3InitialWeight - g3CurrentWeight) * 10) / 10;
   const g3AvgSteps = healthLogsSorted.length > 0
     ? Math.round(healthLogsSorted.reduce((acc, curr) => acc + (curr.steps || 0), 0) / healthLogsSorted.length)
     : 0;
 
-  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
-  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
-  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
+  const topActivityGoal = state.goals
+    .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
+    .sort((a, b) => b.count - a.count)[0];
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
   const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
     ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
@@ -85,12 +73,20 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
   }).format(new Date(Date.now() - (14 - i) * 86_400_000)));
   const eligibleRoutineDays = last15Days.filter(day => day >= state.startDate);
   const routineLogs = state.routineLogs || [];
+  const routineIsDue = (routine: typeof state.routines[number], date: string) => {
+    if (!routine.scheduleDays?.length) return true;
+    return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
+  };
+  const routineOpportunities = state.routines.flatMap(routine => eligibleRoutineDays
+    .filter(date => routineIsDue(routine, date))
+    .filter(date => !routineLogs.some(log => log.routineId === routine.id && log.date === date && log.status === 'skipped'))
+    .map(date => `${routine.id}:${date}`));
   const completedRoutineLogs = routineLogs.filter(log =>
     eligibleRoutineDays.includes(log.date) &&
     (log.status === 'minimum' || log.status === 'completed') &&
-    state.routines.some(routine => routine.id === log.routineId)
+    state.routines.some(routine => routine.id === log.routineId && routineIsDue(routine, log.date))
   );
-  const totalRoutineOpportunities = eligibleRoutineDays.length * state.routines.length;
+  const totalRoutineOpportunities = routineOpportunities.length;
   const routinesRatio = totalRoutineOpportunities > 0
     ? Math.round((completedRoutineLogs.length / totalRoutineOpportunities) * 100)
     : 0;
@@ -256,8 +252,11 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       const completed = log?.status === 'completed';
                       const minimum = log?.status === 'minimum';
                       const beforeCycle = dayStr < state.startDate;
+                      const scheduled = routineIsDue(rot, dayStr);
                       const statusLabel = beforeCycle
                         ? "Chưa bắt đầu chu kỳ"
+                        : !scheduled
+                          ? "Không có trong lịch"
                         : completed
                           ? "Hoàn thành target"
                           : minimum
@@ -276,6 +275,10 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                                 ? "bg-emerald-600 border-emerald-500"
                                 : minimum
                                   ? "bg-amber-300 border-amber-400"
+                                  : log?.status === 'skipped'
+                                    ? "bg-slate-200 border-slate-300"
+                                  : !scheduled
+                                    ? "bg-slate-50 border-slate-100 opacity-50"
                                   : beforeCycle
                                     ? "bg-slate-100 border-slate-100"
                                     : "bg-white border-dashed border-slate-300"
@@ -296,6 +299,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
         <div className="flex flex-wrap items-center gap-4 border-t border-slate-100 pt-3 text-[10px] text-slate-500">
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-600" /> Hoàn thành target</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-300" /> Minimum Day</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-200" /> Được thay thế / chủ động nghỉ</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-dashed border-slate-300 bg-white" /> Chưa có dữ liệu</span>
         </div>
       </div>
@@ -350,7 +354,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="space-y-4">
                 <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">Bản tóm tắt định tính từ AI</span>
                 <p className="font-display font-medium text-base md:text-lg text-[#0b1c30] leading-relaxed italic">
-                  “Sự phân bổ tâm trí của bạn tập trung cao độ vào <span className="bg-[#eff4ff] text-[#4648d4] px-1.5 py-0.5 rounded font-bold font-mono">{state.goals[0]?.name || "Hành trình 1"}</span> với {state.activities.length} hoạt động tiếp cận. Sự kiên trì thói quen đạt <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold font-mono">{routinesRatio}%</span>. Cân nặng của bạn duy trì ổn định ở mức <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-bold">{g3CurrentWeight} kg</span>. Hiệu suất phễu B2B của bạn ghi nhận {state.b2bLeads.length} leads với {b2bStatusCounts.paying} đối tác trả phí. Hãy kiên định bám đuổi hành động mỗi ngày.”
+                  “Bạn đã ghi nhận <span className="bg-[#eff4ff] text-[#4648d4] px-1.5 py-0.5 rounded font-bold font-mono">{state.activities.length} hoạt động</span>. Mục tiêu nhận nhiều nỗ lực nhất là <span className="font-bold">{topActivityGoal?.goal.name || "chưa đủ dữ liệu"}</span> ({topActivityGoal?.count || 0} hoạt động). Độ đều đặn routine đạt <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold font-mono">{routinesRatio}%</span> trên đúng những ngày được lên lịch; ngày Yoga thay đi bộ không bị tính là bỏ cuộc. Cân nặng hiện tại <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-bold">{g3CurrentWeight} kg</span>, hướng tới {g3TargetWeight} kg. B2B có {state.b2bLeads.length} lead và {b2bStatusCounts.paying} khách trả phí.”
                 </p>
               </div>
             </section>
@@ -362,7 +366,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-8 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">PHÂN BỔ NỖ LỰC THỰC TẾ</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Activity vs Outcome Insights</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Hành động và kết quả</h3>
                   <p className="text-xs text-slate-500">Số lượng hành động và phản hồi được AI bóc tách từ check-in giọng nói của bạn.</p>
                 </div>
 
@@ -379,8 +383,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                     return (
                       <div key={g.id} className="space-y-1.5">
                         <div className="flex justify-between text-xs">
-                          <span className="font-bold text-slate-800">{g.id} — {g.name}</span>
-                          <span className="text-slate-500 font-mono">Actions: {actCount} | Outcomes: {otcCount}</span>
+                          <span className="font-bold text-slate-800">{g.name}</span>
+                          <span className="text-slate-500 font-mono">Hành động: {actCount} · Có kết quả: {otcCount}</span>
                         </div>
                         <div className="space-y-1">
                           {/* Actions Bar */}
@@ -439,7 +443,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-5 bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">CÂN NẶNG & THỂ CHẤT</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Health Tracker</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Theo dõi sức khỏe</h3>
                 </div>
 
                 {renderWeightChart()}
@@ -460,7 +464,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-7 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">HIỆU SUẤT PHỄU OUTREACH</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">B2B SaaS Conversions</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Chuyển đổi B2B</h3>
                   <p className="text-xs text-slate-500">Tỷ lệ chuyển đổi từ Outreach của các đối tác tiềm năng.</p>
                 </div>
 
@@ -468,7 +472,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 <div className="py-4 space-y-2.5">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-slate-700">Tổng số leads đã tiếp cận:</span>
-                    <span className="font-bold text-slate-900 font-mono">{g1TotalLeads} leads</span>
+                    <span className="font-bold text-slate-900 font-mono">{state.b2bLeads.length} leads</span>
                   </div>
                   
                   {/* Visual funnel levels */}
@@ -513,7 +517,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Column 1: B2B Leads pipeline */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="font-display font-bold text-lg text-slate-900">Bản đồ Phễu B2B Leads ({state.goals[0]?.name || "Hành trình 1"})</h3>
+                <h3 className="font-display font-bold text-lg text-slate-900">Phễu khách hàng · {b2bGoal?.name || "B2B Marketing"}</h3>
                 <p className="text-xs text-slate-500 mt-1">Danh sách đối tác dịch vụ tiếp cận được cập nhật tự động từ check-in AI hoặc thêm tay.</p>
               </div>
 
@@ -582,8 +586,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Column 2: Job Applications pipeline */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="font-display font-bold text-lg text-slate-900">B2B Pipeline & Cơ hội khách hàng</h3>
-                <p className="text-xs text-slate-500 mt-1">Đảm bảo mục tiêu phương án phòng vệ dự phòng trên 30 triệu VND.</p>
+                <h3 className="font-display font-bold text-lg text-slate-900">Cơ hội nghề nghiệp trên 30 triệu net</h3>
+                <p className="text-xs text-slate-500 mt-1">{careerGoal?.name || "Theo dõi ứng tuyển, phỏng vấn và offer riêng với phễu khách hàng B2B."}</p>
               </div>
 
               {/* Quick job add form */}
@@ -678,7 +682,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
               <div>
                 <h3 className="font-display font-bold text-lg text-slate-900">Lịch sử Health & Beauty</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Biểu đồ biểu diễn sự sụt giảm an toàn từ 64 kg về 55 kg.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Biểu đồ tiến độ an toàn từ {g3InitialWeight} kg về {g3TargetWeight} kg.</p>
               </div>
               {renderWeightChart()}
             </div>
