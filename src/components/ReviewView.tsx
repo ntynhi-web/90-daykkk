@@ -265,6 +265,10 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
+            <section className="flex flex-col gap-4 rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="life-kicker text-indigo-600">Thiết lập cách app vận hành</p><h3 className="mt-1 text-base font-black text-slate-950">Trọng tâm tuần, lịch rảnh và routine</h3><p className="mt-1 text-xs text-slate-500">Thay đổi ở đây sẽ tác động trực tiếp đến việc được ưu tiên trên màn Hôm nay.</p></div>
+              <button onClick={() => onChangeState({ ...state, onboardingCompleted: false })} className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white"><Sparkles className="h-4 w-4" />Mở thiết lập</button>
+            </section>
             {/* Split layout if creating, else show summary list */}
             {isCreatingWeeklyReview ? (
               <form onSubmit={handleSubmitWeeklyReview} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -659,16 +663,6 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
               </div>
 
               <div className="space-y-3">
-                <button
-                  onClick={() => onChangeState({ ...state, onboardingCompleted: false })}
-                  className="flex w-full items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-left transition-all hover:bg-indigo-100"
-                >
-                  <div className="space-y-0.5">
-                    <span className="block text-xs font-bold text-indigo-900">Chạy lại thiết lập ban đầu</span>
-                    <span className="text-[10px] text-indigo-600">Chọn lại mục tiêu tuần, lịch làm việc và mức routine tối thiểu.</span>
-                  </div>
-                  <Sparkles className="h-5 w-5 text-indigo-600" />
-                </button>
                 <button
                   onClick={handleExportJSON}
                   className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition-all hover:border-indigo-200 hover:bg-white"
