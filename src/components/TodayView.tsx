@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Mic, MicOff, Send, HelpCircle, Flame, Calendar, Trash2, Plus, CheckCircle, 
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
-  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock
+  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock, Undo2
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
 import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
@@ -49,7 +49,10 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [isCoaching, setIsCoaching] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [coachAdvice, setCoachAdvice] = useState<any | null>(null);
+  const [coachLens, setCoachLens] = useState<'auto' | 'fund_backtest' | 'b2b_marketing' | 'career' | 'health_beauty'>('auto');
   const [captureExpanded, setCaptureExpanded] = useState(false);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<AppState | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   // Interactive Confirmation State
   const [editableCheckIn, setEditableCheckIn] = useState<{
@@ -441,7 +444,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       const response = await fetch("/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: transcript, state })
+        body: JSON.stringify({ question: transcript, state, preferredLens: coachLens })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "Không thể kết nối Life OS Coach.");
@@ -550,6 +553,31 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       }
     });
 
+    const completedYoga = editableCheckIn.routineUpdates.some(update => {
+      const routine = updatedState.routines.find(item => item.id === update.routineId);
+      return update.suggestedStatus === 'completed' && routine?.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('yoga');
+    });
+    if (completedYoga) {
+      const walkingRoutine = updatedState.routines.find(routine => routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('đi bộ'));
+      if (walkingRoutine) {
+        const existingWalkingLog = (updatedState.routineLogs || []).find(log => log.routineId === walkingRoutine.id && log.date === todayStr);
+        const now = Date.now();
+        const skippedWalking = {
+          id: existingWalkingLog?.id || `routine_log_${walkingRoutine.id}_${todayStr}`,
+          routineId: walkingRoutine.id,
+          goalId: walkingRoutine.goalId,
+          date: todayStr,
+          status: 'skipped' as const,
+          source: 'ai' as const,
+          evidence: 'Được thay bằng Yoga — không tính là bỏ thói quen.',
+          activityId: existingWalkingLog?.activityId || null,
+          createdTimestamp: existingWalkingLog?.createdTimestamp || now,
+          updatedTimestamp: now
+        };
+        updatedState.routineLogs = [skippedWalking, ...(updatedState.routineLogs || []).filter(log => !(log.routineId === walkingRoutine.id && log.date === todayStr))];
+      }
+    }
+
     // 2b. Complete an existing chore or create a newly recognized life-maintenance item.
     editableCheckIn.choreUpdates.forEach((update, index) => {
       const existing = (updatedState.chores || []).find(chore =>
@@ -642,11 +670,19 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       updatedState.scheduleItems = [...(updatedState.scheduleItems || []), ...newScheds];
     }
 
+    setLastSavedSnapshot(state);
+    setSaveNotice(`Đã lưu ${editableCheckIn.activities.length} hoạt động, ${editableCheckIn.taskSuggestions.length} việc và ${editableCheckIn.scheduleSuggestions.length} lịch.`);
     onChangeState(updatedState);
     setShowConfirmModal(false);
     setTranscript("");
     setEditableCheckIn(null);
-    alert("Cập nhật thành công! Mục tiêu, thói quen, chores và lịch trình đã được đồng bộ hoá.");
+  };
+
+  const handleUndoLastSave = () => {
+    if (!lastSavedSnapshot) return;
+    onChangeState(lastSavedSnapshot);
+    setLastSavedSnapshot(null);
+    setSaveNotice("Đã hoàn tác lần lưu gần nhất.");
   };
 
   // Section 1 Helpers: Priority Board
@@ -949,6 +985,25 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               <p className="text-[11px] text-slate-400">Tư vấn theo đúng dữ liệu Fund, B2B hoặc Health của bạn — không tìm kiếm chung.</p>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['auto', 'Tự chọn chuyên gia'],
+                ['fund_backtest', 'Fund & Backtest'],
+                ['b2b_marketing', 'B2B Marketing'],
+                ['career', 'Career 30M+'],
+                ['health_beauty', 'Health & Beauty']
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCoachLens(value as typeof coachLens)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${coachLens === value ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {coachError && (
               <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {coachError}
@@ -985,6 +1040,43 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                 <p className="text-[11px] text-slate-500"><strong>Lý do:</strong> {coachAdvice.reasoning}</p>
                 {coachAdvice.riskNote && <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3"><strong>Lưu ý:</strong> {coachAdvice.riskNote}</p>}
                 {coachAdvice.clarifyingQuestion && <p className="text-xs font-semibold text-indigo-700">Coach cần biết thêm: {coachAdvice.clarifyingQuestion}</p>}
+              </div>
+            )}
+
+            {saveNotice && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">{saveNotice}</p>
+                  <p className="mt-1 text-[10px] text-emerald-700">Bạn luôn có quyền kiểm tra dữ liệu vừa lưu và hoàn tác nếu AI hiểu sai.</p>
+                </div>
+                {lastSavedSnapshot && (
+                  <button type="button" onClick={handleUndoLastSave} className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100">
+                    <Undo2 className="h-3.5 w-3.5" /> Hoàn tác lần lưu
+                  </button>
+                )}
+              </div>
+            )}
+
+            {state.activities.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Dữ liệu vừa ghi nhận</p>
+                  <span className="text-[10px] text-slate-400">3 mục gần nhất</span>
+                </div>
+                <div className="space-y-2">
+                  {state.activities.slice(0, 3).map(activity => {
+                    const goal = state.goals.find(item => item.id === activity.goalId);
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                        <GoalIcon icon={goal?.icon} color={goal?.accentColor} size={14} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] font-bold text-slate-800">{activity.activity}</p>
+                          <p className="mt-0.5 text-[9px] text-slate-400">{goal?.name || 'Chưa phân loại'} · {formatDisplayDate(activity.date)} · {activity.source || 'manual'}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
