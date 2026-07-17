@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, Check, Clock3, Flag, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { Check, Play, Sparkles, Target } from "lucide-react";
 import { AppState, Goal, PriorityTask } from "../types";
 import GoalIcon from "./GoalIcon";
 
@@ -18,33 +18,6 @@ const dateDistance = (from: string, to: string) => {
   const toTime = new Date(`${to}T00:00:00`).getTime();
   if (Number.isNaN(fromTime) || Number.isNaN(toTime)) return 999;
   return Math.ceil((toTime - fromTime) / 86_400_000);
-};
-
-const taskTone = (priority: PriorityTask["priority"]) => {
-  if (priority === "important_urgent") return {
-    card: "border-rose-200 bg-gradient-to-r from-rose-50 to-white hover:border-rose-300",
-    icon: "border-rose-200 bg-rose-100 text-rose-700",
-    badge: "bg-rose-600 text-white",
-    label: "Khẩn cấp"
-  };
-  if (priority === "urgent") return {
-    card: "border-amber-200 bg-gradient-to-r from-amber-50 to-white hover:border-amber-300",
-    icon: "border-amber-200 bg-amber-100 text-amber-700",
-    badge: "bg-amber-100 text-amber-800",
-    label: "Cần làm sớm"
-  };
-  if (priority === "important") return {
-    card: "border-indigo-200 bg-gradient-to-r from-indigo-50 to-white hover:border-indigo-300",
-    icon: "border-indigo-200 bg-indigo-100 text-indigo-700",
-    badge: "bg-indigo-100 text-indigo-800",
-    label: "Quan trọng"
-  };
-  return {
-    card: "border-slate-200 bg-white hover:border-slate-300",
-    icon: "border-slate-200 bg-slate-100 text-slate-600",
-    badge: "bg-slate-100 text-slate-700",
-    label: "Có thể để sau"
-  };
 };
 
 const goalTone = () => "border-slate-200 bg-white hover:border-indigo-200";
@@ -124,12 +97,9 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
     );
   }
 
-  const focusTasks = goalTasks(focusGoal.id).slice(0, 3);
+  const focusTasks = goalTasks(focusGoal.id).slice(0, 1);
+  const nextTask = focusTasks[0] || null;
   const activeMilestone = focusGoal.milestones.find(milestone => !milestone.achieved) || null;
-  const completedMilestones = focusGoal.milestones.filter(milestone => milestone.achieved).length;
-  const recentActivities = state.activities.filter(activity =>
-    activity.goalId === focusGoal.id && dateDistance(activity.date, today) >= 0 && dateDistance(activity.date, today) <= 6
-  ).length;
   const progress = getProgress(focusGoal);
   const focusIndex = activeGoals.findIndex(goal => goal.id === focusGoal.id);
   const focusScore = scoreGoal(focusGoal, focusIndex);
@@ -139,6 +109,27 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       ? "Mục tiêu này đã có block tập trung trong lịch hôm nay."
       : "Được chọn dựa trên mức ưu tiên, nhịp luân phiên và thời gian chưa được cập nhật.";
 
+  const startNextAction = () => {
+    const startedAt = new Date().toISOString();
+    if (nextTask) {
+      onChangeState({ ...state, priorityTasks: (state.priorityTasks || []).map(task => task.id === nextTask.id ? { ...task, startedAt } : task) });
+      return;
+    }
+    const task: PriorityTask = {
+      id: `next_action_${Date.now()}`,
+      title: focusGoal.nextAction || activeMilestone?.title || "Đánh giá bước tiếp theo",
+      goalId: focusGoal.id,
+      milestoneId: activeMilestone?.id || null,
+      priority: 'important',
+      estimatedMinutes: 30,
+      dueDate: today,
+      completed: false,
+      createdAt: startedAt,
+      startedAt
+    };
+    onChangeState({ ...state, priorityTasks: [task, ...(state.priorityTasks || [])] });
+  };
+
   return (
     <section id="section-daily-focus" className="grid grid-cols-1 xl:grid-cols-[1.5fr_0.8fr] gap-4">
       <div className="life-panel overflow-hidden border-t-4 border-t-indigo-600 shadow-[0_20px_50px_rgba(79,70,229,0.10)]">
@@ -147,7 +138,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             <div className="flex items-start gap-3">
               <GoalIcon icon={focusGoal.icon} color={focusGoal.accentColor} size={20} className="rounded-2xl p-3" />
               <div>
-        <p className="life-kicker text-indigo-600">02 · Trọng tâm hôm nay</p>
+        <p className="life-kicker text-indigo-600">01 · Việc tiếp theo tốt nhất</p>
                 <h2 className="mt-2 font-display text-xl font-extrabold tracking-tight text-slate-950">{focusGoal.name}</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">{focusGoal.desiredOutcome}</p>
               </div>
@@ -180,46 +171,30 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             </div>
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-extrabold text-slate-900">Tối đa 3 hành động tạo tiến bộ</p>
-              <span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black text-white">{focusTasks.length} việc</span>
-            </div>
-            <div className="mb-3 flex flex-wrap gap-1.5 text-[9px] font-bold">
-              <span className="rounded-full bg-rose-600 px-2 py-1 text-white">Đỏ · Khẩn cấp</span>
-              <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Vàng · Cần làm sớm</span>
-              <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-800">Chàm · Quan trọng</span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">Xám · Có thể để sau</span>
-            </div>
-            <div className="space-y-2">
-              {focusTasks.length > 0 ? focusTasks.map(task => {
-                const tone = taskTone(task.priority);
-                return (
-                <button key={task.id} onClick={() => toggleTask(task.id)} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition ${tone.card}`}>
-                  <span className={`absolute inset-y-0 left-0 w-1.5 ${task.priority === "important_urgent" ? "bg-rose-500" : task.priority === "urgent" ? "bg-amber-500" : task.priority === "important" ? "bg-indigo-500" : "bg-slate-300"}`} />
-                  <span className={`ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone.icon}`}><Check className="h-4 w-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-bold text-slate-800">{task.title}</span>
-                    <span className="mt-1 flex items-center gap-2 text-[10px] text-slate-500"><span className={`rounded-full px-2 py-0.5 font-black ${tone.badge}`}>{tone.label}</span>{task.estimatedMinutes || 30} phút</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-slate-300" />
-                </button>
-              );}) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-500">Bước tiếp theo: <strong>{focusGoal.nextAction || activeMilestone?.title || "Đánh giá mục tiêu"}</strong></div>
-              )}
+          <div className="rounded-[22px] border border-indigo-200 bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-100">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Làm ngay · {nextTask?.estimatedMinutes || 30} phút</p>
+                <p className="mt-2 text-lg font-black leading-snug">{nextTask?.title || focusGoal.nextAction || activeMilestone?.title || "Đánh giá mục tiêu"}</p>
+                <p className="mt-2 text-xs text-indigo-100">Hoàn thành việc này sẽ tạo bằng chứng cho cột mốc “{activeMilestone?.title || focusGoal.currentMilestone}”.</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={startNextAction} className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-indigo-700 shadow-sm"><Play className="h-4 w-4" />{nextTask?.startedAt ? 'Tiếp tục' : 'Bắt đầu'}</button>
+                {nextTask && <button type="button" onClick={() => toggleTask(nextTask.id)} aria-label="Đánh dấu hoàn thành" className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white/20"><Check className="h-4 w-4" /></button>}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-start gap-2 rounded-2xl bg-indigo-50 p-3 text-[11px] leading-relaxed text-indigo-800">
+          <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
-            <span><strong>Vì sao được chọn:</strong> {focusReason} <span className="text-indigo-500">Điểm ưu tiên {Math.round(focusScore)}.</span></span>
+            <span><strong>Vì sao việc này đứng đầu:</strong> {focusReason} <span className="text-slate-400">Điểm ưu tiên {Math.round(focusScore)}.</span></span>
           </div>
         </div>
       </div>
 
       <div className="life-panel border-t-4 border-t-slate-300 p-5 md:p-6 space-y-5">
         <div>
-          <div className="flex items-center justify-between gap-3"><p className="life-kicker text-slate-500">Maintenance goals</p><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-700">{maintenanceGoals.length} mục tiêu</span></div>
+          <div className="flex items-center justify-between gap-3"><p className="life-kicker text-slate-500">Mục tiêu duy trì</p><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-700">{maintenanceGoals.length} mục tiêu</span></div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Giữ nhịp, không tạo áp lực</h2>
           <p className="mt-1 text-xs text-slate-400">Mỗi mục tiêu chỉ cần một hành động tối thiểu.</p>
         </div>
@@ -243,14 +218,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
           })}
         </div>
 
-        <div className="border-t border-slate-100 pt-4">
-          <p className="mb-3 text-xs font-extrabold text-slate-900">Đánh giá vị trí hiện tại</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-indigo-50 p-3"><Flag className="h-4 w-4 text-indigo-600" /><p className="mt-2 text-lg font-black text-indigo-900">{completedMilestones}/{focusGoal.milestones.length}</p><p className="text-[9px] text-indigo-600">Cột mốc</p></div>
-            <div className="rounded-xl bg-emerald-50 p-3"><ShieldCheck className="h-4 w-4 text-emerald-600" /><p className="mt-2 text-lg font-black text-emerald-900">{recentActivities}</p><p className="text-[9px] text-emerald-600">Check-in 7 ngày</p></div>
-            <div className="col-span-2 rounded-xl bg-slate-950 p-3 text-white"><Clock3 className="h-4 w-4 text-indigo-300" /><p className="mt-2 text-xs font-bold">Outcome cần theo dõi</p><p className="mt-1 text-[10px] leading-relaxed text-slate-400">{focusGoal.mainMetric}</p></div>
-          </div>
-        </div>
+        <p className="border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-500">Chỉ cần giữ nhịp tối thiểu ở đây. Cột mốc, outcome và phân tích chi tiết nằm trong màn <strong>Kết quả</strong>.</p>
       </div>
     </section>
   );
