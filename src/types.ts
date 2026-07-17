@@ -79,6 +79,8 @@ export interface ActivityEntry {
   activity: string;
   output: Record<string, any>;
   outcome: Record<string, any>;
+  outcomeStatus?: 'pending' | 'measured' | 'not_applicable';
+  outcomeReviewDate?: string | null;
   insight: string | null;
   nextAction: string | null;
   confidence: number;
@@ -356,6 +358,8 @@ export interface AppState {
   weeklySupportGoalIds?: string[];
   onboardingCompleted?: boolean;
   activeFocusSession?: FocusSession | null;
+  dailyMode?: 'normal' | 'busy' | 'recovery';
+  dailyModeDate?: string | null;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
