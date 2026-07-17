@@ -331,6 +331,7 @@ export default function App() {
               <TodayView 
                 state={state} 
                 onChangeState={handleUpdateState} 
+                onOpenProgress={() => setActiveTab('progress')}
               />
             )}
 
