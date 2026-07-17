@@ -14,9 +14,10 @@ import LifeOperations from "./LifeOperations";
 interface TodayViewProps {
   state: AppState;
   onChangeState: (newState: AppState) => void;
+  onOpenProgress?: () => void;
 }
 
-export default function TodayView({ state, onChangeState }: TodayViewProps) {
+export default function TodayView({ state, onChangeState, onOpenProgress }: TodayViewProps) {
   // Helpers
   const getHoChiMinhDate = (daysOffset = 0) => {
     const date = new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000);
@@ -929,6 +930,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     return j ? j.name : "Hành trình";
   };
 
+  const dueOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending' && activity.outcomeReviewDate && activity.outcomeReviewDate <= todayStr);
+
   return (
     <div id="today-dashboard-view" className="space-y-8">
 
@@ -938,6 +941,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         currentDay={currentDay}
         onChangeState={onChangeState}
       />
+
+      {dueOutcomes.length > 0 && <section className="flex flex-col gap-3 rounded-[22px] border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white"><CalendarClock className="h-4 w-4" /></span><div><p className="text-xs font-black text-violet-950">{dueOutcomes.length} kết quả cần kiểm tra hôm nay</p><p className="mt-1 text-xs text-violet-700">{dueOutcomes.slice(0, 2).map(item => item.activity).join(' · ')}{dueOutcomes.length > 2 ? ` · +${dueOutcomes.length - 2} việc` : ''}</p></div></div><button onClick={onOpenProgress} className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white">Cập nhật kết quả</button></section>}
       
       {/* 2. VOICE / TEXT CHECK-IN — CAPTURE AFTER THE USER KNOWS WHAT TO DO */}
       <section id="section-quick-input" className={`relative overflow-hidden rounded-[28px] border border-slate-800 bg-slate-950 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl ${captureExpanded ? "space-y-5 p-5 md:p-7" : "p-4 md:p-5"}`}>
