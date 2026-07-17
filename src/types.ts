@@ -305,11 +305,39 @@ export interface ScheduleItem {
   reminderMinutes?: number;
 }
 
+export interface AIChangeRecord {
+  id: string;
+  createdAt: string;
+  summary: string;
+  source: 'voice' | 'text' | 'coach';
+  status: 'applied' | 'undone';
+  beforeState: string;
+  counts: {
+    activities: number;
+    tasks: number;
+    schedules: number;
+  };
+}
+
+export interface CoachHistoryEntry {
+  id: string;
+  createdAt: string;
+  expertLens: string;
+  question: string;
+  diagnosis: string;
+  nextAction: string;
+  successMetric: string;
+  reasoning?: string;
+  status: 'saved' | 'applied';
+}
+
 export interface AppState {
   startDate: string;
   endDate: string;
   dailyFocusGoalId?: string | null;
   dailyFocusDate?: string | null;
+  weeklyFocusGoalId?: string | null;
+  weeklySupportGoalIds?: string[];
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
@@ -324,6 +352,8 @@ export interface AppState {
   lifestyleRecords: Record<string, LifestyleRecord>; // date string -> Record
   batchTestRecords: BatchTestRecord[];
   evidenceRecommendations?: EvidenceRecommendation[];
+  aiChangeHistory?: AIChangeRecord[];
+  coachHistory?: CoachHistoryEntry[];
   priorityTasks?: PriorityTask[];
   scheduleItems?: ScheduleItem[];
   weeklyAvailability?: WeeklyAvailability[];
