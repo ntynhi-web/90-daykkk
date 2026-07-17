@@ -57,6 +57,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
     .sort((a, b) => b.count - a.count)[0];
   const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
+  const allMilestones = state.goals.flatMap(goal => goal.milestones);
+  const completedMilestones = allMilestones.filter(milestone => milestone.achieved).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
   const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
     ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
@@ -78,14 +80,15 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     if (!routine.scheduleDays?.length) return true;
     return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
   };
-  const routineOpportunities = state.routines.flatMap(routine => eligibleRoutineDays
+  const activeRoutines = state.routines.filter(routine => routine.active !== false);
+  const routineOpportunities = activeRoutines.flatMap(routine => eligibleRoutineDays
     .filter(date => routineIsDue(routine, date))
     .filter(date => !routineLogs.some(log => log.routineId === routine.id && log.date === date && log.status === 'skipped'))
     .map(date => `${routine.id}:${date}`));
   const completedRoutineLogs = routineLogs.filter(log =>
     eligibleRoutineDays.includes(log.date) &&
     (log.status === 'minimum' || log.status === 'completed') &&
-    state.routines.some(routine => routine.id === log.routineId && routineIsDue(routine, log.date))
+    activeRoutines.some(routine => routine.id === log.routineId && routineIsDue(routine, log.date))
   );
   const totalRoutineOpportunities = routineOpportunities.length;
   const routinesRatio = totalRoutineOpportunities > 0
@@ -351,19 +354,19 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
           >
             <section className="grid gap-3 md:grid-cols-3">
               <div className="rounded-[22px] border border-indigo-100 bg-indigo-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Đã làm</span>
-                <p className="mt-2 text-2xl font-black text-slate-950">{state.activities.length} hoạt động</p>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Execution</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{state.activities.length} bằng chứng</p>
                 <p className="mt-1 text-xs text-slate-600">Tập trung nhiều nhất: <strong>{topActivityGoal?.goal.name || "chưa có dữ liệu"}</strong>.</p>
               </div>
               <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Có kết quả</span>
-                <p className="mt-2 text-2xl font-black text-slate-950">{outcomeCount} phản hồi</p>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Outcome</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{outcomeCount} kết quả</p>
                 <p className="mt-1 text-xs text-slate-600">B2B: {state.b2bLeads.length} lead · {b2bStatusCounts.paying} khách trả phí.</p>
               </div>
               <div className="rounded-[22px] border border-amber-100 bg-amber-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Nên điều chỉnh</span>
-                <p className="mt-2 text-lg font-black text-slate-950">{routinesRatio >= 70 ? "Giữ nhịp hiện tại" : "Thu nhỏ mức tối thiểu"}</p>
-                <p className="mt-1 text-xs text-slate-600">Routine đạt {routinesRatio}% trong 15 ngày; Yoga thay đi bộ vẫn được tính đúng.</p>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Milestone</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{completedMilestones}/{allMilestones.length} cột mốc</p>
+                <p className="mt-1 text-xs text-slate-600">Nhịp routine 15 ngày: {routinesRatio}%. {routinesRatio >= 70 ? "Đang bền vững." : "Nên thu nhỏ mức tối thiểu."}</p>
               </div>
             </section>
 
