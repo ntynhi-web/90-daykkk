@@ -94,6 +94,19 @@ export interface Routine {
   target: string;
   evidence: string;
   status: 'completed' | 'pending' | 'missed';
+  /** 0 = Chủ nhật, 1 = Thứ hai ... 6 = Thứ bảy. Bỏ trống nghĩa là mỗi ngày. */
+  scheduleDays?: number[];
+  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'any';
+  /** Các routine cùng nhóm có thể thay thế nhau trong một ngày. */
+  substitutionGroup?: 'movement';
+}
+
+export interface WeeklyAvailability {
+  dayOfWeek: number;
+  mode: 'office' | 'home' | 'rest';
+  label: string;
+  blockedStart?: string;
+  blockedEnd?: string;
 }
 
 export interface RoutineLog {
@@ -313,4 +326,5 @@ export interface AppState {
   evidenceRecommendations?: EvidenceRecommendation[];
   priorityTasks?: PriorityTask[];
   scheduleItems?: ScheduleItem[];
+  weeklyAvailability?: WeeklyAvailability[];
 }
