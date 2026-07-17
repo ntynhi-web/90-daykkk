@@ -293,6 +293,10 @@ export interface PriorityTask {
   startedAt?: string | null;
   status?: 'ready' | 'in_progress' | 'blocked' | 'waiting' | 'completed' | 'dropped';
   blockedReason?: string | null;
+  waitingUntil?: string | null;
+  requiresOutcome?: boolean;
+  successMetric?: string | null;
+  activityType?: 'execution' | 'experiment' | 'outreach' | 'application' | 'health' | 'maintenance';
 }
 
 export interface FocusSession {
