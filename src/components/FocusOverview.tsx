@@ -22,6 +22,7 @@ const dateDistance = (from: string, to: string) => {
 
 export default function FocusOverview({ state, today, currentDay, onChangeState }: FocusOverviewProps) {
   const [showCompletion, setShowCompletion] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
   const [completionStep, setCompletionStep] = useState<1 | 2>(1);
   const [output, setOutput] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -34,6 +35,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
     const date = new Date(); date.setDate(date.getDate() + 1); return date.toISOString().split('T')[0];
   });
   const [outcomeStatus, setOutcomeStatus] = useState<'pending' | 'measured' | 'not_applicable'>('pending');
+  const [outcomeDecision, setOutcomeDecision] = useState<'continue' | 'adjust' | 'pause' | 'insufficient_data'>('insufficient_data');
   const [outcomeReviewDate, setOutcomeReviewDate] = useState(() => {
     const date = new Date(); date.setDate(date.getDate() + 3); return date.toISOString().split('T')[0];
   });
@@ -191,6 +193,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       outcome: taskNeedsOutcome && outcomeStatus === 'measured' && outcome.trim() ? { result: outcome.trim() } : {},
       outcomeStatus: taskNeedsOutcome && completionKind !== 'blocked' ? outcomeStatus : 'not_applicable',
       outcomeReviewDate: taskNeedsOutcome && completionKind !== 'blocked' && outcomeStatus === 'pending' ? outcomeReviewDate : null,
+      outcomeDecision: taskNeedsOutcome && outcomeStatus === 'measured' ? outcomeDecision : taskNeedsOutcome ? 'insufficient_data' : null,
       insight: insight.trim() || null,
       nextAction: nextAction.trim() || null,
       confidence: outcomeStatus === 'measured' && outcome.trim() ? 0.9 : 0.7,
@@ -223,13 +226,13 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         status: completionKind === 'done' ? 'completed' as const : completionKind === 'blocked' ? 'blocked' as const : 'ready' as const,
         blockedReason: completionKind === 'blocked' ? output.trim() : null,
         waitingUntil: completionKind === 'blocked' ? blockedReviewDate : null,
-        description: completionKind === 'blocked' && blockedNeed.trim() ? `${task.description || ''}\nCần để gỡ chặn: ${blockedNeed.trim()}`.trim() : task.description
+        description: completionKind === 'blocked' && blockedNeed.trim() ? `${task.description || ''}\nCần để gỡ chặn: ${blockedNeed.trim()}`.trim() : completionKind === 'partial' ? `${task.description || ''}\nPhần đã làm: ${output.trim()}`.trim() : task.description
       } : task),
       scheduleItems: (state.scheduleItems || []).map(item => item.taskId === session.taskId && completionKind === 'done' ? { ...item, completed: true } : item),
       activeFocusSession: null
     });
     setShowCompletion(false);
-    setCompletionStep(1); setCompletionKind('done'); setBlockedNeed(''); setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false); setOutcomeStatus('pending');
+    setCompletionStep(1); setCompletionKind('done'); setBlockedNeed(''); setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false); setOutcomeStatus('pending'); setOutcomeDecision('insufficient_data');
   };
 
   return (
@@ -285,13 +288,13 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       </div>
 
       <div className="rounded-[28px] border border-sky-200 bg-sky-50/80 p-5 shadow-[0_16px_40px_rgba(14,165,233,0.08)] md:p-6 space-y-5">
-        <div>
+        <button type="button" onClick={() => setShowSupport(value => !value)} className="flex w-full items-start justify-between gap-4 text-left"><div>
           <div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Việc hỗ trợ</p><span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-sky-800 ring-1 ring-sky-200">{maintenanceGoals.length}</span></div>
-          <h2 className="mt-2 font-display text-xl font-black text-slate-950">Làm sau khi xong việc chính</h2>
-          <p className="mt-1 text-sm text-slate-600">Không cạnh tranh với ưu tiên số 1.</p>
-        </div>
+          <h2 className="mt-2 font-display text-xl font-black text-slate-950">Sau việc chính còn {maintenanceGoals.length} việc hỗ trợ</h2>
+          <p className="mt-1 text-sm text-slate-600">{showSupport ? 'Thu gọn để quay lại trọng tâm.' : 'Bấm để xem khi bạn thực sự cần.'}</p>
+        </div><ArrowRight className={`mt-2 h-5 w-5 text-sky-700 transition ${showSupport ? 'rotate-90' : ''}`} /></button>
 
-        <div className="space-y-3">
+        {showSupport && <><div className="space-y-3">
           {maintenanceGoals.map(goal => {
             const routine = state.routines.find(item => item.goalId === goal.id && item.active !== false && item.status !== "completed");
             const task = goalTasks(goal.id)[0];
@@ -310,7 +313,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
           })}
         </div>
 
-        <p className="border-t border-sky-200 pt-4 text-sm leading-relaxed text-slate-600">Chỉ mở các việc này sau khi hoàn thành hoặc chủ động đổi ưu tiên số 1.</p>
+        <p className="border-t border-sky-200 pt-4 text-sm leading-relaxed text-slate-600">Chỉ mở các việc này sau khi hoàn thành hoặc chủ động đổi ưu tiên số 1.</p></>}
       </div>
 
       {showCompletion && session && (
@@ -321,6 +324,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
               <div className="grid grid-cols-3 gap-2">{([['pending','Chưa có'],['measured','Đã có'],['not_applicable','Không cần']] as const).map(([status,label]) => <button key={status} onClick={() => setOutcomeStatus(status)} className={`rounded-xl border px-2 py-2.5 text-xs font-black ${outcomeStatus === status ? 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div>
               {outcomeStatus === 'pending' && <label className="block"><span className="text-xs font-black text-slate-700">Nhắc kiểm tra kết quả vào ngày</span><input type="date" value={outcomeReviewDate} onChange={event => setOutcomeReviewDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>}
               {outcomeStatus === 'measured' && <label className="block"><span className="text-xs font-black text-slate-700">Kết quả ban đầu</span><textarea value={outcome} onChange={event => setOutcome(event.target.value)} placeholder="Ví dụ: tìm thấy 2 lỗi lặp lại trong setup" className="mt-1.5 min-h-20 w-full rounded-2xl border border-slate-200 p-3 text-sm" /></label>}
+              {outcomeStatus === 'measured' && <div><p className="mb-2 text-sm font-black text-slate-700">Kết luận từ kết quả này</p><div className="grid grid-cols-2 gap-2">{([['continue','Tiếp tục'],['adjust','Điều chỉnh'],['pause','Tạm dừng'],['insufficient_data','Chưa đủ dữ liệu']] as const).map(([decision,label]) => <button key={decision} onClick={() => setOutcomeDecision(decision)} className={`rounded-xl border px-3 py-2.5 text-xs font-black ${outcomeDecision === decision ? 'border-violet-300 bg-violet-50 text-violet-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div></div>}
               <div className="grid gap-3 sm:grid-cols-2"><label><span className="text-xs font-black text-slate-700">Bài học · tùy chọn</span><input value={insight} onChange={event => setInsight(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label><span className="text-xs font-black text-slate-700">Bước tiếp theo · tùy chọn</span><input value={nextAction} onChange={event => setNextAction(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>
               {session.milestoneId && <label className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-900"><input type="checkbox" checked={completeMilestone} onChange={event => setCompleteMilestone(event.target.checked)} className="mt-0.5" /><span>Đủ bằng chứng để hoàn thành cột mốc hiện tại.</span></label>}
               <div className="flex gap-2"><button onClick={() => setCompletionStep(1)} className="rounded-xl border border-slate-200 px-4 py-3 text-xs font-black text-slate-600">Quay lại</button><button onClick={completeSession} disabled={outcomeStatus === 'measured' && !outcome.trim()} className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40">Lưu & hoàn thành</button></div>
