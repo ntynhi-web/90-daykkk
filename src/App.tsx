@@ -8,6 +8,7 @@ import ProgressView from "./components/ProgressView";
 import ReviewView from "./components/ReviewView";
 import CalendarView from "./components/CalendarView";
 import AuthScreen from "./components/AuthScreen";
+import OnboardingFlow from "./components/OnboardingFlow";
 import { User, firebaseConfigured, loadUserState, observeAuth, saveUserState, signOutCurrentUser } from "./firebase";
 
 const LOCAL_STORAGE_KEY = "90day_life_os_state_v1";
@@ -124,6 +125,7 @@ export default function App() {
 
   return (
     <div id="app-root" className="life-canvas min-h-screen text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-100 selection:text-indigo-950">
+      {!state.onboardingCompleted && <OnboardingFlow state={state} onChangeState={handleUpdateState} />}
       
       {/* DESKTOP SIDEBAR (SLIM WHITE STYLE) */}
       <aside className="hidden md:flex flex-col w-64 bg-white text-slate-800 h-screen sticky top-0 shrink-0 border-r border-slate-200/80 z-40">
