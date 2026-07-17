@@ -9,19 +9,22 @@ interface DailyRoutineCheckinProps {
   onChangeState: (state: AppState) => void;
 }
 
-const routineTone = (goalId: string, completed: boolean) => {
-  if (completed) return "border-emerald-300 bg-gradient-to-br from-emerald-100 to-white shadow-sm";
-  if (goalId === "G1") return "border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm";
-  if (goalId === "G2") return "border-sky-200 bg-gradient-to-br from-sky-50 to-white shadow-sm";
-  if (goalId === "G3") return "border-rose-200 bg-gradient-to-br from-rose-50 to-white shadow-sm";
-  return "border-slate-200 bg-gradient-to-br from-slate-50 to-white";
+const routineTone = (status?: RoutineLog['status']) => {
+  if (status === "completed" || status === "minimum") return "border-emerald-300 bg-emerald-50/70 shadow-sm";
+  if (status === "skipped") return "border-slate-200 bg-slate-50/80";
+  return "border-slate-200 bg-white hover:border-slate-300";
 };
 
 export default function DailyRoutineCheckin({ state, today, onChangeState }: DailyRoutineCheckinProps) {
   const [expanded, setExpanded] = useState(false);
   const activeGoals = state.goals.filter(goal => goal.status === "active");
   const activeGoalIds = new Set(activeGoals.map(goal => goal.id));
-  const routines = state.routines.filter(routine => activeGoalIds.has(routine.goalId));
+  const weekday = new Date(`${today}T12:00:00`).getDay();
+  const scheduledRoutines = state.routines.filter(routine =>
+    activeGoalIds.has(routine.goalId) && (!routine.scheduleDays?.length || routine.scheduleDays.includes(weekday))
+  );
+  const yogaDue = scheduledRoutines.some(routine => routine.substitutionGroup === "movement" && routine.name.toLowerCase().includes("yoga"));
+  const routines = scheduledRoutines.filter(routine => !(yogaDue && routine.substitutionGroup === "movement" && routine.name.toLowerCase().includes("đi bộ")));
   const logs = state.routineLogs || [];
 
   const recommendedIds = useMemo(() => new Set(
@@ -32,7 +35,10 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
 
   const visibleRoutines = expanded ? routines : routines.filter(routine => recommendedIds.has(routine.id));
   const todayLogs = logs.filter(log => log.date === today);
-  const completedCount = todayLogs.filter(log => log.status === "minimum" || log.status === "completed").length;
+  const completedCount = routines.filter(routine => {
+    const log = todayLogs.find(item => item.routineId === routine.id);
+    return log?.status === "minimum" || log?.status === "completed";
+  }).length;
 
   const getLog = (routineId: string) => todayLogs.find(log => log.routineId === routineId);
 
@@ -58,6 +64,26 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
         updatedTimestamp: now
       };
       nextLogs = [nextLog, ...logs.filter(log => !(log.routineId === routine.id && log.date === today))];
+
+      if (routine.substitutionGroup === "movement" && routine.name.toLowerCase().includes("yoga")) {
+        const walkingRoutine = state.routines.find(item => item.substitutionGroup === "movement" && item.name.toLowerCase().includes("đi bộ"));
+        if (walkingRoutine) {
+          const existingWalkingLog = logs.find(log => log.routineId === walkingRoutine.id && log.date === today);
+          const skippedWalking: RoutineLog = {
+            id: existingWalkingLog?.id || `routine_log_${walkingRoutine.id}_${today}`,
+            routineId: walkingRoutine.id,
+            goalId: walkingRoutine.goalId,
+            date: today,
+            status: "skipped",
+            source: "manual",
+            evidence: "Được thay bằng buổi yoga — không tính là bỏ thói quen.",
+            activityId: existingWalkingLog?.activityId || null,
+            createdTimestamp: existingWalkingLog?.createdTimestamp || now,
+            updatedTimestamp: now
+          };
+          nextLogs = [skippedWalking, ...nextLogs.filter(log => !(log.routineId === walkingRoutine.id && log.date === today))];
+        }
+      }
     }
 
     onChangeState({
@@ -93,13 +119,14 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
           const goal = state.goals.find(item => item.id === routine.goalId);
           const log = getLog(routine.id);
           return (
-            <div key={routine.id} className={`relative overflow-hidden rounded-2xl border p-4 transition ${routineTone(routine.goalId, !!log)}`}>
-              <span className={`absolute inset-x-0 top-0 h-1 ${log ? "bg-emerald-500" : routine.goalId === "G1" ? "bg-violet-500" : routine.goalId === "G2" ? "bg-sky-500" : "bg-rose-500"}`} />
+            <div key={routine.id} className={`relative overflow-hidden rounded-2xl border p-4 transition ${routineTone(log?.status)}`}>
+              <span className={`absolute inset-y-0 left-0 w-1 ${log ? "bg-emerald-500" : "bg-slate-300"}`} />
               <div className="flex items-start gap-3">
                 <GoalIcon icon={goal?.icon} color={goal?.accentColor} size={15} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-extrabold text-slate-900">{routine.name}</p>
                   <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-400">{log?.evidence || `Tối thiểu: ${routine.minimumDay}`}</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">{goal?.name || "Mục tiêu"} · {routine.frequency}</p>
                 </div>
                 {log ? <span className="rounded-full bg-emerald-600 p-1 text-white"><Check className="h-3 w-3" /></span> : <Circle className="h-4 w-4 shrink-0 text-slate-300" />}
               </div>
@@ -116,6 +143,12 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
           );
         })}
       </div>
+
+      {yogaDue && (
+        <div className="mx-5 mb-4 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-[10px] font-medium text-indigo-700">
+          Hôm nay có Yoga nên “Đi bộ vận động” được tự động thay thế, không bị tính là bỏ thói quen.
+        </div>
+      )}
 
       <div className="flex items-start gap-2 border-t border-slate-100 bg-indigo-50/50 px-5 py-3 text-[10px] leading-relaxed text-indigo-700">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
