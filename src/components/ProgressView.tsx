@@ -56,6 +56,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
   const topActivityGoal = state.goals
     .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
     .sort((a, b) => b.count - a.count)[0];
+  const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
   const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
     ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
@@ -348,14 +349,21 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
-            {/* Storytelling Narrative Summary Section */}
-            <section className="bg-white border border-slate-200/80 rounded-[24px] p-8 relative overflow-hidden shadow-xs">
-              <div className="absolute top-0 left-0 w-[6px] h-full bg-[#4648d4]" />
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">Bản tóm tắt định tính từ AI</span>
-                <p className="font-display font-medium text-base md:text-lg text-[#0b1c30] leading-relaxed italic">
-                  “Bạn đã ghi nhận <span className="bg-[#eff4ff] text-[#4648d4] px-1.5 py-0.5 rounded font-bold font-mono">{state.activities.length} hoạt động</span>. Mục tiêu nhận nhiều nỗ lực nhất là <span className="font-bold">{topActivityGoal?.goal.name || "chưa đủ dữ liệu"}</span> ({topActivityGoal?.count || 0} hoạt động). Độ đều đặn routine đạt <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold font-mono">{routinesRatio}%</span> trên đúng những ngày được lên lịch; ngày Yoga thay đi bộ không bị tính là bỏ cuộc. Cân nặng hiện tại <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-bold">{g3CurrentWeight} kg</span>, hướng tới {g3TargetWeight} kg. B2B có {state.b2bLeads.length} lead và {b2bStatusCounts.paying} khách trả phí.”
-                </p>
+            <section className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-[22px] border border-indigo-100 bg-indigo-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Đã làm</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{state.activities.length} hoạt động</p>
+                <p className="mt-1 text-xs text-slate-600">Tập trung nhiều nhất: <strong>{topActivityGoal?.goal.name || "chưa có dữ liệu"}</strong>.</p>
+              </div>
+              <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Có kết quả</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{outcomeCount} phản hồi</p>
+                <p className="mt-1 text-xs text-slate-600">B2B: {state.b2bLeads.length} lead · {b2bStatusCounts.paying} khách trả phí.</p>
+              </div>
+              <div className="rounded-[22px] border border-amber-100 bg-amber-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Nên điều chỉnh</span>
+                <p className="mt-2 text-lg font-black text-slate-950">{routinesRatio >= 70 ? "Giữ nhịp hiện tại" : "Thu nhỏ mức tối thiểu"}</p>
+                <p className="mt-1 text-xs text-slate-600">Routine đạt {routinesRatio}% trong 15 ngày; Yoga thay đi bộ vẫn được tính đúng.</p>
               </div>
             </section>
 
@@ -406,7 +414,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-4 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">PHÂN BỔ TÂM TRÍ</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Mindshare Breakdown</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Phân bổ sự chú ý</h3>
                 </div>
 
                 {/* Nice CSS-based donut/stat circle representation */}
