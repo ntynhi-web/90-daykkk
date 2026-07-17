@@ -5,13 +5,11 @@ import {
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock, Undo2
 } from "lucide-react";
-import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
+import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency, CoachHistoryEntry } from "../types";
 import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
-import DailyRoutineCheckin from "./DailyRoutineCheckin";
-import LifeMaintenance from "./LifeMaintenance";
-import LifeAnchors from "./LifeAnchors";
+import LifeOperations from "./LifeOperations";
 
 interface TodayViewProps {
   state: AppState;
@@ -51,7 +49,6 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [coachAdvice, setCoachAdvice] = useState<any | null>(null);
   const [coachLens, setCoachLens] = useState<'auto' | 'fund_backtest' | 'b2b_marketing' | 'career' | 'health_beauty'>('auto');
   const [captureExpanded, setCaptureExpanded] = useState(false);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<AppState | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   // Interactive Confirmation State
@@ -461,6 +458,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     if (!editableCheckIn) return;
 
     let updatedState = { ...state };
+    const { aiChangeHistory: _history, ...stateBeforeAIChange } = state;
 
     // 0. Apply a confirmed 90-day cycle command and preserve the plan's relative timing.
     if (editableCheckIn.cycleUpdate) {
@@ -670,7 +668,20 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       updatedState.scheduleItems = [...(updatedState.scheduleItems || []), ...newScheds];
     }
 
-    setLastSavedSnapshot(state);
+    const changeRecord = {
+      id: `ai_change_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      summary: editableCheckIn.summary || "Cập nhật từ check-in AI",
+      source: (isRecording ? "voice" : "text") as 'voice' | 'text',
+      status: "applied" as const,
+      beforeState: JSON.stringify(stateBeforeAIChange),
+      counts: {
+        activities: editableCheckIn.activities.length,
+        tasks: editableCheckIn.taskSuggestions.length,
+        schedules: editableCheckIn.scheduleSuggestions.length
+      }
+    };
+    updatedState.aiChangeHistory = [changeRecord, ...(state.aiChangeHistory || [])].slice(0, 5);
     setSaveNotice(`Đã lưu ${editableCheckIn.activities.length} hoạt động, ${editableCheckIn.taskSuggestions.length} việc và ${editableCheckIn.scheduleSuggestions.length} lịch.`);
     onChangeState(updatedState);
     setShowConfirmModal(false);
@@ -679,10 +690,49 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   };
 
   const handleUndoLastSave = () => {
-    if (!lastSavedSnapshot) return;
-    onChangeState(lastSavedSnapshot);
-    setLastSavedSnapshot(null);
+    const latestApplied = (state.aiChangeHistory || []).find(change => change.status === 'applied');
+    if (!latestApplied) return;
+    try {
+      const restored = JSON.parse(latestApplied.beforeState) as AppState;
+      const nextHistory = (state.aiChangeHistory || []).map(change => change.id === latestApplied.id ? { ...change, status: 'undone' as const } : change);
+      onChangeState({ ...restored, aiChangeHistory: nextHistory, coachHistory: state.coachHistory || restored.coachHistory || [] });
+    } catch {
+      setSaveNotice("Không thể hoàn tác bản ghi này. Dữ liệu hiện tại vẫn được giữ nguyên.");
+      return;
+    }
     setSaveNotice("Đã hoàn tác lần lưu gần nhất.");
+  };
+
+  const saveCoachAdvice = (status: CoachHistoryEntry['status']) => {
+    if (!coachAdvice) return;
+    const entry: CoachHistoryEntry = {
+      id: `coach_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      expertLens: coachAdvice.expertLens || coachLens,
+      question: transcript,
+      diagnosis: coachAdvice.diagnosis || "",
+      nextAction: coachAdvice.nextAction || "",
+      successMetric: coachAdvice.successMetric || "",
+      reasoning: coachAdvice.reasoning,
+      status
+    };
+    const nextState: AppState = { ...state, coachHistory: [entry, ...(state.coachHistory || [])].slice(0, 20) };
+    if (status === 'applied' && entry.nextAction) {
+      const lensCategory = coachLens === 'fund_backtest' ? 'fund_backtest' : coachLens === 'career' ? 'career' : coachLens === 'health_beauty' ? 'health' : 'business';
+      const linkedGoal = state.goals.find(goal => goal.category === lensCategory) || state.goals.find(goal => goal.id === state.weeklyFocusGoalId);
+      nextState.priorityTasks = [{
+        id: `coach_task_${Date.now()}`,
+        title: entry.nextAction,
+        priority: 'important',
+        completed: false,
+        journeyId: linkedGoal?.id || null,
+        dueDate: todayStr,
+        createdAt: new Date().toISOString()
+      }, ...(state.priorityTasks || [])];
+    }
+    onChangeState(nextState);
+    setSaveNotice(status === 'applied' ? "Đã đưa việc coach đề xuất vào ưu tiên hôm nay." : "Đã lưu đề xuất vào Lịch sử AI.");
+    setCoachAdvice(null);
   };
 
   // Section 1 Helpers: Priority Board
@@ -1040,6 +1090,11 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                 <p className="text-[11px] text-slate-500"><strong>Lý do:</strong> {coachAdvice.reasoning}</p>
                 {coachAdvice.riskNote && <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3"><strong>Lưu ý:</strong> {coachAdvice.riskNote}</p>}
                 {coachAdvice.clarifyingQuestion && <p className="text-xs font-semibold text-indigo-700">Coach cần biết thêm: {coachAdvice.clarifyingQuestion}</p>}
+                <div className="flex flex-wrap gap-2 border-t border-indigo-100 pt-3">
+                  <button type="button" onClick={() => saveCoachAdvice('applied')} className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-700">Áp dụng việc tiếp theo</button>
+                  <button type="button" onClick={() => saveCoachAdvice('saved')} className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Lưu để xem sau</button>
+                  <button type="button" onClick={() => setCoachAdvice(null)} className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white">Bỏ qua</button>
+                </div>
               </div>
             )}
 
@@ -1049,7 +1104,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                   <p className="text-xs font-bold text-emerald-900">{saveNotice}</p>
                   <p className="mt-1 text-[10px] text-emerald-700">Bạn luôn có quyền kiểm tra dữ liệu vừa lưu và hoàn tác nếu AI hiểu sai.</p>
                 </div>
-                {lastSavedSnapshot && (
+                {(state.aiChangeHistory || []).some(change => change.status === 'applied') && (
                   <button type="button" onClick={handleUndoLastSave} className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100">
                     <Undo2 className="h-3.5 w-3.5" /> Hoàn tác lần lưu
                   </button>
@@ -1175,19 +1230,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
-      <LifeAnchors
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
-      <DailyRoutineCheckin
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
-      <LifeMaintenance
+      <LifeOperations
         state={state}
         today={todayStr}
         onChangeState={onChangeState}
