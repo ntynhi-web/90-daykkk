@@ -24,7 +24,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
     { id: 'database' as const, label: 'Sao lưu', description: 'Bảo vệ và xuất dữ liệu', icon: HardDriveDownload }
   ];
 
-  // Daily review form state
+  // Weekly review form state
   const [weeklyForm, setWeeklyForm] = useState({
     date: new Date().toISOString().split('T')[0],
     planned: "",
@@ -125,16 +125,32 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
     }
   };
 
-  // Submit Daily Review
+  // Submit a true weekly review: one record represents Monday–Sunday, not one day.
   const handleSubmitWeeklyReview = (e: React.FormEvent) => {
     e.preventDefault();
-    const nextDayNumber = state.weeklyReviews.length + 1;
+    const selectedDate = new Date(`${weeklyForm.date}T12:00:00`);
+    const mondayOffset = (selectedDate.getDay() + 6) % 7;
+    const weekStart = new Date(selectedDate);
+    weekStart.setDate(selectedDate.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const toDate = (date: Date) => date.toISOString().split('T')[0];
+    const startDate = toDate(weekStart);
+    const endDate = toDate(weekEnd);
+    const cycleStart = new Date(`${state.startDate}T12:00:00`);
+    const weekNumber = Math.max(1, Math.floor((weekStart.getTime() - cycleStart.getTime()) / (7 * 86_400_000)) + 1);
+    const weekActivities = state.activities.filter(activity => activity.date >= startDate && activity.date <= endDate);
+    const activityCount = weekActivities.length || 1;
+    const timeAllocation = state.goals.reduce((acc, goal) => ({
+      ...acc,
+      [goal.id]: Math.round((weekActivities.filter(activity => activity.goalId === goal.id).length / activityCount) * 100)
+    }), {} as Record<string, number>);
 
     const newReview: WeeklyReview = {
       id: `rev_${Date.now()}`,
-      weekNumber: nextDayNumber,
-      startDate: weeklyForm.date,
-      endDate: weeklyForm.date,
+      weekNumber,
+      startDate,
+      endDate,
       planned: weeklyForm.planned,
       actual: weeklyForm.actual,
       wins: weeklyForm.wins,
@@ -142,9 +158,9 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
       lessons: weeklyForm.lessons,
       adjustments: weeklyForm.adjustments,
       status: weeklyForm.status,
-      timeAllocation: state.goals.reduce((acc, g) => ({ ...acc, [g.id]: Math.round(100 / (state.goals.length || 1)) }), {}),
-      outputs: {},
-      outcomes: {},
+      timeAllocation,
+      outputs: { activities: weekActivities.length },
+      outcomes: { withOutcome: weekActivities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length },
       submitted: true
     };
 
@@ -164,7 +180,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
       status: "continue"
     });
 
-    alert("Ghi nhận đánh giá thành công! Hệ điều hành đã cập nhật kế hoạch hành động chiến lược.");
+    alert("Đã lưu đánh giá tuần. Phân bổ nỗ lực được tính từ dữ liệu check-in thật trong tuần này.");
   };
 
   // Submit Experiment
@@ -257,13 +273,13 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                 <div className="lg:col-span-8 space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                   <div className="border-b border-slate-100 pb-4">
                     <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">PHẢN TƯ ĐỊNH TÍNH</span>
-                    <h3 className="font-display font-bold text-lg text-slate-900 mt-1">Viết Review Tầm Nhìn Ngày</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Thành thực với chính mình là chìa khóa của sự tiến bộ bền vững.</p>
+                    <h3 className="font-display font-bold text-lg text-slate-900 mt-1">Đánh giá tuần</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Nhìn lại dữ liệu của cả tuần để quyết định tuần tới, thay vì đánh giá cảm tính từng ngày.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Ngày đánh giá</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Chọn một ngày trong tuần cần đánh giá</label>
                       <input 
                         type="date" 
                         value={weeklyForm.date}
@@ -273,7 +289,17 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">1. Điều gì đã làm tốt nhất hôm nay? (What went well)</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">0. Tuần này tôi đã định hoàn thành điều gì?</label>
+                      <textarea
+                        placeholder="Ví dụ: hoàn thiện checklist Setup 1, có 10 cuộc trò chuyện B2B chất lượng..."
+                        value={weeklyForm.planned}
+                        onChange={e => setWeeklyForm({ ...weeklyForm, planned: e.target.value })}
+                        className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:ring-1 focus:ring-indigo-500/25"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">1. Điều gì đã làm tốt nhất tuần này?</label>
                       <textarea 
                         placeholder="Ví dụ: Gửi đầy đủ 15 email outreach B2B, hoàn thành 6.000 bước đi bộ và skincare đúng giờ..."
                         value={weeklyForm.wins}
@@ -314,7 +340,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">5. Đề xuất điều chỉnh thói quen ngày mai (Proposed adjustments)</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">5. Tuần tới sẽ điều chỉnh điều gì?</label>
                       <textarea 
                         placeholder="Ví dụ: Sẽ in checklist giao dịch ra giấy đặt trên bàn, đi ngủ trước 12h..."
                         value={weeklyForm.adjustments}
@@ -403,14 +429,14 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
               <div className="space-y-6">
                 <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="font-display font-bold text-lg text-slate-900">Nhật ký Đánh giá Tầm nhìn</h3>
-                    <p className="text-xs text-slate-500 mt-1">Lưu trữ các đánh giá và quyết định điều chỉnh thói quen qua từng chu kỳ.</p>
+                    <h3 className="font-display font-bold text-lg text-slate-900">Nhật ký đánh giá tuần</h3>
+                    <p className="text-xs text-slate-500 mt-1">Mỗi tuần một lần: so sánh kế hoạch, hành động, kết quả và quyết định điều chỉnh.</p>
                   </div>
                   <button
                     onClick={() => setIsCreatingWeeklyReview(true)}
                     className="bg-[#0b0f19] hover:bg-slate-800 text-white rounded-xl px-5 py-2.5 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> Viết Review mới
+                    <Plus className="w-4 h-4" /> Đánh giá tuần này
                   </button>
                 </div>
 
@@ -422,7 +448,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                       </div>
                       <div className="space-y-1">
                         <h4 className="text-sm font-bold text-slate-800">Chưa có bài review nào</h4>
-                        <p className="text-xs text-slate-500">Hãy bắt đầu viết bài đánh giá ngày hôm nay để ghi lại tiến trình kỷ luật.</p>
+                        <p className="text-xs text-slate-500">Kết thúc tuần, hãy dành 10 phút nhìn lại dữ liệu trước khi lập tuần mới.</p>
                       </div>
                       <button 
                         onClick={() => setIsCreatingWeeklyReview(true)}
@@ -436,8 +462,8 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                       <div key={rev.id} className="space-y-5 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                         <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                           <div className="space-y-1">
-                            <h4 className="font-display font-bold text-slate-900 text-base">Đánh giá ngày thứ #{rev.weekNumber}</h4>
-                            <span className="text-[10px] text-slate-400 font-mono">Thời gian ghi nhận: {formatDisplayDate(rev.startDate)}</span>
+                            <h4 className="font-display font-bold text-slate-900 text-base">Tuần {rev.weekNumber}</h4>
+                            <span className="text-[10px] text-slate-400 font-mono">{formatDisplayDate(rev.startDate)} – {formatDisplayDate(rev.endDate)}</span>
                           </div>
                           <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${
                             rev.status === 'continue' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
