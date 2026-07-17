@@ -286,6 +286,7 @@ export interface PriorityTask {
   completed: boolean;
   createdAt?: string;
   completedAt?: string | null;
+  startedAt?: string | null;
 }
 
 export interface ScheduleItem {
@@ -338,6 +339,7 @@ export interface AppState {
   dailyFocusDate?: string | null;
   weeklyFocusGoalId?: string | null;
   weeklySupportGoalIds?: string[];
+  onboardingCompleted?: boolean;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
