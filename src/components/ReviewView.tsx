@@ -660,6 +660,16 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
 
               <div className="space-y-3">
                 <button
+                  onClick={() => onChangeState({ ...state, onboardingCompleted: false })}
+                  className="flex w-full items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-left transition-all hover:bg-indigo-100"
+                >
+                  <div className="space-y-0.5">
+                    <span className="block text-xs font-bold text-indigo-900">Chạy lại thiết lập ban đầu</span>
+                    <span className="text-[10px] text-indigo-600">Chọn lại mục tiêu tuần, lịch làm việc và mức routine tối thiểu.</span>
+                  </div>
+                  <Sparkles className="h-5 w-5 text-indigo-600" />
+                </button>
+                <button
                   onClick={handleExportJSON}
                   className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition-all hover:border-indigo-200 hover:bg-white"
                 >
