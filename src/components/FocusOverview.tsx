@@ -25,12 +25,18 @@ const goalTone = () => "border-slate-200 bg-white hover:border-indigo-200";
 export default function FocusOverview({ state, today, currentDay, onChangeState }: FocusOverviewProps) {
   const [now, setNow] = useState(Date.now());
   const [showCompletion, setShowCompletion] = useState(false);
+  const [completionStep, setCompletionStep] = useState<1 | 2>(1);
   const [output, setOutput] = useState("");
   const [outcome, setOutcome] = useState("");
   const [insight, setInsight] = useState("");
   const [nextAction, setNextAction] = useState("");
   const [completeMilestone, setCompleteMilestone] = useState(false);
+  const [outcomeStatus, setOutcomeStatus] = useState<'pending' | 'measured' | 'not_applicable'>('pending');
+  const [outcomeReviewDate, setOutcomeReviewDate] = useState(() => {
+    const date = new Date(); date.setDate(date.getDate() + 3); return date.toISOString().split('T')[0];
+  });
   const activeGoals = state.goals.filter(goal => goal.status === "active");
+  const dailyMode = state.dailyModeDate === today ? state.dailyMode || 'normal' : 'normal';
 
   useEffect(() => {
     if (state.activeFocusSession?.status !== 'active') return;
@@ -79,7 +85,8 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
   const sessionGoal = activeGoals.find(goal => goal.id === state.activeFocusSession?.goalId);
   const focusGoal = sessionGoal || emergencyGoal || savedFocus || weeklyGoal || rankedGoals[0] || null;
   const supportOrder = (state.weeklySupportGoalIds || []).map(id => activeGoals.find(goal => goal.id === id)).filter(Boolean) as Goal[];
-  const maintenanceGoals = [...supportOrder, ...rankedGoals.filter(goal => !supportOrder.some(item => item.id === goal.id))].filter(goal => goal.id !== focusGoal?.id).slice(0, 2);
+  const maintenanceLimit = dailyMode === 'normal' ? 2 : dailyMode === 'busy' ? 1 : 0;
+  const maintenanceGoals = [...supportOrder, ...rankedGoals.filter(goal => !supportOrder.some(item => item.id === goal.id))].filter(goal => goal.id !== focusGoal?.id).slice(0, maintenanceLimit);
 
   const getProgress = (goal: Goal) => {
     if (!goal.milestones.length) return goal.currentProgress || 0;
@@ -110,9 +117,6 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
   const focusTasks = goalTasks(focusGoal.id).slice(0, 1);
   const nextTask = focusTasks[0] || null;
   const activeMilestone = focusGoal.milestones.find(milestone => !milestone.achieved) || null;
-  const progress = getProgress(focusGoal);
-  const focusIndex = activeGoals.findIndex(goal => goal.id === focusGoal.id);
-  const focusScore = scoreGoal(focusGoal, focusIndex);
   const focusReason = emergencyGoal?.id === focusGoal.id
     ? "Có việc Quan trọng & Khẩn cấp đến hạn nên tạm thời vượt trọng tâm tuần."
     : activeMilestone && dateDistance(today, activeMilestone.dueDate) <= 2
@@ -129,6 +133,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
     ? session.elapsedSeconds
     : session.elapsedSeconds + Math.max(0, Math.floor((now - new Date(session.startedAt).getTime()) / 1000));
   const timerLabel = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
+  const recommendedMinutes = dailyMode === 'recovery' ? Math.min(nextTask?.estimatedMinutes || 30, 10) : dailyMode === 'busy' ? Math.min(nextTask?.estimatedMinutes || 30, 15) : nextTask?.estimatedMinutes || 30;
 
   const startNextAction = () => {
     const startedAt = new Date().toISOString();
@@ -157,7 +162,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         goalId: focusGoal.id,
         milestoneId: task.milestoneId || activeMilestone?.id || null,
         date: today,
-        plannedMinutes: task.estimatedMinutes || 30,
+        plannedMinutes: recommendedMinutes,
         startedAt,
         elapsedSeconds: 0,
         status: 'active'
@@ -186,10 +191,12 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       source: 'manual',
       activity: session.title,
       output: { deliverable: output.trim() || 'Đã hoàn thành focus session', plannedMinutes: session.plannedMinutes, actualMinutes: Math.max(1, Math.round(elapsedSeconds / 60)) },
-      outcome: outcome.trim() ? { result: outcome.trim() } : {},
+      outcome: outcomeStatus === 'measured' && outcome.trim() ? { result: outcome.trim() } : {},
+      outcomeStatus,
+      outcomeReviewDate: outcomeStatus === 'pending' ? outcomeReviewDate : null,
       insight: insight.trim() || null,
       nextAction: nextAction.trim() || null,
-      confidence: outcome.trim() ? 0.9 : 0.7,
+      confidence: outcomeStatus === 'measured' && outcome.trim() ? 0.9 : 0.7,
       createdTimestamp: Date.now(),
       updatedTimestamp: Date.now()
     };
@@ -216,7 +223,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       activeFocusSession: null
     });
     setShowCompletion(false);
-    setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false);
+    setCompletionStep(1); setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false); setOutcomeStatus('pending');
   };
 
   return (
@@ -229,7 +236,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
               <div>
         <p className="life-kicker text-indigo-600">01 · Việc tiếp theo tốt nhất</p>
                 <h2 className="mt-2 font-display text-xl font-extrabold tracking-tight text-slate-950">{focusGoal.name}</h2>
-                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">{focusGoal.desiredOutcome}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{activeMilestone?.title || focusGoal.currentMilestone}</p>
               </div>
             </div>
             <label className="shrink-0">
@@ -245,25 +252,13 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
           </div>
         </div>
 
-        <div className="p-5 md:p-6 space-y-5">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cột mốc hiện tại</p>
-                <p className="mt-1 text-sm font-extrabold text-slate-900">{activeMilestone?.title || "Đã hoàn thành toàn bộ cột mốc"}</p>
-                <p className="mt-1 text-[11px] text-slate-500">{focusGoal.nextAction || activeMilestone?.description || "Đánh giá kết quả và chọn bước tiếp theo."}</p>
-              </div>
-              <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-black text-indigo-700">{progress}%</span>
-            </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
+        <div className="space-y-5 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Năng lực hôm nay</p><p className="mt-1 text-xs text-slate-500">App sẽ tự thu nhỏ kế hoạch, không xem ngày bận là thất bại.</p></div><div className="flex rounded-xl bg-slate-100 p-1">{([['normal','Bình thường'],['busy','Bận'],['recovery','Phục hồi']] as const).map(([mode,label]) => <button key={mode} onClick={() => onChangeState({ ...state, dailyMode: mode, dailyModeDate: today })} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-black transition ${dailyMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>{label}</button>)}</div></div>
 
           <div className="rounded-[22px] border border-indigo-200 bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-100">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Làm ngay · {nextTask?.estimatedMinutes || 30} phút</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Làm ngay · {recommendedMinutes} phút</p>
                 <p className="mt-2 text-lg font-black leading-snug">{nextTask?.title || focusGoal.nextAction || activeMilestone?.title || "Đánh giá mục tiêu"}</p>
                 <p className="mt-2 text-xs text-indigo-100">Hoàn thành việc này sẽ tạo bằng chứng cho cột mốc “{activeMilestone?.title || focusGoal.currentMilestone}”.</p>
               </div>
@@ -283,7 +278,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
 
           <div className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
-            <span><strong>Vì sao việc này đứng đầu:</strong> {focusReason} <span className="text-slate-400">Điểm ưu tiên {Math.round(focusScore)}.</span></span>
+            <span><strong>Vì sao việc này đứng đầu:</strong> {focusReason}</span>
           </div>
         </div>
       </div>
@@ -320,14 +315,15 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
       {showCompletion && session && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-[26px] bg-white p-5 shadow-2xl md:p-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="life-kicker text-indigo-600">Kết thúc Focus Session · {timerLabel}</p><h3 className="mt-2 text-xl font-black text-slate-950">Bạn đã tạo ra điều gì?</h3><p className="mt-1 text-xs text-slate-500">Ghi bằng chứng trước; kết quả có thể cập nhật sau.</p></div><button onClick={() => setShowCompletion(false)} className="rounded-xl bg-slate-100 p-2 text-slate-500"><X className="h-4 w-4" /></button></div>
-            <div className="mt-5 space-y-3">
-              <label className="block"><span className="text-xs font-black text-slate-700">Output / sản phẩm đã tạo *</span><textarea value={output} onChange={event => setOutput(event.target.value)} placeholder="Ví dụ: hoàn thành checklist setup và ghi 20 lệnh backtest" className="mt-1.5 min-h-20 w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" /></label>
-              <label className="block"><span className="text-xs font-black text-slate-700">Outcome / tác động ban đầu</span><textarea value={outcome} onChange={event => setOutcome(event.target.value)} placeholder="Ví dụ: tìm thấy 2 lỗi lặp lại; chưa đủ dữ liệu kết luận" className="mt-1.5 min-h-16 w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" /></label>
-              <div className="grid gap-3 sm:grid-cols-2"><label><span className="text-xs font-black text-slate-700">Bài học</span><input value={insight} onChange={event => setInsight(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label><span className="text-xs font-black text-slate-700">Bước tiếp theo</span><input value={nextAction} onChange={event => setNextAction(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>
-              {session.milestoneId && <label className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-900"><input type="checkbox" checked={completeMilestone} onChange={event => setCompleteMilestone(event.target.checked)} className="mt-0.5" /><span>Việc này đã đủ bằng chứng để hoàn thành cột mốc hiện tại.</span></label>}
-            </div>
-            <button onClick={completeSession} disabled={!output.trim()} className="mt-5 w-full rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40">Lưu bằng chứng & hoàn thành</button>
+            <div className="flex items-start justify-between gap-4"><div><p className="life-kicker text-indigo-600">Hoàn thành phiên tập trung · {timerLabel} · Bước {completionStep}/2</p><h3 className="mt-2 text-xl font-black text-slate-950">{completionStep === 1 ? 'Bạn đã tạo ra điều gì?' : 'Kết quả đã xuất hiện chưa?'}</h3><p className="mt-1 text-xs text-slate-500">{completionStep === 1 ? 'Chỉ cần ghi bằng chứng bắt buộc trước.' : 'Nếu chưa có kết quả, app sẽ nhắc bạn kiểm tra lại.'}</p></div><button onClick={() => setShowCompletion(false)} className="rounded-xl bg-slate-100 p-2 text-slate-500"><X className="h-4 w-4" /></button></div>
+            {completionStep === 1 ? <div className="mt-5"><label className="block"><span className="text-xs font-black text-slate-700">Sản phẩm hoặc bằng chứng đã tạo *</span><textarea value={output} onChange={event => setOutput(event.target.value)} placeholder="Ví dụ: hoàn thành checklist setup và ghi 20 lệnh backtest" className="mt-1.5 min-h-28 w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" /></label><button onClick={() => setCompletionStep(2)} disabled={!output.trim()} className="mt-5 w-full rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40">Tiếp tục</button></div> : <div className="mt-5 space-y-4">
+              <div className="grid grid-cols-3 gap-2">{([['pending','Chưa có'],['measured','Đã có'],['not_applicable','Không cần']] as const).map(([status,label]) => <button key={status} onClick={() => setOutcomeStatus(status)} className={`rounded-xl border px-2 py-2.5 text-xs font-black ${outcomeStatus === status ? 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div>
+              {outcomeStatus === 'pending' && <label className="block"><span className="text-xs font-black text-slate-700">Nhắc kiểm tra kết quả vào ngày</span><input type="date" value={outcomeReviewDate} onChange={event => setOutcomeReviewDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>}
+              {outcomeStatus === 'measured' && <label className="block"><span className="text-xs font-black text-slate-700">Kết quả ban đầu</span><textarea value={outcome} onChange={event => setOutcome(event.target.value)} placeholder="Ví dụ: tìm thấy 2 lỗi lặp lại trong setup" className="mt-1.5 min-h-20 w-full rounded-2xl border border-slate-200 p-3 text-sm" /></label>}
+              <div className="grid gap-3 sm:grid-cols-2"><label><span className="text-xs font-black text-slate-700">Bài học · tùy chọn</span><input value={insight} onChange={event => setInsight(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label><span className="text-xs font-black text-slate-700">Bước tiếp theo · tùy chọn</span><input value={nextAction} onChange={event => setNextAction(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>
+              {session.milestoneId && <label className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-900"><input type="checkbox" checked={completeMilestone} onChange={event => setCompleteMilestone(event.target.checked)} className="mt-0.5" /><span>Đủ bằng chứng để hoàn thành cột mốc hiện tại.</span></label>}
+              <div className="flex gap-2"><button onClick={() => setCompletionStep(1)} className="rounded-xl border border-slate-200 px-4 py-3 text-xs font-black text-slate-600">Quay lại</button><button onClick={completeSession} disabled={outcomeStatus === 'measured' && !outcome.trim()} className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40">Lưu & hoàn thành</button></div>
+            </div>}
           </div>
         </div>
       )}
