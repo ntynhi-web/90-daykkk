@@ -23,7 +23,7 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
   const summary = useMemo(() => {
     const anchors = (state.lifeAnchors || []).filter(anchor => anchor.active);
     const anchorsDone = anchors.filter(anchor => anchor.lastCompletedDate === today).length;
-    const scheduled = state.routines.filter(routine => !routine.scheduleDays?.length || routine.scheduleDays.includes(weekday));
+    const scheduled = state.routines.filter(routine => routine.active !== false && (!routine.scheduleDays?.length || routine.scheduleDays.includes(weekday)));
     const yogaDue = scheduled.some(routine => routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('yoga'));
     const dueRoutines = scheduled.filter(routine => !(yogaDue && routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('đi bộ')));
     const routinesDone = dueRoutines.filter(routine => logs.some(log => log.routineId === routine.id && log.date === today && ['minimum', 'completed'].includes(log.status))).length;
