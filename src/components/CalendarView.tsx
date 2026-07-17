@@ -26,6 +26,9 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
   const [newDate, setNewDate] = useState(selectedDate);
 
   const activeJourneys = (state.goals || []).filter(g => g.status === 'active');
+  const selectedWeekday = new Date(`${selectedDate}T12:00:00`).getDay();
+  const selectedDayPlan = state.weeklyAvailability?.find(plan => plan.dayOfWeek === selectedWeekday);
+  const yogaDue = state.routines.some(routine => routine.name.toLowerCase().includes('yoga') && routine.scheduleDays?.includes(selectedWeekday));
 
   // Navigate dates
   const handlePrevDate = () => {
@@ -154,7 +157,6 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
   // Helper to compute unoccupied segments and advice
   const getSuggestions = () => {
     const todayItems = (state.scheduleItems || []).filter(item => item.date === selectedDate);
-    const activeHours = Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 to 22:00
     const occupiedSlots = new Set<number>();
 
     todayItems.forEach(item => {
@@ -165,15 +167,18 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
       }
     });
 
-    const suggestions = [];
-    if (!occupiedSlots.has(9) && !occupiedSlots.has(10)) {
-      suggestions.push({ slot: "09:00 - 11:00", text: "Khung giờ vàng sáng sớm, tuyệt vời cho Deep Work." });
+    const suggestions: Array<{ slot: string; text: string }> = [];
+    if (selectedDayPlan?.mode === 'rest') {
+      suggestions.push({ slot: "Bất kỳ lúc nào", text: "Đây là ngày nghỉ. Không cần nhét thêm Deep Work; chỉ giữ life anchors và chuẩn bị nhẹ cho tuần mới nếu bạn muốn." });
+      return suggestions;
     }
-    if (!occupiedSlots.has(14) && !occupiedSlots.has(15)) {
-      suggestions.push({ slot: "14:00 - 16:00", text: "Khung giờ chiều tĩnh lặng, thích hợp để review, backtest." });
-    }
-    if (!occupiedSlots.has(20) && !occupiedSlots.has(21)) {
-      suggestions.push({ slot: "20:00 - 22:00", text: "Khung giờ tối muộn, hoàn hảo cho việc học và tổng kết ngày." });
+    if (selectedDayPlan?.mode === 'office') {
+      if (!occupiedSlots.has(6) && !occupiedSlots.has(7)) suggestions.push({ slot: "06:30 - 07:30", text: "Một block duy nhất cho mục tiêu chính trước khi chuẩn bị đi công ty." });
+      if (!occupiedSlots.has(19)) suggestions.push({ slot: "19:30 - 20:00", text: "Chỉ review hoặc routine nhẹ sau khi về nhà; không xếp Deep Work dài." });
+    } else {
+      if (!occupiedSlots.has(9) && !occupiedSlots.has(10)) suggestions.push({ slot: "09:00 - 11:00", text: "Block sâu cho mục tiêu chính trong ngày làm việc tại nhà." });
+      if (!occupiedSlots.has(14) && !occupiedSlots.has(15) && !yogaDue) suggestions.push({ slot: "14:00 - 16:00", text: "Block hỗ trợ cho B2B, portfolio hoặc backtest." });
+      if (yogaDue) suggestions.push({ slot: "17:30 - 18:15", text: "Buổi Yoga theo nhịp tuần; hoàn thành Yoga thì không cần đi bộ." });
     }
 
     if (suggestions.length === 0) {
@@ -442,8 +447,14 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
             </div>
             
             <p className="text-xs text-slate-500 leading-relaxed">
-              Dựa trên lịch biểu hôm nay, trợ lý ảo 90-Day đề xuất các thời điểm tập trung cao độ (Deep Work) chưa được xếp lịch:
+              Dựa trên lịch đã có và nhịp làm việc thật của bạn, app chỉ đề xuất thời gian còn khả thi:
             </p>
+
+            <div className={`rounded-xl border p-3 ${selectedDayPlan?.mode === 'office' ? 'border-sky-200 bg-sky-50 text-sky-800' : selectedDayPlan?.mode === 'rest' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+              <p className="text-[10px] font-black uppercase tracking-wider">Nhịp ngày đã lưu</p>
+              <p className="mt-1 text-xs font-bold">{selectedDayPlan?.label || 'Chưa đặt nhịp ngày'}{selectedDayPlan?.blockedStart ? ` · Bận ${selectedDayPlan.blockedStart}–${selectedDayPlan.blockedEnd}` : ''}</p>
+              {yogaDue && <p className="mt-1 text-[10px]">Có Yoga trong lịch routine hôm nay.</p>}
+            </div>
 
             <div className="space-y-3 pt-1">
               {getSuggestions().map((sug, i) => (
@@ -480,8 +491,8 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
           <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/50 space-y-3">
             <h4 className="text-xs font-bold text-slate-700">Quy tắc Deep Work 90 Ngày:</h4>
             <ul className="text-xs text-slate-500 space-y-2 list-disc pl-4 leading-relaxed">
-              <li>Mỗi ngày hãy xếp ít nhất <strong className="text-slate-800">1-2 block Deep Work</strong> (60 - 90 phút/block) cho hành trình ưu tiên số 1 của bạn.</li>
-              <li>Khoảng thời gian trống khuyên dùng là sáng sớm trước khi check mail, và chiều muộn.</li>
+              <li>Ngày ở nhà: tối đa <strong className="text-slate-800">1 block chính + 1 block hỗ trợ</strong>. Ngày công ty: chỉ 1 block ngắn trước giờ đi.</li>
+              <li>Thứ bảy và Chủ nhật được bảo vệ là thời gian nghỉ; app không tự ép thêm công việc.</li>
               <li>Hãy ghi nhận trực tiếp kết quả thông qua Voice Check-in hoặc Text Input để hệ thống tự động hoàn thành các cột mốc tương ứng.</li>
             </ul>
           </div>
