@@ -29,6 +29,10 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
   const [nextAction, setNextAction] = useState("");
   const [completeMilestone, setCompleteMilestone] = useState(false);
   const [completionKind, setCompletionKind] = useState<'done' | 'partial' | 'blocked'>('done');
+  const [blockedNeed, setBlockedNeed] = useState('');
+  const [blockedReviewDate, setBlockedReviewDate] = useState(() => {
+    const date = new Date(); date.setDate(date.getDate() + 1); return date.toISOString().split('T')[0];
+  });
   const [outcomeStatus, setOutcomeStatus] = useState<'pending' | 'measured' | 'not_applicable'>('pending');
   const [outcomeReviewDate, setOutcomeReviewDate] = useState(() => {
     const date = new Date(); date.setDate(date.getDate() + 3); return date.toISOString().split('T')[0];
@@ -37,7 +41,6 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
   const todayAvailability = (state.weeklyAvailability || []).find(day => day.dayOfWeek === new Date(`${today}T12:00:00`).getDay());
   const suggestedMode = todayAvailability?.mode === 'office' ? 'busy' : todayAvailability?.mode === 'rest' ? 'recovery' : 'normal';
   const dailyMode = state.dailyModeDate === today ? state.dailyMode || suggestedMode : suggestedMode;
-  const modeIsSuggested = state.dailyModeDate !== today;
 
   const lastActivityDate = (goalId: string) =>
     state.activities
@@ -171,7 +174,8 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
     setShowCompletion(false);
   };
 
-  const taskNeedsOutcome = /email|outreach|seo|ads|quảng cáo|backtest|hồ sơ|application|proposal|thử nghiệm|test|campaign/i.test(session?.title || '');
+  const currentTask = (state.priorityTasks || []).find(task => task.id === session?.taskId);
+  const taskNeedsOutcome = currentTask?.requiresOutcome ?? /email|outreach|seo|ads|quảng cáo|backtest|hồ sơ|application|proposal|thử nghiệm|test|campaign/i.test(session?.title || '');
 
   const completeSession = () => {
     if (!session) return;
@@ -217,13 +221,15 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         completedAt: completionKind === 'done' ? completedAt : null,
         startedAt: null,
         status: completionKind === 'done' ? 'completed' as const : completionKind === 'blocked' ? 'blocked' as const : 'ready' as const,
-        blockedReason: completionKind === 'blocked' ? output.trim() : null
+        blockedReason: completionKind === 'blocked' ? output.trim() : null,
+        waitingUntil: completionKind === 'blocked' ? blockedReviewDate : null,
+        description: completionKind === 'blocked' && blockedNeed.trim() ? `${task.description || ''}\nCần để gỡ chặn: ${blockedNeed.trim()}`.trim() : task.description
       } : task),
       scheduleItems: (state.scheduleItems || []).map(item => item.taskId === session.taskId && completionKind === 'done' ? { ...item, completed: true } : item),
       activeFocusSession: null
     });
     setShowCompletion(false);
-    setCompletionStep(1); setCompletionKind('done'); setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false); setOutcomeStatus('pending');
+    setCompletionStep(1); setCompletionKind('done'); setBlockedNeed(''); setOutput(''); setOutcome(''); setInsight(''); setNextAction(''); setCompleteMilestone(false); setOutcomeStatus('pending');
   };
 
   return (
@@ -239,16 +245,12 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
                 <p className="mt-1 text-sm font-semibold text-indigo-100">{activeMilestone?.title || focusGoal.currentMilestone}</p>
               </div>
             </div>
-            <label className="shrink-0">
-              <span className="sr-only">Đổi main focus</span>
-              <select
-                value={focusGoal.id}
-                onChange={event => selectFocus(event.target.value)}
-                className="rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-sm font-bold text-white outline-none backdrop-blur focus:ring-4 focus:ring-white/10"
-              >
-                {activeGoals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
-              </select>
-            </label>
+            <details className="relative shrink-0">
+              <summary className="cursor-pointer list-none rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white">Đổi ưu tiên</summary>
+              <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl bg-white p-2 text-slate-900 shadow-2xl">
+                {activeGoals.map(goal => <button key={goal.id} onClick={() => selectFocus(goal.id)} className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold ${goal.id === focusGoal.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50'}`}>{goal.name}</button>)}
+              </div>
+            </details>
           </div>
         </div>
 
@@ -279,7 +281,6 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
             <span><strong>Vì sao việc này đứng đầu:</strong> {focusReason}</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4"><p className="text-sm text-indigo-100">Nhịp hôm nay{modeIsSuggested ? ' · đề xuất theo lịch' : ''}</p><div className="flex rounded-xl bg-indigo-950/25 p-1">{([['normal','Bình thường'],['busy','Bận'],['recovery','Phục hồi']] as const).map(([mode,label]) => <button key={mode} onClick={() => onChangeState({ ...state, dailyMode: mode, dailyModeDate: today })} className={`rounded-lg px-3 py-2 text-xs font-black transition ${dailyMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100'}`}>{label}</button>)}</div></div>
         </div>
       </div>
 
@@ -316,7 +317,7 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
         <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-[26px] bg-white p-5 shadow-2xl md:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">Cập nhật công việc{taskNeedsOutcome ? ` · Bước ${completionStep}/2` : ''}</p><h3 className="mt-2 text-2xl font-black text-slate-950">{completionStep === 1 ? 'Công việc đang ở trạng thái nào?' : 'Kết quả đã xuất hiện chưa?'}</h3><p className="mt-1 text-sm text-slate-500">{completionStep === 1 ? 'App chỉ hỏi những gì cần thiết cho trạng thái bạn chọn.' : 'Việc này cần đo hiệu quả nên bạn có thể cập nhật ngay hoặc đặt ngày kiểm tra.'}</p></div><button onClick={() => setShowCompletion(false)} className="rounded-xl bg-slate-100 p-2 text-slate-500"><X className="h-4 w-4" /></button></div>
-            {completionStep === 1 ? <div className="mt-5 space-y-4"><div className="grid grid-cols-3 gap-2">{([['done','Đã xong'],['partial','Một phần'],['blocked','Bị chặn']] as const).map(([kind,label]) => <button key={kind} onClick={() => setCompletionKind(kind)} className={`rounded-xl border px-2 py-3 text-sm font-black ${completionKind === kind ? kind === 'blocked' ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div><label className="block"><span className="text-sm font-black text-slate-700">{completionKind === 'blocked' ? 'Bạn đang bị chặn bởi điều gì? *' : completionKind === 'partial' ? 'Bạn đã làm được phần nào? *' : 'Bằng chứng hoặc kết quả đã tạo *'}</span><textarea value={output} onChange={event => setOutput(event.target.value)} placeholder={completionKind === 'blocked' ? 'Ví dụ: thiếu dữ liệu, đang chờ phản hồi hoặc chưa có quyền truy cập' : 'Mô tả ngắn hoặc dán đường dẫn file/ảnh đã tải lên'} className="mt-1.5 min-h-28 w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" /></label><button onClick={() => taskNeedsOutcome && completionKind !== 'blocked' ? setCompletionStep(2) : completeSession()} disabled={!output.trim()} className="w-full rounded-2xl bg-indigo-600 px-3 py-3.5 text-sm font-black text-white disabled:opacity-40">{taskNeedsOutcome && completionKind !== 'blocked' ? 'Tiếp tục cập nhật hiệu quả' : 'Lưu cập nhật'}</button>{!taskNeedsOutcome && <p className="text-center text-xs text-slate-400">Việc này không cần đưa vào hàng chờ đo hiệu quả.</p>}</div> : <div className="mt-5 space-y-4">
+            {completionStep === 1 ? <div className="mt-5 space-y-4"><div className="grid grid-cols-3 gap-2">{([['done','Đã xong'],['partial','Một phần'],['blocked','Bị chặn']] as const).map(([kind,label]) => <button key={kind} onClick={() => setCompletionKind(kind)} className={`rounded-xl border px-2 py-3 text-sm font-black ${completionKind === kind ? kind === 'blocked' ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div><label className="block"><span className="text-sm font-black text-slate-700">{completionKind === 'blocked' ? 'Bạn đang bị chặn bởi điều gì? *' : completionKind === 'partial' ? 'Bạn đã làm được phần nào? *' : 'Bằng chứng hoặc kết quả đã tạo *'}</span><textarea value={output} onChange={event => setOutput(event.target.value)} placeholder={completionKind === 'blocked' ? 'Ví dụ: thiếu dữ liệu, đang chờ phản hồi hoặc chưa có quyền truy cập' : 'Mô tả ngắn hoặc dán đường dẫn file/ảnh đã tải lên'} className="mt-1.5 min-h-28 w-full rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" /></label>{completionKind === 'blocked' && <div className="grid gap-3 sm:grid-cols-2"><label><span className="text-sm font-black text-slate-700">Cần gì để gỡ chặn?</span><input value={blockedNeed} onChange={event => setBlockedNeed(event.target.value)} placeholder="Dữ liệu, phản hồi, quyền truy cập…" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label><span className="text-sm font-black text-slate-700">Kiểm tra lại</span><input type="date" value={blockedReviewDate} onChange={event => setBlockedReviewDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div>}<button onClick={() => taskNeedsOutcome && completionKind !== 'blocked' ? setCompletionStep(2) : completeSession()} disabled={!output.trim()} className="w-full rounded-2xl bg-indigo-600 px-3 py-3.5 text-sm font-black text-white disabled:opacity-40">{taskNeedsOutcome && completionKind !== 'blocked' ? 'Tiếp tục cập nhật hiệu quả' : completionKind === 'blocked' ? 'Lưu & chuyển sang việc khác' : 'Lưu cập nhật'}</button>{!taskNeedsOutcome && completionKind !== 'blocked' && <p className="text-center text-xs text-slate-400">Việc này không cần đưa vào hàng chờ đo hiệu quả.</p>}</div> : <div className="mt-5 space-y-4">
               <div className="grid grid-cols-3 gap-2">{([['pending','Chưa có'],['measured','Đã có'],['not_applicable','Không cần']] as const).map(([status,label]) => <button key={status} onClick={() => setOutcomeStatus(status)} className={`rounded-xl border px-2 py-2.5 text-xs font-black ${outcomeStatus === status ? 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 text-slate-500'}`}>{label}</button>)}</div>
               {outcomeStatus === 'pending' && <label className="block"><span className="text-xs font-black text-slate-700">Nhắc kiểm tra kết quả vào ngày</span><input type="date" value={outcomeReviewDate} onChange={event => setOutcomeReviewDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>}
               {outcomeStatus === 'measured' && <label className="block"><span className="text-xs font-black text-slate-700">Kết quả ban đầu</span><textarea value={outcome} onChange={event => setOutcome(event.target.value)} placeholder="Ví dụ: tìm thấy 2 lỗi lặp lại trong setup" className="mt-1.5 min-h-20 w-full rounded-2xl border border-slate-200 p-3 text-sm" /></label>}
