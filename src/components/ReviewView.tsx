@@ -20,7 +20,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
   const reviewTabs = [
     { id: 'review' as const, label: 'Đánh giá', description: 'Nhìn lại và điều chỉnh', icon: BookOpenCheck },
     { id: 'experiments' as const, label: 'Thử nghiệm', description: 'Kiểm chứng cách làm mới', icon: FlaskConical },
-    { id: 'recommendations' as const, label: 'Lịch sử đề xuất', description: 'Xem lời khuyên đã nhận', icon: History },
+    { id: 'recommendations' as const, label: 'Lịch sử AI', description: 'Đề xuất và thay đổi đã lưu', icon: History },
     { id: 'database' as const, label: 'Sao lưu', description: 'Bảo vệ và xuất dữ liệu', icon: HardDriveDownload }
   ];
 
@@ -223,7 +223,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
           <div className="relative flex items-start gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-indigo-200"><BookOpenCheck className="h-6 w-6" /></span>
             <div>
-              <p className="life-kicker mb-2 text-indigo-300">Review workspace</p>
+              <p className="life-kicker mb-2 text-indigo-300">Không gian đánh giá</p>
               <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Đánh giá & Điều chỉnh</h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">Nhìn lại dữ liệu, chọn điều cần thay đổi, sau đó mới lưu hoặc xuất dữ liệu. Mỗi tab có một nhiệm vụ rõ ràng.</p>
             </div>
@@ -756,22 +756,56 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <p className="life-kicker mb-2 text-indigo-600">Lịch sử tư vấn</p>
-                <h3 className="font-display text-lg font-extrabold text-slate-900">Những đề xuất bạn đã nhận</h3>
-                <p className="mt-1 text-xs text-slate-500">Xem lại lời khuyên, bằng chứng và quyết định đã áp dụng — trước khi chuyển sang sao lưu dữ liệu.</p>
+                <p className="life-kicker mb-2 text-indigo-600">Lịch sử AI</p>
+                <h3 className="font-display text-lg font-extrabold text-slate-900">AI đã đề xuất và thay đổi điều gì?</h3>
+                <p className="mt-1 text-xs text-slate-500">Một nơi để kiểm tra lời khuyên, dữ liệu AI đã ghi và trạng thái hoàn tác.</p>
               </div>
-              <span className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[10px] font-black text-indigo-700">{(state.evidenceRecommendations || []).length} đề xuất</span>
+              <span className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[10px] font-black text-indigo-700">{(state.coachHistory || []).length + (state.aiChangeHistory || []).length + (state.evidenceRecommendations || []).length} bản ghi</span>
             </div>
 
-            <div className="space-y-4">
-              {(state.evidenceRecommendations || []).length === 0 ? (
+            <div className="space-y-6">
+              {(state.coachHistory || []).length > 0 && (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Tư vấn đã lưu</h4>
+                  {(state.coachHistory || []).map(item => (
+                    <div key={item.id} className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-xs">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold text-indigo-700">{item.expertLens}</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-500">{item.status === 'applied' ? 'Đã đưa vào hôm nay' : 'Đã lưu'}</span>
+                      </div>
+                      <p className="font-bold text-slate-900">{item.nextAction}</p>
+                      <p className="mt-1 text-slate-600">{item.diagnosis}</p>
+                      <p className="mt-2 text-[10px] text-slate-400">Thước đo: {item.successMetric}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {(state.aiChangeHistory || []).length > 0 && (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Thay đổi dữ liệu</h4>
+                  {(state.aiChangeHistory || []).map(change => (
+                    <div key={change.id} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-xs sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-bold text-slate-900">{change.summary}</p>
+                        <p className="mt-1 text-slate-500">{change.counts.activities} hoạt động · {change.counts.tasks} việc · {change.counts.schedules} lịch</p>
+                      </div>
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-bold ${change.status === 'undone' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>{change.status === 'undone' ? 'Đã hoàn tác' : 'Đã áp dụng'}</span>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {(state.evidenceRecommendations || []).length === 0 && (state.coachHistory || []).length === 0 && (state.aiChangeHistory || []).length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-12 text-center">
                   <History className="mx-auto h-6 w-6 text-slate-300" />
                   <p className="mt-3 text-xs font-semibold text-slate-500">Chưa có đề xuất nào trong lịch sử.</p>
                   <p className="mt-1 text-[10px] text-slate-400">Các lời khuyên đã lưu từ Life OS Coach sẽ xuất hiện tại đây.</p>
                 </div>
-              ) : (
-                (state.evidenceRecommendations || []).map(rec => (
+              ) : (state.evidenceRecommendations || []).length > 0 ? (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Đề xuất dựa trên dữ liệu</h4>
+                  {(state.evidenceRecommendations || []).map(rec => (
                   <div key={rec.id} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs transition hover:border-indigo-200 hover:bg-white">
                     <div className="flex justify-between items-center">
                       <span className="font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-150">{rec.goalId}</span>
@@ -791,8 +825,9 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                       Khởi tạo ngày: {formatDisplayDate(rec.createdDate)}
                     </div>
                   </div>
-                ))
-              )}
+                  ))}
+                </section>
+              ) : null}
             </div>
           </motion.div>
         )}
