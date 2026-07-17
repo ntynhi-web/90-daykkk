@@ -458,6 +458,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     if (!editableCheckIn) return;
 
     let updatedState = { ...state };
+    let createdTasks: PriorityTask[] = [];
     const { aiChangeHistory: _history, ...stateBeforeAIChange } = state;
 
     // 0. Apply a confirmed 90-day cycle command and preserve the plan's relative timing.
@@ -652,6 +653,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         estimatedMinutes: t.estimatedMinutes,
         createdAt: new Date().toISOString()
       }));
+      createdTasks = newTasks;
       updatedState.priorityTasks = [...(updatedState.priorityTasks || []), ...newTasks];
     }
 
@@ -663,7 +665,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         date: s.date,
         startTime: s.startTime,
         endTime: s.endTime,
-        journeyId: s.journeyId
+        journeyId: s.journeyId,
+        taskId: createdTasks.find(task => task.title.trim().toLowerCase() === s.title.trim().toLowerCase() || (task.journeyId === s.journeyId && task.dueDate === s.date))?.id || null
       }));
       updatedState.scheduleItems = [...(updatedState.scheduleItems || []), ...newScheds];
     }
@@ -812,14 +815,34 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     const target = (state.scheduleItems || []).find(item => item.id === itemId);
     if (!target) return;
     const completed = !target.completed;
+    const activityId = `schedule_activity_${target.id}`;
+    const scheduleGoalId = target.goalId || target.journeyId || null;
+    const linkedActivity: ActivityEntry = {
+      id: activityId,
+      date: target.date,
+      goalId: scheduleGoalId,
+      source: 'manual',
+      originalTranscript: `Hoàn thành lịch: ${target.title}`,
+      activity: target.title,
+      output: { scheduleCompleted: true, minutes: target.estimatedMinutes || null },
+      outcome: {},
+      insight: null,
+      nextAction: null,
+      confidence: 1,
+      createdTimestamp: Date.now(),
+      updatedTimestamp: Date.now()
+    };
     onChangeState({
       ...state,
       scheduleItems: (state.scheduleItems || []).map(item =>
         item.id === itemId ? { ...item, completed } : item
       ),
       priorityTasks: (state.priorityTasks || []).map(task =>
-        target.taskId && task.id === target.taskId ? { ...task, completed } : task
-      )
+        target.taskId && task.id === target.taskId ? { ...task, completed, completedAt: completed ? new Date().toISOString() : null } : task
+      ),
+      activities: completed
+        ? [linkedActivity, ...state.activities.filter(activity => activity.id !== activityId)]
+        : state.activities.filter(activity => activity.id !== activityId)
     });
   };
 
@@ -908,12 +931,19 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
 
   return (
     <div id="today-dashboard-view" className="space-y-8">
+
+      <FocusOverview
+        state={state}
+        today={todayStr}
+        currentDay={currentDay}
+        onChangeState={onChangeState}
+      />
       
-      {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
+      {/* 2. VOICE / TEXT CHECK-IN — CAPTURE AFTER THE USER KNOWS WHAT TO DO */}
       <section id="section-quick-input" className={`relative overflow-hidden rounded-[28px] border border-slate-800 bg-slate-950 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl ${captureExpanded ? "space-y-5 p-5 md:p-7" : "p-4 md:p-5"}`}>
         <div className="relative flex items-start justify-between gap-4">
           <div>
-          <p className="life-kicker text-indigo-300 mb-2">01 · Ghi nhận nhanh</p>
+          <p className="life-kicker text-indigo-300 mb-2">02 · Ghi nhận hoặc điều chỉnh</p>
           <h2 className={`font-display font-extrabold text-white tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl md:text-2xl" : "text-base md:text-lg"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
@@ -1138,13 +1168,6 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
         )}
       </section>
-
-      <FocusOverview
-        state={state}
-        today={todayStr}
-        currentDay={currentDay}
-        onChangeState={onChangeState}
-      />
 
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
@@ -1724,6 +1747,21 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               ) : (
                 editableCheckIn && (
                   <div className="space-y-6 text-left">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-black text-amber-950">Kiểm tra tác động trước khi lưu</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">Chưa có dữ liệu nào được thay đổi. Bạn có thể sửa hoặc bỏ từng đề xuất bên dưới.</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.activities.length}</span><span className="text-[10px] font-bold text-slate-500">Hoạt động</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.taskSuggestions.length}</span><span className="text-[10px] font-bold text-slate-500">Việc mới</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.scheduleSuggestions.length}</span><span className="text-[10px] font-bold text-slate-500">Lịch mới</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.milestoneUpdates.length}</span><span className="text-[10px] font-bold text-slate-500">Cột mốc</span></div>
+                      </div>
+                    </div>
                     
                     {/* Tóm tắt */}
                     <div className="space-y-1.5">
@@ -1878,7 +1916,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       <div className="space-y-2">
                         <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
                           <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-                          Life maintenance ({editableCheckIn.choreUpdates.length})
+                          Việc duy trì cuộc sống ({editableCheckIn.choreUpdates.length})
                         </h4>
                         <div className="space-y-2">
                           {editableCheckIn.choreUpdates.map((chore, idx) => (
@@ -1921,7 +1959,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       <div className="space-y-2">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                          Đề xuất công việc chuẩn bị cho ngày mai ({editableCheckIn.taskSuggestions.length})
+                          Đề xuất công việc tiếp theo ({editableCheckIn.taskSuggestions.length})
                         </h4>
                         <div className="space-y-2">
                           {editableCheckIn.taskSuggestions.map((t, idx) => (
