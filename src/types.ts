@@ -73,6 +73,7 @@ export interface ActivityEntry {
   id: string;
   date: string; // YYYY-MM-DD
   goalId: string | null;
+  milestoneId?: string | null;
   source?: 'voice' | 'text' | 'manual';
   originalTranscript?: string;
   activity: string;
@@ -94,6 +95,7 @@ export interface Routine {
   target: string;
   evidence: string;
   status: 'completed' | 'pending' | 'missed';
+  active?: boolean;
   /** 0 = Chủ nhật, 1 = Thứ hai ... 6 = Thứ bảy. Bỏ trống nghĩa là mỗi ngày. */
   scheduleDays?: number[];
   timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'any';
@@ -289,6 +291,19 @@ export interface PriorityTask {
   startedAt?: string | null;
 }
 
+export interface FocusSession {
+  id: string;
+  title: string;
+  taskId?: string | null;
+  goalId: string;
+  milestoneId?: string | null;
+  date: string;
+  plannedMinutes: number;
+  startedAt: string;
+  elapsedSeconds: number;
+  status: 'active' | 'paused';
+}
+
 export interface ScheduleItem {
   id: string;
   title: string;
@@ -340,6 +355,7 @@ export interface AppState {
   weeklyFocusGoalId?: string | null;
   weeklySupportGoalIds?: string[];
   onboardingCompleted?: boolean;
+  activeFocusSession?: FocusSession | null;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
