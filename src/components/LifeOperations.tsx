@@ -37,20 +37,20 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
   }, [logs, state.chores, state.lifeAnchors, state.routines, today, weekday]);
 
   const panels = [
-    { id: 'anchors' as const, label: 'Điều quan trọng', value: summary.anchors, icon: HeartHandshake },
-    { id: 'routines' as const, label: 'Routine đến hạn', value: summary.routines, icon: Sparkles },
-    { id: 'chores' as const, label: 'Việc duy trì', value: summary.chores, icon: ListChecks }
+    { id: 'anchors' as const, label: 'Điều làm cuộc sống có ý nghĩa', value: summary.anchors, icon: HeartHandshake, tone: 'rose' },
+    { id: 'routines' as const, label: 'Chăm sóc bản thân', value: summary.routines, icon: Sparkles, tone: 'emerald' },
+    { id: 'chores' as const, label: 'Việc nhà cần vận hành', value: summary.chores, icon: ListChecks, tone: 'slate' }
   ];
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[26px] border border-slate-200 bg-slate-50/70 shadow-sm">
       <button type="button" onClick={() => setExpanded(value => !value)} className="flex w-full items-center justify-between gap-4 p-5 text-left md:p-6">
         <div>
-          <p className="life-kicker text-slate-500">04 · Nền tảng cuộc sống</p>
-          <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Giữ cuộc sống vận hành</h2>
-          <p className="mt-1 text-xs text-slate-500">Những điều có ý nghĩa, routine và việc nhà nằm chung một nơi — mở khi bạn cần.</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">04 · Nền tảng cuộc sống</p>
+          <h2 className="mt-2 font-display text-xl font-black text-slate-950">Không quên những điều thiết yếu</h2>
+          <p className="mt-1 text-sm text-slate-600">Tình cảm, sức khỏe và việc nhà được tách riêng — không còn trông như cùng một loại task.</p>
         </div>
-        <span className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
+        <span className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600">
           {expanded ? 'Thu gọn' : 'Mở chi tiết'} <ChevronDown className={`h-4 w-4 transition ${expanded ? 'rotate-180' : ''}`} />
         </span>
       </button>
@@ -64,12 +64,12 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
               key={panel.id}
               type="button"
               onClick={() => { setExpanded(true); setActivePanel(panel.id); }}
-              className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${expanded && activePanel === panel.id ? 'border-indigo-200 bg-white shadow-sm' : 'border-transparent bg-white/60 hover:border-slate-200'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${expanded && activePanel === panel.id ? panel.tone === 'rose' ? 'border-rose-200 bg-rose-50 shadow-sm' : panel.tone === 'emerald' ? 'border-emerald-200 bg-emerald-50 shadow-sm' : 'border-slate-300 bg-white shadow-sm' : 'border-transparent bg-white/70 hover:border-slate-200'}`}
             >
-              <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}><Icon className="h-4 w-4" /></span>
+              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${complete ? 'bg-emerald-100 text-emerald-700' : panel.tone === 'rose' ? 'bg-rose-100 text-rose-700' : panel.tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}><Icon className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[11px] font-extrabold text-slate-800">{panel.label}</span>
-                <span className={`mt-0.5 block text-[10px] font-bold ${complete ? 'text-emerald-700' : 'text-slate-400'}`}>{panel.value.done}/{panel.value.total} hôm nay</span>
+                <span className="block text-sm font-extrabold text-slate-800">{panel.label}</span>
+                <span className={`mt-1 block text-xs font-bold ${complete ? 'text-emerald-700' : 'text-slate-500'}`}>{panel.value.done}/{panel.value.total} hôm nay</span>
               </span>
             </button>
           );
