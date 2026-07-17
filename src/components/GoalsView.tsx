@@ -112,8 +112,11 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
     setIsAddingGoal(true);
   };
 
-  // Filter out archived goals to show in the primary grid
-  const activeAndPausedGoals = state.goals.filter(g => g.status !== "archived");
+  const visibleGoals = state.goals.filter(g => g.status !== "archived");
+  const activeGoals = visibleGoals.filter(g => g.status === "active");
+  const focusGoal = activeGoals.find(g => g.id === state.dailyFocusGoalId) || activeGoals[0];
+  const supportGoals = activeGoals.filter(g => g.id !== focusGoal?.id).slice(0, 2);
+  const laterGoals = visibleGoals.filter(g => g.id !== focusGoal?.id && !supportGoals.some(item => item.id === g.id));
 
   return (
     <div id="goals-view-root" className="space-y-6 max-w-7xl mx-auto px-4 md:px-6">
@@ -128,7 +131,7 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
       />
 
       {/* Main Grid or Empty State */}
-      {activeAndPausedGoals.length === 0 ? (
+      {visibleGoals.length === 0 ? (
         <JourneyEmptyState 
           onCreateClick={() => {
             setPresetForWizard(null);
@@ -137,12 +140,50 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
           onSelectExample={handleSelectPreset}
         />
       ) : (
-        <JourneyGrid 
-          goals={activeAndPausedGoals}
-          onViewDetails={setSelectedGoalId}
-          onEdit={handleOpenEditGoal}
-          onArchive={handleArchiveGoal}
-        />
+        <div className="space-y-8">
+          {focusGoal && (
+            <section className="space-y-3">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="life-kicker text-indigo-600">Ưu tiên hiện tại</p>
+                  <h2 className="mt-1 font-display text-xl font-extrabold text-slate-950">Một hành trình chính</h2>
+                  <p className="mt-1 text-xs text-slate-500">Đây là mục tiêu nhận phần lớn thời gian và năng lượng. Bạn vẫn nhìn thấy các mục tiêu khác mà không phải xử lý tất cả cùng lúc.</p>
+                </div>
+                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[10px] font-bold text-indigo-700">60–70% nỗ lực</span>
+              </div>
+              <JourneyGrid goals={[focusGoal]} onViewDetails={setSelectedGoalId} onEdit={handleOpenEditGoal} onArchive={handleArchiveGoal} />
+            </section>
+          )}
+
+          {supportGoals.length > 0 && (
+            <section className="space-y-3">
+              <div>
+                <p className="life-kicker text-emerald-600">Giữ nhịp</p>
+                <h2 className="mt-1 font-display text-lg font-extrabold text-slate-950">Tối đa hai hành trình hỗ trợ</h2>
+                <p className="mt-1 text-xs text-slate-500">Chỉ cần một block nhỏ hoặc routine tối thiểu để các mục tiêu này không bị lãng quên.</p>
+              </div>
+              <JourneyGrid goals={supportGoals} onViewDetails={setSelectedGoalId} onEdit={handleOpenEditGoal} onArchive={handleArchiveGoal} />
+            </section>
+          )}
+
+          {laterGoals.length > 0 && (
+            <details className="group rounded-3xl border border-slate-200 bg-white p-5">
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="life-kicker text-slate-400">Sau này</p>
+                    <h2 className="mt-1 font-display text-lg font-extrabold text-slate-900">{laterGoals.length} hành trình đang chờ</h2>
+                    <p className="mt-1 text-xs text-slate-500">Được lưu an toàn nhưng không chiếm sự chú ý trên dashboard.</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600 group-open:bg-indigo-50 group-open:text-indigo-700">Mở danh sách</span>
+                </div>
+              </summary>
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <JourneyGrid goals={laterGoals} onViewDetails={setSelectedGoalId} onEdit={handleOpenEditGoal} onArchive={handleArchiveGoal} />
+              </div>
+            </details>
+          )}
+        </div>
       )}
 
       {/* SETUP WIZARD FOR ADDING A GOAL */}
