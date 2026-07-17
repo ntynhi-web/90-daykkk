@@ -15,6 +15,7 @@ interface ProgressViewProps {
 
 export default function ProgressView({ state, onChangeState }: ProgressViewProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'pipelines' | 'health' | 'trading'>('overview');
+  const [outcomeDrafts, setOutcomeDrafts] = useState<Record<string, string>>({});
 
   // Compute pipelines statistics
   const b2bStatusCounts = {
@@ -57,6 +58,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
     .sort((a, b) => b.count - a.count)[0];
   const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
+  const pendingOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending').sort((a, b) => (a.outcomeReviewDate || '').localeCompare(b.outcomeReviewDate || ''));
   const allMilestones = state.goals.flatMap(goal => goal.milestones);
   const completedMilestones = allMilestones.filter(milestone => milestone.achieved).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
@@ -369,6 +371,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 <p className="mt-1 text-xs text-slate-600">Nhịp routine 15 ngày: {routinesRatio}%. {routinesRatio >= 70 ? "Đang bền vững." : "Nên thu nhỏ mức tối thiểu."}</p>
               </div>
             </section>
+
+            {pendingOutcomes.length > 0 && <section className="rounded-[24px] border border-violet-200 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="life-kicker text-violet-600">Chờ kết quả</p><h3 className="mt-1 text-lg font-black text-slate-950">{pendingOutcomes.length} hoạt động cần kiểm tra lại</h3><p className="mt-1 text-xs text-slate-500">Hoạt động đã xong; app đang chờ tín hiệu để biết cách làm có hiệu quả hay không.</p></div><span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">{pendingOutcomes.filter(item => item.outcomeReviewDate && item.outcomeReviewDate <= new Date().toISOString().split('T')[0]).length} đến hạn</span></div><div className="mt-4 space-y-3">{pendingOutcomes.slice(0, 5).map(activity => <div key={activity.id} className="grid gap-3 rounded-2xl border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] md:items-center"><div><p className="text-xs font-black text-slate-900">{activity.activity}</p><p className="mt-1 text-[11px] text-slate-500">Kiểm tra: {activity.outcomeReviewDate ? formatDisplayDate(activity.outcomeReviewDate) : 'chưa đặt ngày'}</p></div><input value={outcomeDrafts[activity.id] || ''} onChange={event => setOutcomeDrafts({ ...outcomeDrafts, [activity.id]: event.target.value })} placeholder="Kết quả thực tế là gì?" className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-violet-400" /><button disabled={!outcomeDrafts[activity.id]?.trim() || !onChangeState} onClick={() => { if (!onChangeState) return; onChangeState({ ...state, activities: state.activities.map(item => item.id === activity.id ? { ...item, outcome: { result: outcomeDrafts[activity.id].trim() }, outcomeStatus: 'measured', outcomeReviewDate: null, updatedTimestamp: Date.now() } : item) }); setOutcomeDrafts(current => ({ ...current, [activity.id]: '' })); }} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">Lưu kết quả</button></div>)}</div></section>}
 
             {/* Bento Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
