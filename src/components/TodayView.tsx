@@ -11,6 +11,7 @@ import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import DailyRoutineCheckin from "./DailyRoutineCheckin";
 import LifeMaintenance from "./LifeMaintenance";
+import LifeAnchors from "./LifeAnchors";
 
 interface TodayViewProps {
   state: AppState;
@@ -48,6 +49,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [isCoaching, setIsCoaching] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [coachAdvice, setCoachAdvice] = useState<any | null>(null);
+  const [captureExpanded, setCaptureExpanded] = useState(false);
 
   // Interactive Confirmation State
   const [editableCheckIn, setEditableCheckIn] = useState<{
@@ -822,16 +824,26 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     <div id="today-dashboard-view" className="space-y-8">
       
       {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
-      <section id="section-quick-input" className="relative overflow-hidden space-y-5 rounded-[28px] border border-slate-800 bg-slate-950 p-5 md:p-7 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl">
-        <div>
-          <p className="life-kicker text-indigo-300 mb-3">01 · Voice & text check-in</p>
-          <h2 className="font-display text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+      <section id="section-quick-input" className={`relative overflow-hidden rounded-[28px] border border-slate-800 bg-slate-950 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl ${captureExpanded ? "space-y-5 p-5 md:p-7" : "p-4 md:p-5"}`}>
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+          <p className="life-kicker text-indigo-300 mb-2">01 · Ghi nhận nhanh</p>
+          <h2 className={`font-display font-extrabold text-white tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl md:text-2xl" : "text-base md:text-lg"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
           </h2>
-          <p className="text-sm text-slate-300 mt-2 max-w-2xl">Nói tự nhiên hoặc gõ vài dòng. AI sẽ phân loại tiến độ, phát hiện thông tin còn thiếu và đề xuất bước tiếp theo.</p>
+          <p className="text-xs md:text-sm text-slate-300 mt-2 max-w-2xl">{captureExpanded ? "Nói tự nhiên hoặc gõ vài dòng. AI sẽ phân loại tiến độ, thời gian và đề xuất bước tiếp theo." : "Nói hoặc nhập một câu; app sẽ đưa thông tin vào đúng mục."}</p>
+          </div>
+          {captureExpanded && <button onClick={() => setCaptureExpanded(false)} className="relative shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-300 hover:bg-slate-800">Thu gọn</button>}
         </div>
 
+        {!captureExpanded ? (
+          <button onClick={() => setCaptureExpanded(true)} className="relative mt-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white p-3.5 text-left shadow-xl transition hover:-translate-y-0.5 hover:bg-indigo-50">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700"><Mic className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1 text-xs font-semibold text-slate-500">Nói hoặc nhập cập nhật, lịch, việc cần làm…</span>
+            <ArrowRight className="h-4 w-4 text-indigo-600" />
+          </button>
+        ) : (
         <div className="relative bg-white rounded-[22px] p-4 md:p-5 border border-slate-200 shadow-2xl space-y-4">
           <div className="flex items-center gap-2.5 text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
             <Sparkles className="w-4 h-4 shrink-0" />
@@ -977,6 +989,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
             )}
           </div>
         </div>
+        )}
       </section>
 
       <FocusOverview
@@ -986,24 +999,12 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         onChangeState={onChangeState}
       />
 
-      <DailyRoutineCheckin
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
-      <LifeMaintenance
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
         <div className="life-panel border-t-4 border-t-indigo-500 p-5 md:p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="life-kicker text-indigo-600 mb-2">02 · Lịch hôm nay</p>
+              <p className="life-kicker text-indigo-600 mb-2">03 · Lịch hôm nay</p>
               <h2 className="font-display text-lg font-extrabold text-slate-950">Nhịp công việc hôm nay</h2>
               <p className="text-xs text-slate-400 mt-1">Chỉ hiển thị những block bạn cần thực hiện trong ngày.</p>
             </div>
@@ -1081,6 +1082,24 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
           <p className="text-[10px] leading-relaxed text-slate-400">App chỉ đưa những phần lệch khỏi kế hoạch lên đây, nên các mục tiêu khác vẫn được giám sát mà không làm dashboard bị ngợp.</p>
         </div>
       </section>
+
+      <LifeAnchors
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
+
+      <DailyRoutineCheckin
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
+
+      <LifeMaintenance
+        state={state}
+        today={todayStr}
+        onChangeState={onChangeState}
+      />
 
 
       {/* 2. VIỆC ƯU TIÊN HÔM NAY (PRIORITY BOARD 2X2) */}
