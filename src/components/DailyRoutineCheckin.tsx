@@ -21,7 +21,7 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
   const activeGoalIds = new Set(activeGoals.map(goal => goal.id));
   const weekday = new Date(`${today}T12:00:00`).getDay();
   const scheduledRoutines = state.routines.filter(routine =>
-    activeGoalIds.has(routine.goalId) && (!routine.scheduleDays?.length || routine.scheduleDays.includes(weekday))
+    routine.active !== false && activeGoalIds.has(routine.goalId) && (!routine.scheduleDays?.length || routine.scheduleDays.includes(weekday))
   );
   const yogaDue = scheduledRoutines.some(routine => routine.substitutionGroup === "movement" && routine.name.toLowerCase().includes("yoga"));
   const routines = scheduledRoutines.filter(routine => !(yogaDue && routine.substitutionGroup === "movement" && routine.name.toLowerCase().includes("đi bộ")));
