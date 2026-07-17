@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Download, Upload, RefreshCw, Trash2, Plus, Sparkles, CheckCircle2, FlaskConical, AlertTriangle, HelpCircle, Save, Check, FileSpreadsheet, Layers, Play
+  Download, Upload, RefreshCw, Trash2, Plus, Sparkles, CheckCircle2, FlaskConical, AlertTriangle, HelpCircle, Save, Check, FileSpreadsheet, Layers, Play,
+  BookOpenCheck, History, HardDriveDownload, ChevronRight
 } from "lucide-react";
 import { AppState, WeeklyReview, Experiment } from "../types";
 import { getSeededAppState, getDefaultAppState, exportStateToJSON, convertToCSV, triggerFileDownload, formatDisplayDate } from "../utils";
@@ -16,7 +17,14 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
   const [isAddingExperiment, setIsAddingExperiment] = useState(false);
   const [isCreatingWeeklyReview, setIsCreatingWeeklyReview] = useState(false);
 
-  // Daily review form state
+  const reviewTabs = [
+    { id: 'review' as const, label: 'Đánh giá', description: 'Nhìn lại và điều chỉnh', icon: BookOpenCheck },
+    { id: 'experiments' as const, label: 'Thử nghiệm', description: 'Kiểm chứng cách làm mới', icon: FlaskConical },
+    { id: 'recommendations' as const, label: 'Lịch sử AI', description: 'Đề xuất và thay đổi đã lưu', icon: History },
+    { id: 'database' as const, label: 'Sao lưu', description: 'Bảo vệ và xuất dữ liệu', icon: HardDriveDownload }
+  ];
+
+  // Weekly review form state
   const [weeklyForm, setWeeklyForm] = useState({
     date: new Date().toISOString().split('T')[0],
     planned: "",
@@ -117,16 +125,32 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
     }
   };
 
-  // Submit Daily Review
+  // Submit a true weekly review: one record represents Monday–Sunday, not one day.
   const handleSubmitWeeklyReview = (e: React.FormEvent) => {
     e.preventDefault();
-    const nextDayNumber = state.weeklyReviews.length + 1;
+    const selectedDate = new Date(`${weeklyForm.date}T12:00:00`);
+    const mondayOffset = (selectedDate.getDay() + 6) % 7;
+    const weekStart = new Date(selectedDate);
+    weekStart.setDate(selectedDate.getDate() - mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const toDate = (date: Date) => date.toISOString().split('T')[0];
+    const startDate = toDate(weekStart);
+    const endDate = toDate(weekEnd);
+    const cycleStart = new Date(`${state.startDate}T12:00:00`);
+    const weekNumber = Math.max(1, Math.floor((weekStart.getTime() - cycleStart.getTime()) / (7 * 86_400_000)) + 1);
+    const weekActivities = state.activities.filter(activity => activity.date >= startDate && activity.date <= endDate);
+    const activityCount = weekActivities.length || 1;
+    const timeAllocation = state.goals.reduce((acc, goal) => ({
+      ...acc,
+      [goal.id]: Math.round((weekActivities.filter(activity => activity.goalId === goal.id).length / activityCount) * 100)
+    }), {} as Record<string, number>);
 
     const newReview: WeeklyReview = {
       id: `rev_${Date.now()}`,
-      weekNumber: nextDayNumber,
-      startDate: weeklyForm.date,
-      endDate: weeklyForm.date,
+      weekNumber,
+      startDate,
+      endDate,
       planned: weeklyForm.planned,
       actual: weeklyForm.actual,
       wins: weeklyForm.wins,
@@ -134,9 +158,9 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
       lessons: weeklyForm.lessons,
       adjustments: weeklyForm.adjustments,
       status: weeklyForm.status,
-      timeAllocation: state.goals.reduce((acc, g) => ({ ...acc, [g.id]: Math.round(100 / (state.goals.length || 1)) }), {}),
-      outputs: {},
-      outcomes: {},
+      timeAllocation,
+      outputs: { activities: weekActivities.length },
+      outcomes: { withOutcome: weekActivities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length },
       submitted: true
     };
 
@@ -156,7 +180,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
       status: "continue"
     });
 
-    alert("Ghi nhận đánh giá thành công! Hệ điều hành đã cập nhật kế hoạch hành động chiến lược.");
+    alert("Đã lưu đánh giá tuần. Phân bổ nỗ lực được tính từ dữ liệu check-in thật trong tuần này.");
   };
 
   // Submit Experiment
@@ -190,34 +214,44 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
   };
 
   return (
-    <div id="review-view" className="space-y-8">
+    <div id="review-view" className="space-y-6">
       
       {/* Title Header */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="font-display font-extrabold text-3xl text-[#0b0f19] tracking-tight">Đánh Giá & Chiến Lược</h2>
-          <p className="text-sm text-slate-500 max-w-xl">
-            Rà soát năng suất, tối ưu hóa các thói quen cốt lõi và chạy thử nghiệm.
-          </p>
+      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+        <div className="relative border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 text-white md:p-8">
+          <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="relative flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-indigo-200"><BookOpenCheck className="h-6 w-6" /></span>
+            <div>
+              <p className="life-kicker mb-2 text-indigo-300">Không gian đánh giá</p>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Đánh giá & Điều chỉnh</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">Nhìn lại dữ liệu, chọn điều cần thay đổi, sau đó mới lưu hoặc xuất dữ liệu. Mỗi tab có một nhiệm vụ rõ ràng.</p>
+            </div>
+          </div>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex bg-[#f1f5f9] p-1 rounded-xl border border-slate-200 shrink-0">
-          {(['review', 'experiments', 'database', 'recommendations'] as const).map(tab => (
+        <div className="grid gap-2 p-3 sm:grid-cols-2 md:grid-cols-4 md:p-4">
+          {reviewTabs.map(tab => {
+            const Icon = tab.icon;
+            const active = activeReviewTab === tab.id;
+            return (
             <button
-              key={tab}
-              onClick={() => setActiveReviewTab(tab)}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                activeReviewTab === tab 
-                  ? "bg-white text-[#0b0f19] shadow-xs" 
-                  : "text-slate-500 hover:text-slate-800"
+              key={tab.id}
+              onClick={() => setActiveReviewTab(tab.id)}
+              className={`group flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                active
+                  ? "border-indigo-200 bg-indigo-50 text-indigo-950 shadow-sm"
+                  : "border-transparent bg-slate-50/80 text-slate-600 hover:border-slate-200 hover:bg-white"
               }`}
             >
-              {tab === 'review' ? "Review Ngày" :
-               tab === 'experiments' ? "Thử nghiệm" :
-               tab === 'database' ? "Dữ liệu & Sao lưu" : "Lịch sử Đề xuất"}
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? "bg-indigo-600 text-white" : "bg-white text-slate-500 shadow-xs"}`}><Icon className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-extrabold">{tab.label}</span>
+                <span className="mt-0.5 block truncate text-[10px] text-slate-400">{tab.description}</span>
+              </span>
+              <ChevronRight className={`h-4 w-4 shrink-0 transition ${active ? "text-indigo-600" : "text-slate-300 group-hover:text-slate-500"}`} />
             </button>
-          ))}
+          );})}
         </div>
       </section>
 
@@ -231,21 +265,25 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
+            <section className="flex flex-col gap-4 rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="life-kicker text-indigo-600">Thiết lập cách app vận hành</p><h3 className="mt-1 text-base font-black text-slate-950">Trọng tâm tuần, lịch rảnh và routine</h3><p className="mt-1 text-xs text-slate-500">Thay đổi ở đây sẽ tác động trực tiếp đến việc được ưu tiên trên màn Hôm nay.</p></div>
+              <button onClick={() => onChangeState({ ...state, onboardingCompleted: false })} className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white"><Sparkles className="h-4 w-4" />Mở thiết lập</button>
+            </section>
             {/* Split layout if creating, else show summary list */}
             {isCreatingWeeklyReview ? (
               <form onSubmit={handleSubmitWeeklyReview} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 {/* Left Column: Reflection Inputs (col-span-8) */}
-                <div className="lg:col-span-8 bg-white border border-slate-200/80 rounded-[24px] p-6 md:p-8 space-y-6">
+                <div className="lg:col-span-8 space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                   <div className="border-b border-slate-100 pb-4">
                     <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">PHẢN TƯ ĐỊNH TÍNH</span>
-                    <h3 className="font-display font-bold text-lg text-slate-900 mt-1">Viết Review Tầm Nhìn Ngày</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Thành thực với chính mình là chìa khóa của sự tiến bộ bền vững.</p>
+                    <h3 className="font-display font-bold text-lg text-slate-900 mt-1">Đánh giá tuần</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Nhìn lại dữ liệu của cả tuần để quyết định tuần tới, thay vì đánh giá cảm tính từng ngày.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Ngày đánh giá</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Chọn một ngày trong tuần cần đánh giá</label>
                       <input 
                         type="date" 
                         value={weeklyForm.date}
@@ -255,7 +293,17 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">1. Điều gì đã làm tốt nhất hôm nay? (What went well)</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">0. Tuần này tôi đã định hoàn thành điều gì?</label>
+                      <textarea
+                        placeholder="Ví dụ: hoàn thiện checklist Setup 1, có 10 cuộc trò chuyện B2B chất lượng..."
+                        value={weeklyForm.planned}
+                        onChange={e => setWeeklyForm({ ...weeklyForm, planned: e.target.value })}
+                        className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:ring-1 focus:ring-indigo-500/25"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">1. Điều gì đã làm tốt nhất tuần này?</label>
                       <textarea 
                         placeholder="Ví dụ: Gửi đầy đủ 15 email outreach B2B, hoàn thành 6.000 bước đi bộ và skincare đúng giờ..."
                         value={weeklyForm.wins}
@@ -296,7 +344,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">5. Đề xuất điều chỉnh thói quen ngày mai (Proposed adjustments)</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">5. Tuần tới sẽ điều chỉnh điều gì?</label>
                       <textarea 
                         placeholder="Ví dụ: Sẽ in checklist giao dịch ra giấy đặt trên bàn, đi ngủ trước 12h..."
                         value={weeklyForm.adjustments}
@@ -308,7 +356,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                 </div>
 
                 {/* Right Column: Decision Dashboard (col-span-4) */}
-                <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
+                <div className="lg:col-span-4 space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                   <div className="border-b border-slate-100 pb-4">
                     <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">QUYẾT ĐỊNH CHIẾN LƯỢC</span>
                     <h3 className="font-display font-bold text-base text-slate-900 mt-1">Hành Động Chiến Lược</h3>
@@ -383,28 +431,28 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             ) : (
               // List of completed reviews
               <div className="space-y-6">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex justify-between items-center">
+                <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="font-display font-bold text-lg text-slate-900">Nhật ký Đánh giá Tầm nhìn</h3>
-                    <p className="text-xs text-slate-500 mt-1">Lưu trữ các đánh giá và quyết định điều chỉnh thói quen qua từng chu kỳ.</p>
+                    <h3 className="font-display font-bold text-lg text-slate-900">Nhật ký đánh giá tuần</h3>
+                    <p className="text-xs text-slate-500 mt-1">Mỗi tuần một lần: so sánh kế hoạch, hành động, kết quả và quyết định điều chỉnh.</p>
                   </div>
                   <button
                     onClick={() => setIsCreatingWeeklyReview(true)}
                     className="bg-[#0b0f19] hover:bg-slate-800 text-white rounded-xl px-5 py-2.5 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> Viết Review mới
+                    <Plus className="w-4 h-4" /> Đánh giá tuần này
                   </button>
                 </div>
 
                 <div className="space-y-4">
                   {state.weeklyReviews.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center space-y-4 shadow-xs max-w-lg mx-auto">
+                    <div className="mx-auto max-w-lg space-y-4 rounded-[24px] border border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
                       <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto border border-slate-150">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
                       <div className="space-y-1">
                         <h4 className="text-sm font-bold text-slate-800">Chưa có bài review nào</h4>
-                        <p className="text-xs text-slate-500">Hãy bắt đầu viết bài đánh giá ngày hôm nay để ghi lại tiến trình kỷ luật.</p>
+                        <p className="text-xs text-slate-500">Kết thúc tuần, hãy dành 10 phút nhìn lại dữ liệu trước khi lập tuần mới.</p>
                       </div>
                       <button 
                         onClick={() => setIsCreatingWeeklyReview(true)}
@@ -415,11 +463,11 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                     </div>
                   ) : (
                     state.weeklyReviews.map(rev => (
-                      <div key={rev.id} className="bg-white rounded-3xl border border-slate-200/80 p-6 md:p-8 space-y-5 shadow-xs">
+                      <div key={rev.id} className="space-y-5 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                         <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                           <div className="space-y-1">
-                            <h4 className="font-display font-bold text-slate-900 text-base">Đánh giá ngày thứ #{rev.weekNumber}</h4>
-                            <span className="text-[10px] text-slate-400 font-mono">Thời gian ghi nhận: {formatDisplayDate(rev.startDate)}</span>
+                            <h4 className="font-display font-bold text-slate-900 text-base">Tuần {rev.weekNumber}</h4>
+                            <span className="text-[10px] text-slate-400 font-mono">{formatDisplayDate(rev.startDate)} – {formatDisplayDate(rev.endDate)}</span>
                           </div>
                           <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${
                             rev.status === 'continue' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
@@ -465,7 +513,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex justify-between items-center">
+            <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="font-display font-bold text-base text-slate-900">Thiết lập Thử nghiệm Hành vi & Tối ưu hóa</h3>
                 <p className="text-xs text-slate-500 mt-1">Chạy thử nghiệm tối ưu thói quen trong 2-3 tuần để tìm kiếm sự đột phá năng suất.</p>
@@ -480,7 +528,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
 
             {/* Add Experiment Form Modal Inline */}
             {isAddingExperiment && (
-              <form onSubmit={handleSubmitExperiment} className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4 shadow-sm">
+              <form onSubmit={handleSubmitExperiment} className="space-y-4 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                 <div className="border-b border-slate-100 pb-3">
                   <h4 className="font-bold text-slate-900 text-sm">Thiết lập tham số thử nghiệm mới</h4>
                 </div>
@@ -566,13 +614,13 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             {/* Experiments list */}
             <div className="space-y-4">
               {state.experiments.length === 0 ? (
-                <div className="bg-white border border-slate-200/80 rounded-[24px] p-10 text-center space-y-3">
+                <div className="space-y-3 rounded-[24px] border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
                   <FlaskConical className="w-8 h-8 text-slate-300 mx-auto" />
                   <p className="text-xs text-slate-400">Chưa thiết lập thử nghiệm hành vi nào.</p>
                 </div>
               ) : (
                 state.experiments.map(ex => (
-                  <div key={ex.id} className="bg-white border border-slate-200 rounded-[24px] p-6 space-y-3.5 shadow-xs">
+                  <div key={ex.id} className="space-y-3.5 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">{ex.goalId}</span>
@@ -608,16 +656,16 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           >
             {/* Database backups & Seed */}
-            <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 md:p-8 space-y-6">
+            <div className="space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
               <div className="border-b border-slate-100 pb-4">
                 <h3 className="font-display font-bold text-lg text-slate-900">Sao lưu & Đồng bộ Dữ liệu</h3>
                 <p className="text-xs text-slate-500 mt-1">Xuất lưu dữ liệu thô dạng JSON để bảo mật dữ liệu thói quen trên máy cá nhân.</p>
               </div>
 
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 <button
                   onClick={handleExportJSON}
-                  className="w-full bg-[#f8fafc] border border-slate-200 rounded-xl p-4 text-left flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer"
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition-all hover:border-indigo-200 hover:bg-white"
                 >
                   <div className="space-y-0.5">
                     <span className="text-xs font-bold text-slate-800 block">Tải về sao lưu (.json)</span>
@@ -626,7 +674,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                   <Download className="w-5 h-5 text-slate-400" />
                 </button>
 
-                <div className="relative w-full bg-[#f8fafc] border border-slate-200 rounded-xl p-4 text-left flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer">
+                <div className="relative flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition-all hover:border-indigo-200 hover:bg-white">
                   <div className="space-y-0.5">
                     <span className="text-xs font-bold text-slate-800 block">Nhập sao lưu (.json)</span>
                     <span className="text-[10px] text-slate-400">Chọn tệp sao lưu đã lưu từ máy của bạn.</span>
@@ -642,30 +690,32 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
               </div>
 
               {/* Developer panel / seed */}
-              <div className="pt-6 border-t border-slate-150 space-y-4">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Bảng điều khiển Nhà phát triển</h4>
-                
+              <details className="group border-t border-slate-100 pt-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-bold text-slate-500 hover:text-slate-800">
+                  Công cụ nâng cao
+                  <ChevronRight className="h-4 w-4 transition group-open:rotate-90" />
+                </summary>
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={handleSeedData}
-                    className="bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs p-3.5 rounded-xl hover:bg-indigo-100 transition-all cursor-pointer text-center flex flex-col justify-center items-center gap-1 shadow-3xs"
+                    className="mt-4 flex flex-col items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-center text-xs font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                   >
                     <RefreshCw className="w-4 h-4 animate-spin-slow text-indigo-500" />
                     Tải 14 Ngày Mẫu 🧬
                   </button>
                   <button 
                     onClick={handleResetData}
-                    className="bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs p-3.5 rounded-xl hover:bg-rose-100 transition-all cursor-pointer text-center flex flex-col justify-center items-center gap-1 shadow-3xs"
+                    className="mt-4 flex flex-col items-center justify-center gap-1 rounded-2xl border border-rose-100 bg-rose-50/50 p-3.5 text-center text-xs font-bold text-rose-700 transition hover:border-rose-200 hover:bg-rose-50"
                   >
                     <Trash2 className="w-4 h-4 text-rose-500" />
                     Xóa Hết Dữ Liệu 🚨
                   </button>
                 </div>
-              </div>
+              </details>
             </div>
 
             {/* Column 2: CSV Exports */}
-            <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 md:p-8 space-y-6">
+            <div className="space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
               <div className="border-b border-slate-100 pb-4">
                 <h3 className="font-display font-bold text-lg text-slate-900">Xuất báo cáo dạng bảng (CSV)</h3>
                 <p className="text-xs text-slate-500 mt-1">Chuyển dữ liệu Life OS sang Google Sheets hoặc Excel để phân tích nâng cao.</p>
@@ -674,7 +724,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
               <div className="space-y-3">
                 <button
                   onClick={handleExportLeadsCSV}
-                  className="w-full bg-[#f8fafc] border border-slate-200 rounded-xl p-3.5 text-left flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer text-xs font-bold text-slate-700"
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-white"
                 >
                   <span>Xuất danh sách B2B Leads (.csv)</span>
                   <FileSpreadsheet className="w-4 h-4 text-slate-400" />
@@ -682,7 +732,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
 
                 <button
                   onClick={handleExportJobsCSV}
-                  className="w-full bg-[#f8fafc] border border-slate-200 rounded-xl p-3.5 text-left flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer text-xs font-bold text-slate-700"
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-white"
                 >
                   <span>Xuất lịch sử Ứng tuyển CV (.csv)</span>
                   <FileSpreadsheet className="w-4 h-4 text-slate-400" />
@@ -690,7 +740,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
 
                 <button
                   onClick={handleExportHealthCSV}
-                  className="w-full bg-[#f8fafc] border border-slate-200 rounded-xl p-3.5 text-left flex items-center justify-between hover:border-slate-300 transition-all cursor-pointer text-xs font-bold text-slate-700"
+                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-white"
                 >
                   <span>Xuất Logs Sức khỏe & Cân nặng (.csv)</span>
                   <FileSpreadsheet className="w-4 h-4 text-slate-400" />
@@ -706,19 +756,61 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="bg-white border border-slate-200/80 rounded-[24px] p-6 md:p-8 space-y-6"
+            className="space-y-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm md:p-8"
           >
-            <div>
-              <h3 className="font-display font-bold text-lg text-slate-900">Nhật ký Đề xuất từ Động cơ AI (Evidence-Based Logs)</h3>
-              <p className="text-xs text-slate-500 mt-1">Lưu trữ toàn bộ các đề xuất tối ưu thói quen dựa trên nguyên lý khoa học và thực trạng năng lượng.</p>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <p className="life-kicker mb-2 text-indigo-600">Lịch sử AI</p>
+                <h3 className="font-display text-lg font-extrabold text-slate-900">AI đã đề xuất và thay đổi điều gì?</h3>
+                <p className="mt-1 text-xs text-slate-500">Một nơi để kiểm tra lời khuyên, dữ liệu AI đã ghi và trạng thái hoàn tác.</p>
+              </div>
+              <span className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[10px] font-black text-indigo-700">{(state.coachHistory || []).length + (state.aiChangeHistory || []).length + (state.evidenceRecommendations || []).length} bản ghi</span>
             </div>
 
-            <div className="space-y-4">
-              {(state.evidenceRecommendations || []).length === 0 ? (
-                <p className="text-xs text-slate-400 py-10 text-center">Chưa có đề xuất nào được lưu trữ trong lịch sử.</p>
-              ) : (
-                (state.evidenceRecommendations || []).map(rec => (
-                  <div key={rec.id} className="p-4 bg-[#f8fafc] border border-slate-200 rounded-xl space-y-2 text-xs">
+            <div className="space-y-6">
+              {(state.coachHistory || []).length > 0 && (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Tư vấn đã lưu</h4>
+                  {(state.coachHistory || []).map(item => (
+                    <div key={item.id} className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-xs">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold text-indigo-700">{item.expertLens}</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-slate-500">{item.status === 'applied' ? 'Đã đưa vào hôm nay' : 'Đã lưu'}</span>
+                      </div>
+                      <p className="font-bold text-slate-900">{item.nextAction}</p>
+                      <p className="mt-1 text-slate-600">{item.diagnosis}</p>
+                      <p className="mt-2 text-[10px] text-slate-400">Thước đo: {item.successMetric}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {(state.aiChangeHistory || []).length > 0 && (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Thay đổi dữ liệu</h4>
+                  {(state.aiChangeHistory || []).map(change => (
+                    <div key={change.id} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-xs sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-bold text-slate-900">{change.summary}</p>
+                        <p className="mt-1 text-slate-500">{change.counts.activities} hoạt động · {change.counts.tasks} việc · {change.counts.schedules} lịch</p>
+                      </div>
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-bold ${change.status === 'undone' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>{change.status === 'undone' ? 'Đã hoàn tác' : 'Đã áp dụng'}</span>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {(state.evidenceRecommendations || []).length === 0 && (state.coachHistory || []).length === 0 && (state.aiChangeHistory || []).length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-12 text-center">
+                  <History className="mx-auto h-6 w-6 text-slate-300" />
+                  <p className="mt-3 text-xs font-semibold text-slate-500">Chưa có đề xuất nào trong lịch sử.</p>
+                  <p className="mt-1 text-[10px] text-slate-400">Các lời khuyên đã lưu từ Life OS Coach sẽ xuất hiện tại đây.</p>
+                </div>
+              ) : (state.evidenceRecommendations || []).length > 0 ? (
+                <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Đề xuất dựa trên dữ liệu</h4>
+                  {(state.evidenceRecommendations || []).map(rec => (
+                  <div key={rec.id} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs transition hover:border-indigo-200 hover:bg-white">
                     <div className="flex justify-between items-center">
                       <span className="font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-150">{rec.goalId}</span>
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
@@ -737,8 +829,9 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
                       Khởi tạo ngày: {formatDisplayDate(rec.createdDate)}
                     </div>
                   </div>
-                ))
-              )}
+                  ))}
+                </section>
+              ) : null}
             </div>
           </motion.div>
         )}

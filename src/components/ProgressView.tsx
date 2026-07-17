@@ -15,6 +15,7 @@ interface ProgressViewProps {
 
 export default function ProgressView({ state, onChangeState }: ProgressViewProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'pipelines' | 'health' | 'trading'>('overview');
+  const [outcomeDrafts, setOutcomeDrafts] = useState<Record<string, string>>({});
 
   // Compute pipelines statistics
   const b2bStatusCounts = {
@@ -38,36 +39,28 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .sort((a, b) => a.date.localeCompare(b.date));
   const weightRecords = healthLogsSorted.filter(h => h.weight !== null) as Array<HealthRecord & { weight: number }>;
 
-  // Compute activity vs outcome stats
-  const g1Id = state.goals[0]?.id || "G1";
-  const g2Id = state.goals[1]?.id || "G2";
-  const totalG1Activities = state.activities.filter(a => a.goalId === g1Id).length;
-  const totalG1Outcomes = state.activities.filter(a => a.goalId === g1Id && Object.keys(a.outcome).length > 0).length;
+  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
+  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
+  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
+  const careerGoal = state.goals.find(g => g.category === 'career');
 
-  const totalG2Activities = state.activities.filter(a => a.goalId === g2Id).length;
-  const totalG2Outcomes = state.activities.filter(a => a.goalId === g2Id && Object.keys(a.outcome).length > 0).length;
-
-  // Bento Grid helper statistics
-  const g1TotalLeads = state.b2bLeads.length;
-  const g1Paying = state.b2bLeads.filter(l => l.status === "paying").length;
-  const g1Meeting = state.b2bLeads.filter(l => l.status === "meeting").length;
-  const g1Proposal = state.b2bLeads.filter(l => l.status === "proposal").length;
-
-  const g2TotalApplications = state.jobApplications.length;
-  const g2Interviewing = state.jobApplications.filter(j => j.status === "interviewing").length;
-  const g2Offered = state.jobApplications.filter(j => j.status === "offered").length;
-
-  const g3CurrentWeight = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1].weight : 63.8;
-  const g3InitialWeight = 64.0;
-  const g3TargetWeight = 55.0;
+  const parseNumbers = (value: string) => (value.match(/\d+(?:[.,]\d+)?/g) || []).map(item => Number(item.replace(',', '.')));
+  const healthNumbers = parseNumbers(`${healthGoal?.desiredOutcome || ''} ${healthGoal?.milestones.map(m => m.targetValue).join(' ') || ''}`);
+  const g3InitialWeight = healthNumbers[0] || weightRecords[0]?.weight || 64.5;
+  const g3TargetWeight = healthNumbers.length > 1 ? Math.min(...healthNumbers) : 54;
+  const g3CurrentWeight = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1].weight : g3InitialWeight;
   const g3WeightLoss = Math.round((g3InitialWeight - g3CurrentWeight) * 10) / 10;
   const g3AvgSteps = healthLogsSorted.length > 0
     ? Math.round(healthLogsSorted.reduce((acc, curr) => acc + (curr.steps || 0), 0) / healthLogsSorted.length)
     : 0;
 
-  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
-  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
-  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
+  const topActivityGoal = state.goals
+    .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
+    .sort((a, b) => b.count - a.count)[0];
+  const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
+  const pendingOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending').sort((a, b) => (a.outcomeReviewDate || '').localeCompare(b.outcomeReviewDate || ''));
+  const allMilestones = state.goals.flatMap(goal => goal.milestones);
+  const completedMilestones = allMilestones.filter(milestone => milestone.achieved).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
   const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
     ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
@@ -85,12 +78,21 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
   }).format(new Date(Date.now() - (14 - i) * 86_400_000)));
   const eligibleRoutineDays = last15Days.filter(day => day >= state.startDate);
   const routineLogs = state.routineLogs || [];
+  const routineIsDue = (routine: typeof state.routines[number], date: string) => {
+    if (!routine.scheduleDays?.length) return true;
+    return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
+  };
+  const activeRoutines = state.routines.filter(routine => routine.active !== false);
+  const routineOpportunities = activeRoutines.flatMap(routine => eligibleRoutineDays
+    .filter(date => routineIsDue(routine, date))
+    .filter(date => !routineLogs.some(log => log.routineId === routine.id && log.date === date && log.status === 'skipped'))
+    .map(date => `${routine.id}:${date}`));
   const completedRoutineLogs = routineLogs.filter(log =>
     eligibleRoutineDays.includes(log.date) &&
     (log.status === 'minimum' || log.status === 'completed') &&
-    state.routines.some(routine => routine.id === log.routineId)
+    activeRoutines.some(routine => routine.id === log.routineId && routineIsDue(routine, log.date))
   );
-  const totalRoutineOpportunities = eligibleRoutineDays.length * state.routines.length;
+  const totalRoutineOpportunities = routineOpportunities.length;
   const routinesRatio = totalRoutineOpportunities > 0
     ? Math.round((completedRoutineLogs.length / totalRoutineOpportunities) * 100)
     : 0;
@@ -256,8 +258,11 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       const completed = log?.status === 'completed';
                       const minimum = log?.status === 'minimum';
                       const beforeCycle = dayStr < state.startDate;
+                      const scheduled = routineIsDue(rot, dayStr);
                       const statusLabel = beforeCycle
                         ? "Chưa bắt đầu chu kỳ"
+                        : !scheduled
+                          ? "Không có trong lịch"
                         : completed
                           ? "Hoàn thành target"
                           : minimum
@@ -276,6 +281,10 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                                 ? "bg-emerald-600 border-emerald-500"
                                 : minimum
                                   ? "bg-amber-300 border-amber-400"
+                                  : log?.status === 'skipped'
+                                    ? "bg-slate-200 border-slate-300"
+                                  : !scheduled
+                                    ? "bg-slate-50 border-slate-100 opacity-50"
                                   : beforeCycle
                                     ? "bg-slate-100 border-slate-100"
                                     : "bg-white border-dashed border-slate-300"
@@ -296,6 +305,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
         <div className="flex flex-wrap items-center gap-4 border-t border-slate-100 pt-3 text-[10px] text-slate-500">
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-600" /> Hoàn thành target</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-300" /> Minimum Day</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-200" /> Được thay thế / chủ động nghỉ</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-dashed border-slate-300 bg-white" /> Chưa có dữ liệu</span>
         </div>
       </div>
@@ -344,16 +354,25 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
-            {/* Storytelling Narrative Summary Section */}
-            <section className="bg-white border border-slate-200/80 rounded-[24px] p-8 relative overflow-hidden shadow-xs">
-              <div className="absolute top-0 left-0 w-[6px] h-full bg-[#4648d4]" />
-              <div className="space-y-4">
-                <span className="text-[10px] font-bold text-[#4648d4] uppercase tracking-wider block">Bản tóm tắt định tính từ AI</span>
-                <p className="font-display font-medium text-base md:text-lg text-[#0b1c30] leading-relaxed italic">
-                  “Sự phân bổ tâm trí của bạn tập trung cao độ vào <span className="bg-[#eff4ff] text-[#4648d4] px-1.5 py-0.5 rounded font-bold font-mono">{state.goals[0]?.name || "Hành trình 1"}</span> với {state.activities.length} hoạt động tiếp cận. Sự kiên trì thói quen đạt <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold font-mono">{routinesRatio}%</span>. Cân nặng của bạn duy trì ổn định ở mức <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-bold">{g3CurrentWeight} kg</span>. Hiệu suất phễu B2B của bạn ghi nhận {state.b2bLeads.length} leads với {b2bStatusCounts.paying} đối tác trả phí. Hãy kiên định bám đuổi hành động mỗi ngày.”
-                </p>
+            <section className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-[22px] border border-indigo-100 bg-indigo-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Execution</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{state.activities.length} bằng chứng</p>
+                <p className="mt-1 text-xs text-slate-600">Tập trung nhiều nhất: <strong>{topActivityGoal?.goal.name || "chưa có dữ liệu"}</strong>.</p>
+              </div>
+              <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Outcome</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{outcomeCount} kết quả</p>
+                <p className="mt-1 text-xs text-slate-600">B2B: {state.b2bLeads.length} lead · {b2bStatusCounts.paying} khách trả phí.</p>
+              </div>
+              <div className="rounded-[22px] border border-amber-100 bg-amber-50/70 p-5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Milestone</span>
+                <p className="mt-2 text-2xl font-black text-slate-950">{completedMilestones}/{allMilestones.length} cột mốc</p>
+                <p className="mt-1 text-xs text-slate-600">Nhịp routine 15 ngày: {routinesRatio}%. {routinesRatio >= 70 ? "Đang bền vững." : "Nên thu nhỏ mức tối thiểu."}</p>
               </div>
             </section>
+
+            {pendingOutcomes.length > 0 && <section className="rounded-[24px] border border-violet-200 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="life-kicker text-violet-600">Chờ kết quả</p><h3 className="mt-1 text-lg font-black text-slate-950">{pendingOutcomes.length} hoạt động cần kiểm tra lại</h3><p className="mt-1 text-xs text-slate-500">Hoạt động đã xong; app đang chờ tín hiệu để biết cách làm có hiệu quả hay không.</p></div><span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">{pendingOutcomes.filter(item => item.outcomeReviewDate && item.outcomeReviewDate <= new Date().toISOString().split('T')[0]).length} đến hạn</span></div><div className="mt-4 space-y-3">{pendingOutcomes.slice(0, 5).map(activity => <div key={activity.id} className="grid gap-3 rounded-2xl border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] md:items-center"><div><p className="text-xs font-black text-slate-900">{activity.activity}</p><p className="mt-1 text-[11px] text-slate-500">Kiểm tra: {activity.outcomeReviewDate ? formatDisplayDate(activity.outcomeReviewDate) : 'chưa đặt ngày'}</p></div><input value={outcomeDrafts[activity.id] || ''} onChange={event => setOutcomeDrafts({ ...outcomeDrafts, [activity.id]: event.target.value })} placeholder="Kết quả thực tế là gì?" className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-violet-400" /><button disabled={!outcomeDrafts[activity.id]?.trim() || !onChangeState} onClick={() => { if (!onChangeState) return; onChangeState({ ...state, activities: state.activities.map(item => item.id === activity.id ? { ...item, outcome: { result: outcomeDrafts[activity.id].trim() }, outcomeStatus: 'measured', outcomeReviewDate: null, updatedTimestamp: Date.now() } : item) }); setOutcomeDrafts(current => ({ ...current, [activity.id]: '' })); }} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white disabled:opacity-40">Lưu kết quả</button></div>)}</div></section>}
 
             {/* Bento Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -362,7 +381,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-8 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">PHÂN BỔ NỖ LỰC THỰC TẾ</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Activity vs Outcome Insights</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Hành động và kết quả</h3>
                   <p className="text-xs text-slate-500">Số lượng hành động và phản hồi được AI bóc tách từ check-in giọng nói của bạn.</p>
                 </div>
 
@@ -379,8 +398,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                     return (
                       <div key={g.id} className="space-y-1.5">
                         <div className="flex justify-between text-xs">
-                          <span className="font-bold text-slate-800">{g.id} — {g.name}</span>
-                          <span className="text-slate-500 font-mono">Actions: {actCount} | Outcomes: {otcCount}</span>
+                          <span className="font-bold text-slate-800">{g.name}</span>
+                          <span className="text-slate-500 font-mono">Hành động: {actCount} · Có kết quả: {otcCount}</span>
                         </div>
                         <div className="space-y-1">
                           {/* Actions Bar */}
@@ -402,7 +421,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-4 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">PHÂN BỔ TÂM TRÍ</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Mindshare Breakdown</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Phân bổ sự chú ý</h3>
                 </div>
 
                 {/* Nice CSS-based donut/stat circle representation */}
@@ -439,7 +458,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-5 bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">CÂN NẶNG & THỂ CHẤT</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">Health Tracker</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Theo dõi sức khỏe</h3>
                 </div>
 
                 {renderWeightChart()}
@@ -460,7 +479,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
               <div className="md:col-span-7 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">HIỆU SUẤT PHỄU OUTREACH</h4>
-                  <h3 className="font-display font-bold text-base text-slate-900">B2B SaaS Conversions</h3>
+                  <h3 className="font-display font-bold text-base text-slate-900">Chuyển đổi B2B</h3>
                   <p className="text-xs text-slate-500">Tỷ lệ chuyển đổi từ Outreach của các đối tác tiềm năng.</p>
                 </div>
 
@@ -468,7 +487,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 <div className="py-4 space-y-2.5">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-slate-700">Tổng số leads đã tiếp cận:</span>
-                    <span className="font-bold text-slate-900 font-mono">{g1TotalLeads} leads</span>
+                    <span className="font-bold text-slate-900 font-mono">{state.b2bLeads.length} leads</span>
                   </div>
                   
                   {/* Visual funnel levels */}
@@ -513,7 +532,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Column 1: B2B Leads pipeline */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="font-display font-bold text-lg text-slate-900">Bản đồ Phễu B2B Leads ({state.goals[0]?.name || "Hành trình 1"})</h3>
+                <h3 className="font-display font-bold text-lg text-slate-900">Phễu khách hàng · {b2bGoal?.name || "B2B Marketing"}</h3>
                 <p className="text-xs text-slate-500 mt-1">Danh sách đối tác dịch vụ tiếp cận được cập nhật tự động từ check-in AI hoặc thêm tay.</p>
               </div>
 
@@ -582,8 +601,8 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             {/* Column 2: Job Applications pipeline */}
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-6">
               <div className="border-b border-slate-100 pb-4">
-                <h3 className="font-display font-bold text-lg text-slate-900">B2B Pipeline & Cơ hội khách hàng</h3>
-                <p className="text-xs text-slate-500 mt-1">Đảm bảo mục tiêu phương án phòng vệ dự phòng trên 30 triệu VND.</p>
+                <h3 className="font-display font-bold text-lg text-slate-900">Cơ hội nghề nghiệp trên 30 triệu net</h3>
+                <p className="text-xs text-slate-500 mt-1">{careerGoal?.name || "Theo dõi ứng tuyển, phỏng vấn và offer riêng với phễu khách hàng B2B."}</p>
               </div>
 
               {/* Quick job add form */}
@@ -678,7 +697,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
             <div className="bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
               <div>
                 <h3 className="font-display font-bold text-lg text-slate-900">Lịch sử Health & Beauty</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Biểu đồ biểu diễn sự sụt giảm an toàn từ 64 kg về 55 kg.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Biểu đồ tiến độ an toàn từ {g3InitialWeight} kg về {g3TargetWeight} kg.</p>
               </div>
               {renderWeightChart()}
             </div>

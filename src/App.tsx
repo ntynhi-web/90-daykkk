@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search, Cloud, LogOut, LoaderCircle } from "lucide-react";
+import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search, Cloud, LogOut, LoaderCircle, Mic, MoreHorizontal } from "lucide-react";
 import { AppState } from "./types";
 import { getDefaultAppState, getCycleStats, formatDateStr, migrateAppState } from "./utils";
 import TodayView from "./components/TodayView";
@@ -8,6 +8,7 @@ import ProgressView from "./components/ProgressView";
 import ReviewView from "./components/ReviewView";
 import CalendarView from "./components/CalendarView";
 import AuthScreen from "./components/AuthScreen";
+import OnboardingFlow from "./components/OnboardingFlow";
 import { User, firebaseConfigured, loadUserState, observeAuth, saveUserState, signOutCurrentUser } from "./firebase";
 
 const LOCAL_STORAGE_KEY = "90day_life_os_state_v1";
@@ -27,6 +28,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'today' | 'journeys' | 'calendar' | 'progress' | 'settings'>('today');
   const [autoOpenCreateModal, setAutoOpenCreateModal] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [cloudReady, setCloudReady] = useState(false);
@@ -108,6 +110,12 @@ export default function App() {
     setState(newState);
   };
 
+  const openVoiceCheckin = () => {
+    setMobileMoreOpen(false);
+    setActiveTab('today');
+    window.setTimeout(() => document.getElementById('section-quick-input')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
   // Live cycle tracking calculations
   const stats = getCycleStats(state.startDate, formatDateStr(new Date()));
   const cyclePercentage = Math.round((stats.currentDay / stats.totalDays) * 100);
@@ -124,6 +132,7 @@ export default function App() {
 
   return (
     <div id="app-root" className="life-canvas min-h-screen text-slate-900 font-sans flex flex-col md:flex-row antialiased selection:bg-indigo-100 selection:text-indigo-950">
+      {!state.onboardingCompleted && <OnboardingFlow state={state} onChangeState={handleUpdateState} />}
       
       {/* DESKTOP SIDEBAR (SLIM WHITE STYLE) */}
       <aside className="hidden md:flex flex-col w-64 bg-white text-slate-800 h-screen sticky top-0 shrink-0 border-r border-slate-200/80 z-40">
@@ -322,6 +331,7 @@ export default function App() {
               <TodayView 
                 state={state} 
                 onChangeState={handleUpdateState} 
+                onOpenProgress={() => setActiveTab('progress')}
               />
             )}
 
@@ -384,41 +394,14 @@ export default function App() {
           <span>Lộ trình</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={`flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 rounded-xl text-[10px] font-bold transition-all flex-1 cursor-pointer ${
-            activeTab === 'calendar' 
-              ? "text-indigo-600 bg-indigo-50/70" 
-              : "text-slate-500 hover:text-slate-900"
-          }`}
-        >
-          <Calendar className="w-5 h-5 shrink-0" />
-          <span>Lịch biểu</span>
-        </button>
+        <button onClick={openVoiceCheckin} className="-mt-5 flex min-h-[60px] flex-1 flex-col items-center justify-center gap-1 text-[10px] font-black text-indigo-700"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200"><Mic className="h-5 w-5" /></span><span>Check-in</span></button>
 
-        <button
-          onClick={() => setActiveTab('progress')}
-          className={`flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 rounded-xl text-[10px] font-bold transition-all flex-1 cursor-pointer ${
-            activeTab === 'progress' 
-              ? "text-indigo-600 bg-indigo-50/70" 
-              : "text-slate-500 hover:text-slate-900"
-          }`}
-        >
-          <BarChart3 className="w-5 h-5 shrink-0" />
-          <span>Kết quả</span>
-        </button>
+        <button onClick={() => setActiveTab('calendar')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'calendar' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><Calendar className="h-5 w-5" /><span>Lịch</span></button>
 
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 rounded-xl text-[10px] font-bold transition-all flex-1 cursor-pointer ${
-            activeTab === 'settings' 
-              ? "text-indigo-600 bg-indigo-50/70" 
-              : "text-slate-500 hover:text-slate-900"
-          }`}
-        >
-          <Settings className="w-5 h-5 shrink-0" />
-          <span>Cài đặt</span>
-        </button>
+        <div className="relative flex-1">
+          {mobileMoreOpen && <div className="absolute bottom-14 right-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"><button onClick={() => { setActiveTab('progress'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><BarChart3 className="h-4 w-4" />Kết quả</button><button onClick={() => { setActiveTab('settings'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Settings className="h-4 w-4" />Đánh giá & Cài đặt</button></div>}
+          <button onClick={() => setMobileMoreOpen(value => !value)} className={`flex min-h-[48px] w-full flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'progress' || activeTab === 'settings' ? 'bg-indigo-50/70 text-indigo-600' : 'text-slate-500'}`}><MoreHorizontal className="h-5 w-5" /><span>Thêm</span></button>
+        </div>
       </nav>
 
     </div>

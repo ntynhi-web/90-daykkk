@@ -73,11 +73,14 @@ export interface ActivityEntry {
   id: string;
   date: string; // YYYY-MM-DD
   goalId: string | null;
+  milestoneId?: string | null;
   source?: 'voice' | 'text' | 'manual';
   originalTranscript?: string;
   activity: string;
   output: Record<string, any>;
   outcome: Record<string, any>;
+  outcomeStatus?: 'pending' | 'measured' | 'not_applicable';
+  outcomeReviewDate?: string | null;
   insight: string | null;
   nextAction: string | null;
   confidence: number;
@@ -94,6 +97,20 @@ export interface Routine {
   target: string;
   evidence: string;
   status: 'completed' | 'pending' | 'missed';
+  active?: boolean;
+  /** 0 = Chủ nhật, 1 = Thứ hai ... 6 = Thứ bảy. Bỏ trống nghĩa là mỗi ngày. */
+  scheduleDays?: number[];
+  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'any';
+  /** Các routine cùng nhóm có thể thay thế nhau trong một ngày. */
+  substitutionGroup?: 'movement';
+}
+
+export interface WeeklyAvailability {
+  dayOfWeek: number;
+  mode: 'office' | 'home' | 'rest';
+  label: string;
+  blockedStart?: string;
+  blockedEnd?: string;
 }
 
 export interface RoutineLog {
@@ -273,6 +290,20 @@ export interface PriorityTask {
   completed: boolean;
   createdAt?: string;
   completedAt?: string | null;
+  startedAt?: string | null;
+}
+
+export interface FocusSession {
+  id: string;
+  title: string;
+  taskId?: string | null;
+  goalId: string;
+  milestoneId?: string | null;
+  date: string;
+  plannedMinutes: number;
+  startedAt: string;
+  elapsedSeconds: number;
+  status: 'active' | 'paused';
 }
 
 export interface ScheduleItem {
@@ -292,11 +323,43 @@ export interface ScheduleItem {
   reminderMinutes?: number;
 }
 
+export interface AIChangeRecord {
+  id: string;
+  createdAt: string;
+  summary: string;
+  source: 'voice' | 'text' | 'coach';
+  status: 'applied' | 'undone';
+  beforeState: string;
+  counts: {
+    activities: number;
+    tasks: number;
+    schedules: number;
+  };
+}
+
+export interface CoachHistoryEntry {
+  id: string;
+  createdAt: string;
+  expertLens: string;
+  question: string;
+  diagnosis: string;
+  nextAction: string;
+  successMetric: string;
+  reasoning?: string;
+  status: 'saved' | 'applied';
+}
+
 export interface AppState {
   startDate: string;
   endDate: string;
   dailyFocusGoalId?: string | null;
   dailyFocusDate?: string | null;
+  weeklyFocusGoalId?: string | null;
+  weeklySupportGoalIds?: string[];
+  onboardingCompleted?: boolean;
+  activeFocusSession?: FocusSession | null;
+  dailyMode?: 'normal' | 'busy' | 'recovery';
+  dailyModeDate?: string | null;
   goals: Goal[];
   activities: ActivityEntry[];
   routines: Routine[];
@@ -311,6 +374,9 @@ export interface AppState {
   lifestyleRecords: Record<string, LifestyleRecord>; // date string -> Record
   batchTestRecords: BatchTestRecord[];
   evidenceRecommendations?: EvidenceRecommendation[];
+  aiChangeHistory?: AIChangeRecord[];
+  coachHistory?: CoachHistoryEntry[];
   priorityTasks?: PriorityTask[];
   scheduleItems?: ScheduleItem[];
+  weeklyAvailability?: WeeklyAvailability[];
 }

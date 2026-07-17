@@ -3,22 +3,21 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Mic, MicOff, Send, HelpCircle, Flame, Calendar, Trash2, Plus, CheckCircle, 
   AlertTriangle, Play, Sparkles, AlertCircle, Edit, ArrowRight, Loader, Save, Check, Clock, Eye,
-  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock
+  ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock, Undo2
 } from "lucide-react";
-import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency } from "../types";
+import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency, CoachHistoryEntry } from "../types";
 import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
-import DailyRoutineCheckin from "./DailyRoutineCheckin";
-import LifeMaintenance from "./LifeMaintenance";
-import LifeAnchors from "./LifeAnchors";
+import LifeOperations from "./LifeOperations";
 
 interface TodayViewProps {
   state: AppState;
   onChangeState: (newState: AppState) => void;
+  onOpenProgress?: () => void;
 }
 
-export default function TodayView({ state, onChangeState }: TodayViewProps) {
+export default function TodayView({ state, onChangeState, onOpenProgress }: TodayViewProps) {
   // Helpers
   const getHoChiMinhDate = (daysOffset = 0) => {
     const date = new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000);
@@ -49,7 +48,9 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
   const [isCoaching, setIsCoaching] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [coachAdvice, setCoachAdvice] = useState<any | null>(null);
+  const [coachLens, setCoachLens] = useState<'auto' | 'fund_backtest' | 'b2b_marketing' | 'career' | 'health_beauty'>('auto');
   const [captureExpanded, setCaptureExpanded] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   // Interactive Confirmation State
   const [editableCheckIn, setEditableCheckIn] = useState<{
@@ -441,7 +442,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       const response = await fetch("/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: transcript, state })
+        body: JSON.stringify({ question: transcript, state, preferredLens: coachLens })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "Không thể kết nối Life OS Coach.");
@@ -458,6 +459,8 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     if (!editableCheckIn) return;
 
     let updatedState = { ...state };
+    let createdTasks: PriorityTask[] = [];
+    const { aiChangeHistory: _history, ...stateBeforeAIChange } = state;
 
     // 0. Apply a confirmed 90-day cycle command and preserve the plan's relative timing.
     if (editableCheckIn.cycleUpdate) {
@@ -550,6 +553,31 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
       }
     });
 
+    const completedYoga = editableCheckIn.routineUpdates.some(update => {
+      const routine = updatedState.routines.find(item => item.id === update.routineId);
+      return update.suggestedStatus === 'completed' && routine?.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('yoga');
+    });
+    if (completedYoga) {
+      const walkingRoutine = updatedState.routines.find(routine => routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('đi bộ'));
+      if (walkingRoutine) {
+        const existingWalkingLog = (updatedState.routineLogs || []).find(log => log.routineId === walkingRoutine.id && log.date === todayStr);
+        const now = Date.now();
+        const skippedWalking = {
+          id: existingWalkingLog?.id || `routine_log_${walkingRoutine.id}_${todayStr}`,
+          routineId: walkingRoutine.id,
+          goalId: walkingRoutine.goalId,
+          date: todayStr,
+          status: 'skipped' as const,
+          source: 'ai' as const,
+          evidence: 'Được thay bằng Yoga — không tính là bỏ thói quen.',
+          activityId: existingWalkingLog?.activityId || null,
+          createdTimestamp: existingWalkingLog?.createdTimestamp || now,
+          updatedTimestamp: now
+        };
+        updatedState.routineLogs = [skippedWalking, ...(updatedState.routineLogs || []).filter(log => !(log.routineId === walkingRoutine.id && log.date === todayStr))];
+      }
+    }
+
     // 2b. Complete an existing chore or create a newly recognized life-maintenance item.
     editableCheckIn.choreUpdates.forEach((update, index) => {
       const existing = (updatedState.chores || []).find(chore =>
@@ -626,6 +654,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         estimatedMinutes: t.estimatedMinutes,
         createdAt: new Date().toISOString()
       }));
+      createdTasks = newTasks;
       updatedState.priorityTasks = [...(updatedState.priorityTasks || []), ...newTasks];
     }
 
@@ -637,16 +666,77 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         date: s.date,
         startTime: s.startTime,
         endTime: s.endTime,
-        journeyId: s.journeyId
+        journeyId: s.journeyId,
+        taskId: createdTasks.find(task => task.title.trim().toLowerCase() === s.title.trim().toLowerCase() || (task.journeyId === s.journeyId && task.dueDate === s.date))?.id || null
       }));
       updatedState.scheduleItems = [...(updatedState.scheduleItems || []), ...newScheds];
     }
 
+    const changeRecord = {
+      id: `ai_change_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      summary: editableCheckIn.summary || "Cập nhật từ check-in AI",
+      source: (isRecording ? "voice" : "text") as 'voice' | 'text',
+      status: "applied" as const,
+      beforeState: JSON.stringify(stateBeforeAIChange),
+      counts: {
+        activities: editableCheckIn.activities.length,
+        tasks: editableCheckIn.taskSuggestions.length,
+        schedules: editableCheckIn.scheduleSuggestions.length
+      }
+    };
+    updatedState.aiChangeHistory = [changeRecord, ...(state.aiChangeHistory || [])].slice(0, 5);
+    setSaveNotice(`Đã lưu ${editableCheckIn.activities.length} hoạt động, ${editableCheckIn.taskSuggestions.length} việc và ${editableCheckIn.scheduleSuggestions.length} lịch.`);
     onChangeState(updatedState);
     setShowConfirmModal(false);
     setTranscript("");
     setEditableCheckIn(null);
-    alert("Cập nhật thành công! Mục tiêu, thói quen, chores và lịch trình đã được đồng bộ hoá.");
+  };
+
+  const handleUndoLastSave = () => {
+    const latestApplied = (state.aiChangeHistory || []).find(change => change.status === 'applied');
+    if (!latestApplied) return;
+    try {
+      const restored = JSON.parse(latestApplied.beforeState) as AppState;
+      const nextHistory = (state.aiChangeHistory || []).map(change => change.id === latestApplied.id ? { ...change, status: 'undone' as const } : change);
+      onChangeState({ ...restored, aiChangeHistory: nextHistory, coachHistory: state.coachHistory || restored.coachHistory || [] });
+    } catch {
+      setSaveNotice("Không thể hoàn tác bản ghi này. Dữ liệu hiện tại vẫn được giữ nguyên.");
+      return;
+    }
+    setSaveNotice("Đã hoàn tác lần lưu gần nhất.");
+  };
+
+  const saveCoachAdvice = (status: CoachHistoryEntry['status']) => {
+    if (!coachAdvice) return;
+    const entry: CoachHistoryEntry = {
+      id: `coach_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      expertLens: coachAdvice.expertLens || coachLens,
+      question: transcript,
+      diagnosis: coachAdvice.diagnosis || "",
+      nextAction: coachAdvice.nextAction || "",
+      successMetric: coachAdvice.successMetric || "",
+      reasoning: coachAdvice.reasoning,
+      status
+    };
+    const nextState: AppState = { ...state, coachHistory: [entry, ...(state.coachHistory || [])].slice(0, 20) };
+    if (status === 'applied' && entry.nextAction) {
+      const lensCategory = coachLens === 'fund_backtest' ? 'fund_backtest' : coachLens === 'career' ? 'career' : coachLens === 'health_beauty' ? 'health' : 'business';
+      const linkedGoal = state.goals.find(goal => goal.category === lensCategory) || state.goals.find(goal => goal.id === state.weeklyFocusGoalId);
+      nextState.priorityTasks = [{
+        id: `coach_task_${Date.now()}`,
+        title: entry.nextAction,
+        priority: 'important',
+        completed: false,
+        journeyId: linkedGoal?.id || null,
+        dueDate: todayStr,
+        createdAt: new Date().toISOString()
+      }, ...(state.priorityTasks || [])];
+    }
+    onChangeState(nextState);
+    setSaveNotice(status === 'applied' ? "Đã đưa việc coach đề xuất vào ưu tiên hôm nay." : "Đã lưu đề xuất vào Lịch sử AI.");
+    setCoachAdvice(null);
   };
 
   // Section 1 Helpers: Priority Board
@@ -726,14 +816,34 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     const target = (state.scheduleItems || []).find(item => item.id === itemId);
     if (!target) return;
     const completed = !target.completed;
+    const activityId = `schedule_activity_${target.id}`;
+    const scheduleGoalId = target.goalId || target.journeyId || null;
+    const linkedActivity: ActivityEntry = {
+      id: activityId,
+      date: target.date,
+      goalId: scheduleGoalId,
+      source: 'manual',
+      originalTranscript: `Hoàn thành lịch: ${target.title}`,
+      activity: target.title,
+      output: { scheduleCompleted: true, minutes: target.estimatedMinutes || null },
+      outcome: {},
+      insight: null,
+      nextAction: null,
+      confidence: 1,
+      createdTimestamp: Date.now(),
+      updatedTimestamp: Date.now()
+    };
     onChangeState({
       ...state,
       scheduleItems: (state.scheduleItems || []).map(item =>
         item.id === itemId ? { ...item, completed } : item
       ),
       priorityTasks: (state.priorityTasks || []).map(task =>
-        target.taskId && task.id === target.taskId ? { ...task, completed } : task
-      )
+        target.taskId && task.id === target.taskId ? { ...task, completed, completedAt: completed ? new Date().toISOString() : null } : task
+      ),
+      activities: completed
+        ? [linkedActivity, ...state.activities.filter(activity => activity.id !== activityId)]
+        : state.activities.filter(activity => activity.id !== activityId)
     });
   };
 
@@ -820,14 +930,25 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
     return j ? j.name : "Hành trình";
   };
 
+  const dueOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending' && activity.outcomeReviewDate && activity.outcomeReviewDate <= todayStr);
+
   return (
     <div id="today-dashboard-view" className="space-y-8">
+
+      <FocusOverview
+        state={state}
+        today={todayStr}
+        currentDay={currentDay}
+        onChangeState={onChangeState}
+      />
+
+      {dueOutcomes.length > 0 && <section className="flex flex-col gap-3 rounded-[22px] border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white"><CalendarClock className="h-4 w-4" /></span><div><p className="text-xs font-black text-violet-950">{dueOutcomes.length} kết quả cần kiểm tra hôm nay</p><p className="mt-1 text-xs text-violet-700">{dueOutcomes.slice(0, 2).map(item => item.activity).join(' · ')}{dueOutcomes.length > 2 ? ` · +${dueOutcomes.length - 2} việc` : ''}</p></div></div><button onClick={onOpenProgress} className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white">Cập nhật kết quả</button></section>}
       
-      {/* 1. VOICE / TEXT CHECK-IN — PRIMARY ACTION */}
+      {/* 2. VOICE / TEXT CHECK-IN — CAPTURE AFTER THE USER KNOWS WHAT TO DO */}
       <section id="section-quick-input" className={`relative overflow-hidden rounded-[28px] border border-slate-800 bg-slate-950 shadow-[0_28px_70px_rgba(15,23,42,0.18)] before:absolute before:-right-24 before:-top-24 before:h-64 before:w-64 before:rounded-full before:bg-indigo-500/20 before:blur-3xl ${captureExpanded ? "space-y-5 p-5 md:p-7" : "p-4 md:p-5"}`}>
         <div className="relative flex items-start justify-between gap-4">
           <div>
-          <p className="life-kicker text-indigo-300 mb-2">01 · Ghi nhận nhanh</p>
+          <p className="life-kicker text-indigo-300 mb-2">02 · Ghi nhận hoặc điều chỉnh</p>
           <h2 className={`font-display font-extrabold text-white tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl md:text-2xl" : "text-base md:text-lg"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
@@ -949,6 +1070,25 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               <p className="text-[11px] text-slate-400">Tư vấn theo đúng dữ liệu Fund, B2B hoặc Health của bạn — không tìm kiếm chung.</p>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['auto', 'Tự chọn chuyên gia'],
+                ['fund_backtest', 'Fund & Backtest'],
+                ['b2b_marketing', 'B2B Marketing'],
+                ['career', 'Career 30M+'],
+                ['health_beauty', 'Health & Beauty']
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCoachLens(value as typeof coachLens)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${coachLens === value ? 'border-indigo-500 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {coachError && (
               <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {coachError}
@@ -985,19 +1125,54 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                 <p className="text-[11px] text-slate-500"><strong>Lý do:</strong> {coachAdvice.reasoning}</p>
                 {coachAdvice.riskNote && <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3"><strong>Lưu ý:</strong> {coachAdvice.riskNote}</p>}
                 {coachAdvice.clarifyingQuestion && <p className="text-xs font-semibold text-indigo-700">Coach cần biết thêm: {coachAdvice.clarifyingQuestion}</p>}
+                <div className="flex flex-wrap gap-2 border-t border-indigo-100 pt-3">
+                  <button type="button" onClick={() => saveCoachAdvice('applied')} className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-700">Áp dụng việc tiếp theo</button>
+                  <button type="button" onClick={() => saveCoachAdvice('saved')} className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Lưu để xem sau</button>
+                  <button type="button" onClick={() => setCoachAdvice(null)} className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white">Bỏ qua</button>
+                </div>
+              </div>
+            )}
+
+            {saveNotice && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">{saveNotice}</p>
+                  <p className="mt-1 text-[10px] text-emerald-700">Bạn luôn có quyền kiểm tra dữ liệu vừa lưu và hoàn tác nếu AI hiểu sai.</p>
+                </div>
+                {(state.aiChangeHistory || []).some(change => change.status === 'applied') && (
+                  <button type="button" onClick={handleUndoLastSave} className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100">
+                    <Undo2 className="h-3.5 w-3.5" /> Hoàn tác lần lưu
+                  </button>
+                )}
+              </div>
+            )}
+
+            {state.activities.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Dữ liệu vừa ghi nhận</p>
+                  <span className="text-[10px] text-slate-400">3 mục gần nhất</span>
+                </div>
+                <div className="space-y-2">
+                  {state.activities.slice(0, 3).map(activity => {
+                    const goal = state.goals.find(item => item.id === activity.goalId);
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                        <GoalIcon icon={goal?.icon} color={goal?.accentColor} size={14} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] font-bold text-slate-800">{activity.activity}</p>
+                          <p className="mt-0.5 text-[9px] text-slate-400">{goal?.name || 'Chưa phân loại'} · {formatDisplayDate(activity.date)} · {activity.source || 'manual'}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
         </div>
         )}
       </section>
-
-      <FocusOverview
-        state={state}
-        today={todayStr}
-        currentDay={currentDay}
-        onChangeState={onChangeState}
-      />
 
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
       <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
@@ -1083,19 +1258,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
         </div>
       </section>
 
-      <LifeAnchors
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
-      <DailyRoutineCheckin
-        state={state}
-        today={todayStr}
-        onChangeState={onChangeState}
-      />
-
-      <LifeMaintenance
+      <LifeOperations
         state={state}
         today={todayStr}
         onChangeState={onChangeState}
@@ -1589,6 +1752,21 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
               ) : (
                 editableCheckIn && (
                   <div className="space-y-6 text-left">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-black text-amber-950">Kiểm tra tác động trước khi lưu</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">Chưa có dữ liệu nào được thay đổi. Bạn có thể sửa hoặc bỏ từng đề xuất bên dưới.</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.activities.length}</span><span className="text-[10px] font-bold text-slate-500">Hoạt động</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.taskSuggestions.length}</span><span className="text-[10px] font-bold text-slate-500">Việc mới</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.scheduleSuggestions.length}</span><span className="text-[10px] font-bold text-slate-500">Lịch mới</span></div>
+                        <div className="rounded-xl bg-white p-3"><span className="block text-lg font-black text-slate-900">{editableCheckIn.milestoneUpdates.length}</span><span className="text-[10px] font-bold text-slate-500">Cột mốc</span></div>
+                      </div>
+                    </div>
                     
                     {/* Tóm tắt */}
                     <div className="space-y-1.5">
@@ -1743,7 +1921,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       <div className="space-y-2">
                         <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-800">
                           <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-                          Life maintenance ({editableCheckIn.choreUpdates.length})
+                          Việc duy trì cuộc sống ({editableCheckIn.choreUpdates.length})
                         </h4>
                         <div className="space-y-2">
                           {editableCheckIn.choreUpdates.map((chore, idx) => (
@@ -1786,7 +1964,7 @@ export default function TodayView({ state, onChangeState }: TodayViewProps) {
                       <div className="space-y-2">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                          Đề xuất công việc chuẩn bị cho ngày mai ({editableCheckIn.taskSuggestions.length})
+                          Đề xuất công việc tiếp theo ({editableCheckIn.taskSuggestions.length})
                         </h4>
                         <div className="space-y-2">
                           {editableCheckIn.taskSuggestions.map((t, idx) => (
