@@ -386,9 +386,23 @@ export function getDefaultAppState(): AppState {
   };
 }
 
+const getConfirmedRoutines = (): Routine[] => [
+  { id: "routine_fund_daily", goalId: "G1", name: "Fund · Giao dịch & review", frequency: "Thứ 2–6", minimumDay: "Review checklist 15 phút", target: "Hoàn thành block Fund theo lịch và ghi journal", evidence: "Checklist + journal", status: "pending", scheduleDays: [1,2,3,4,5], active: true },
+  { id: "routine_fund_weekly", goalId: "G1", name: "Fund · Review tuần", frequency: "Thứ 7 · 4 giờ", minimumDay: "Tổng kết 1 giờ", target: "Review tuần đủ 4 giờ", evidence: "Bài học, lỗi và kế hoạch tuần mới", status: "pending", scheduleDays: [6], active: true },
+  { id: "routine_b2b_career", goalId: "G2", name: "B2B/Career · Focus block", frequency: "T2, T4, T6 · 60 phút", minimumDay: "30 phút hoặc 1 đầu ra", target: "60 phút cho B2B, CV hoặc freelance", evidence: "Asset, proposal hoặc application", status: "pending", scheduleDays: [1,3,5], active: true },
+  { id: "routine_english", goalId: "G3", name: "Career · English-first", frequency: "Hàng ngày", minimumDay: "30 phút nội dung tiếng Anh", target: "Ưu tiên nghe, nói và làm việc bằng tiếng Anh", evidence: "Phút thực hành", status: "pending", active: true },
+  { id: "routine_yoga", goalId: "G4", name: "Health · Yoga", frequency: "T2 sáng · T3/T5 tối", minimumDay: "15 phút", target: "Hoàn thành buổi theo lịch", evidence: "Số phút", status: "pending", scheduleDays: [1,2,4], substitutionGroup: "movement", active: true },
+  { id: "routine_walk", goalId: "G4", name: "Health · Đi bộ", frequency: "T4, T6, T7/CN nếu không dọn nặng", minimumDay: "15 phút", target: "30 phút", evidence: "Phút hoặc bước", status: "pending", scheduleDays: [0,3,5,6], substitutionGroup: "movement", active: true },
+  { id: "routine_healthy_eating", goalId: "G4", name: "Health · Ăn uống lành mạnh", frequency: "Hàng ngày", minimumDay: "Một lựa chọn ăn uống tốt hơn", target: "Ăn đủ chất và hạn chế thực phẩm gây hại", evidence: "Ghi chú ngắn", status: "pending", active: true },
+  { id: "routine_skincare_am", goalId: "G4", name: "Beauty · Skincare sáng", frequency: "Hàng ngày", minimumDay: "Làm sạch và chống nắng", target: "Routine sáng đầy đủ", evidence: "Checklist", status: "pending", active: true },
+  { id: "routine_skincare_pm", goalId: "G4", name: "Beauty · Skincare tối", frequency: "Hàng ngày · 22:30", minimumDay: "Làm sạch và dưỡng ẩm", target: "Face + body", evidence: "Checklist", status: "pending", active: true },
+  { id: "routine_haircare", goalId: "G4", name: "Beauty · Tắm gội & da đầu", frequency: "T2, T4, T6, CN", minimumDay: "Gội và làm sạch da đầu", target: "Hoàn thành routine tóc/da đầu", evidence: "Checklist", status: "pending", scheduleDays: [0,1,3,5], active: true },
+  { id: "routine_sleep", goalId: "G4", name: "Health · Ngủ phục hồi", frequency: "Hàng ngày · 22:45–05:30", minimumDay: "Lên giường trước 23:00", target: "Ngủ 22:45–05:30", evidence: "Giờ ngủ và thức dậy", status: "pending", active: true }
+];
+
 /** Confirmed personal plan captured on 18/07/2026. Applied once to each personal workspace. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
-  const startDate = "2026-07-18";
+  const startDate = "2026-07-19";
   const endDate = "2026-10-13";
   const milestone = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number): any => ({
     id, goalId, title, targetValue, currentValue: "0", dueDate, order,
@@ -462,16 +476,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     }
   ];
 
-  const routines: Routine[] = [
-    { id: "routine_fund_daily", goalId: "G1", name: "Giao dịch và review Fund", frequency: "Thứ 2–6", minimumDay: "Review checklist 15 phút", target: "Hoàn thành block Fund theo lịch", evidence: "Journal và checklist", status: "pending", scheduleDays: [1,2,3,4,5], active: true },
-    { id: "routine_b2b_career", goalId: "G2", name: "B2B · CV · Freelance", frequency: "T2, T4, T6", minimumDay: "30 phút hoặc 1 hồ sơ", target: "60 phút deep work", evidence: "Asset, proposal hoặc application", status: "pending", scheduleDays: [1,3,5], active: true },
-    { id: "routine_outreach", goalId: "G3", name: "Outreach chung", frequency: "15/tuần", minimumDay: "1 hồ sơ chất lượng", target: "10 Career + 5 B2B mỗi tuần", evidence: "Pipeline có nhãn", status: "pending", active: true },
-    { id: "routine_yoga", goalId: "G4", name: "Yoga", frequency: "T2 sáng, T3/T5 tối", minimumDay: "15 phút", target: "Hoàn thành buổi theo lịch", evidence: "Số phút", status: "pending", scheduleDays: [1,2,4], substitutionGroup: "movement", active: true },
-    { id: "routine_walk", goalId: "G4", name: "Đi bộ", frequency: "Ngày không yoga/dọn nhà nặng", minimumDay: "15 phút", target: "30 phút", evidence: "Phút hoặc bước", status: "pending", substitutionGroup: "movement", active: true },
-    { id: "routine_skincare_am", goalId: "G4", name: "Skincare sáng", frequency: "Hàng ngày", minimumDay: "Làm sạch và chống nắng", target: "Routine sáng đầy đủ", evidence: "Checklist", status: "pending", active: true },
-    { id: "routine_skincare_pm", goalId: "G4", name: "Skincare tối", frequency: "Hàng ngày", minimumDay: "Làm sạch và dưỡng ẩm", target: "Face + body", evidence: "Checklist", status: "pending", active: true },
-    { id: "routine_english", goalId: "G3", name: "English-first immersion", frequency: "Hàng ngày", minimumDay: "30 phút nội dung tiếng Anh", target: "Ưu tiên nghe/nói/làm việc bằng tiếng Anh", evidence: "Phút thực hành", status: "pending", active: true }
-  ];
+  const routines: Routine[] = getConfirmedRoutines();
 
   type Template = { key: string; title: string; days: number[]; startTime: string; endTime: string; goalId?: string | null; type?: ScheduleItem["type"]; locked?: boolean; notes?: string };
   const templates: Template[] = [
@@ -509,7 +514,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const date = new Date(`${cursor}T12:00:00`); date.setDate(date.getDate() + 1); cursor = formatDateStr(date);
   }
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
-  for (let date = "2026-07-18"; date <= endDate;) {
+  for (let date = "2026-07-25"; date <= endDate;) {
     addOnce(`rainy_${date}`, "Tắm Rainy", date, "10:00", "11:00", null, "habit", "Lặp mỗi 7 ngày, thứ Bảy.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
@@ -525,7 +530,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`lacky_${originalDate}`, "Tắm Lacky", scheduledDate, "11:00", "12:00", null, "habit", `Mốc chu kỳ 10 ngày: ${originalDate}; chuyển sang ngày rảnh gần nhất nếu trùng lịch công ty.`);
     const next = new Date(`${originalDate}T12:00:00`); next.setDate(next.getDate() + 10); date = formatDateStr(next);
   }
-  for (let date = startDate; date <= endDate;) {
+  for (let date = "2026-07-25"; date <= endDate;) {
     addOnce(`fund_weekly_a_${date}`, "Review Fund tuần · Phần 1", date, "08:00", "10:00", "G1", "review");
     addOnce(`fund_weekly_b_${date}`, "Review Fund tuần · Phần 2", date, "11:00", "13:00", "G1", "review", "Tổng 4 giờ; tách quanh lịch tắm Rainy.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
@@ -566,7 +571,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const newTaskIds = new Set(newTasks.map(item => item.id));
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 5, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 7, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals: [...goals, ...legacyGoals], routines: [...routines, ...preservedRoutines],
     priorityTasks: [...newTasks, ...(state.priorityTasks || []).filter(item => !newTaskIds.has(item.id))],
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
@@ -597,6 +602,30 @@ export function migrateAppState(rawState: any): AppState {
       !staleTitles.has(item.title.trim().toLowerCase())
     );
     migrated.personalScheduleSeedVersion = 5;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 5) {
+    const confirmed = getConfirmedRoutines();
+    const confirmedIds = new Set(confirmed.map(routine => routine.id));
+    const existingById = new Map((migrated.routines || []).map((routine: Routine) => [routine.id, routine]));
+    const canonical = confirmed.map(routine => ({
+      ...routine,
+      status: (existingById.get(routine.id) as Routine | undefined)?.status || routine.status
+    }));
+    const preserved = (migrated.routines || [])
+      .filter((routine: Routine) => !confirmedIds.has(routine.id))
+      .map((routine: Routine) => routine.id === "routine_outreach" ? { ...routine, active: false } : routine);
+    migrated.routines = [...canonical, ...preserved];
+    migrated.personalScheduleSeedVersion = 6;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 6) {
+    migrated.startDate = "2026-07-19";
+    migrated.endDate = "2026-10-13";
+    migrated.scheduleItems = (migrated.scheduleItems || []).filter((item: ScheduleItem) =>
+      !((item.id.startsWith("confirmed_") || item.id.startsWith("rainy_") || item.id.startsWith("fund_weekly_")) && item.date < "2026-07-19")
+    );
+    migrated.personalScheduleSeedVersion = 7;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
