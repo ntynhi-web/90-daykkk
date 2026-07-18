@@ -6,11 +6,11 @@ import {
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock, Undo2
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency, CoachHistoryEntry } from "../types";
-import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate } from "../utils";
+import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate, getPersonalFixedSchedule } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import LifeOperations from "./LifeOperations";
-import { expandRecurringSchedule, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
+import { expandRecurringSchedule, expandRoutine, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
 
 interface TodayViewProps {
   state: AppState;
@@ -33,6 +33,47 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
   const todayStr = getHoChiMinhDate(0);
   const { currentDay, daysRemaining } = getCycleStats(state.startDate, todayStr);
+
+  const handleStartPersonalPlanToday = () => {
+    if (!window.confirm(`Bắt đầu chu kỳ 90 ngày từ hôm nay ${formatDisplayDate(todayStr)}? App sẽ dời deadline và lịch theo cùng số ngày, nhưng không xóa nhật ký hiện có.`)) return;
+    const oldStart = new Date(`${state.startDate}T12:00:00`);
+    const nextStart = new Date(`${todayStr}T12:00:00`);
+    const deltaDays = Math.round((nextStart.getTime() - oldStart.getTime()) / (24 * 60 * 60 * 1000));
+    const shiftDate = (value?: string | null) => {
+      if (!value) return value;
+      const date = new Date(`${value}T12:00:00`);
+      if (Number.isNaN(date.getTime())) return value;
+      date.setDate(date.getDate() + deltaDays);
+      return date.toISOString().slice(0, 10);
+    };
+    const nextEndDate = calculateEndDate(todayStr);
+    const shiftedFlexibleItems = (state.scheduleItems || [])
+      .filter(item => !item.id.startsWith('fixed_') && !item.routineId)
+      .map(item => ({ ...item, date: shiftDate(item.date) || item.date }));
+    const fixedItems = getPersonalFixedSchedule(todayStr, nextEndDate);
+    const recurringItems = state.routines.flatMap(routine => expandRoutine(routine, todayStr, nextEndDate));
+    const nextSchedule = mergeScheduleItems(mergeScheduleItems(shiftedFlexibleItems, fixedItems), recurringItems);
+    onChangeState({
+      ...state,
+      startDate: todayStr,
+      endDate: nextEndDate,
+      personalPlanStartedAt: new Date().toISOString(),
+      dailyFocusDate: null,
+      dailyModeDate: todayStr,
+      weeklyFocusGoalId: 'G1',
+      weeklySupportGoalIds: ['G2', 'G3'],
+      goals: state.goals.map(goal => ({
+        ...goal,
+        startDate: todayStr,
+        deadline: shiftDate(goal.deadline) || goal.deadline,
+        milestones: (goal.milestones || []).map(milestone => ({ ...milestone, dueDate: shiftDate(milestone.dueDate) || milestone.dueDate }))
+      })),
+      priorityTasks: (state.priorityTasks || []).map(task => ({ ...task, dueDate: shiftDate(task.dueDate) })),
+      scheduleItems: nextSchedule,
+      chores: (state.chores || []).map(chore => ({ ...chore, dueDate: shiftDate(chore.dueDate) }))
+    });
+    setSaveNotice(`Đã bắt đầu chu kỳ mới từ ${formatDisplayDate(todayStr)}. Dữ liệu đang được đồng bộ vào tài khoản của bạn.`);
+  };
 
   // Core States
   const [transcript, setTranscript] = useState("");
@@ -987,6 +1028,17 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
   return (
     <div id="today-dashboard-view" className="space-y-8">
+
+      {state.startDate !== todayStr && (
+        <section className="overflow-hidden rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-950 via-indigo-900 to-violet-800 p-5 text-white shadow-xl shadow-indigo-100 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Kế hoạch cá nhân đã sẵn sàng</p>
+            <h2 className="mt-2 font-display text-xl font-black">Bắt đầu chu kỳ 90 ngày từ hôm nay</h2>
+            <p className="mt-2 max-w-2xl text-xs leading-relaxed text-indigo-100">Giữ các mục tiêu Fund → B2B → Marketing Job → Health, dời toàn bộ lịch theo ngày mới và lưu vào tài khoản Google của bạn. Nhật ký hiện có không bị xóa.</p>
+          </div>
+          <button onClick={handleStartPersonalPlanToday} className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-xs font-black text-indigo-800 shadow-lg transition hover:-translate-y-0.5 sm:mt-0 sm:w-auto"><Play className="h-4 w-4 fill-current" /> Áp dụng và bắt đầu hôm nay</button>
+        </section>
+      )}
 
       <div className="flex justify-end"><details className="relative"><summary className="cursor-pointer list-none rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm">Hôm nay: {dailyMode === 'busy' ? 'Bận' : dailyMode === 'recovery' ? 'Phục hồi' : 'Bình thường'} ▾</summary><div className="absolute right-0 z-30 mt-2 flex rounded-xl border border-slate-200 bg-white p-1 shadow-xl">{([['normal','Bình thường'],['busy','Bận'],['recovery','Phục hồi']] as const).map(([mode,label]) => <button key={mode} onClick={() => onChangeState({ ...state, dailyMode: mode, dailyModeDate: todayStr })} className={`rounded-lg px-3 py-2 text-xs font-black transition ${dailyMode === mode ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>{label}</button>)}</div></details></div>
 

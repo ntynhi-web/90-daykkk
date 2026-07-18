@@ -18,7 +18,7 @@ export function formatDisplayDate(dateStr: string): string {
   return dateStr;
 }
 
-const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleItem[] => {
+export const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleItem[] => {
   const templates = [
     { key: 'office', title: 'Đi làm tại công ty', days: [1, 3, 5], startTime: '08:00', endTime: '18:00', type: 'personal' as const, notes: 'Khung làm việc cố định; cho phép tối đa 2 việc phát sinh có xác nhận.' },
     { key: 'home', title: 'Làm việc tại nhà', days: [2, 4], startTime: '09:00', endTime: '17:30', type: 'personal' as const, notes: 'Khung làm việc cố định tại nhà; có thể chỉnh lại giờ trong Lịch biểu.' },

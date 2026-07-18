@@ -374,6 +374,7 @@ export interface AppState {
   startDate: string;
   endDate: string;
   personalScheduleSeedVersion?: number;
+  personalPlanStartedAt?: string | null;
   dailyFocusGoalId?: string | null;
   dailyFocusDate?: string | null;
   weeklyFocusGoalId?: string | null;
