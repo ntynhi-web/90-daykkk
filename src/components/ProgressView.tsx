@@ -39,10 +39,11 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .sort((a, b) => a.date.localeCompare(b.date));
   const weightRecords = healthLogsSorted.filter(h => h.weight !== null) as Array<HealthRecord & { weight: number }>;
 
-  const fundGoal = state.goals.find(g => g.category === 'fund_backtest') || state.goals[0];
-  const b2bGoal = state.goals.find(g => g.category === 'business' || g.category === 'marketing') || state.goals[1];
-  const healthGoal = state.goals.find(g => g.category === 'health') || state.goals[2];
-  const careerGoal = state.goals.find(g => g.category === 'career');
+  const activeGoals = state.goals.filter(goal => goal.status === 'active');
+  const fundGoal = activeGoals.find(g => g.category === 'fund_backtest') || activeGoals[0];
+  const b2bGoal = activeGoals.find(g => g.category === 'business' || g.category === 'marketing') || activeGoals[1];
+  const healthGoal = activeGoals.find(g => g.category === 'health') || activeGoals[2];
+  const careerGoal = activeGoals.find(g => g.category === 'career');
 
   const parseNumbers = (value: string) => (value.match(/\d+(?:[.,]\d+)?/g) || []).map(item => Number(item.replace(',', '.')));
   const healthNumbers = parseNumbers(`${healthGoal?.desiredOutcome || ''} ${healthGoal?.milestones.map(m => m.targetValue).join(' ') || ''}`);
@@ -59,7 +60,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     .sort((a, b) => b.count - a.count)[0];
   const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
   const pendingOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending').sort((a, b) => (a.outcomeReviewDate || '').localeCompare(b.outcomeReviewDate || ''));
-  const allMilestones = state.goals.flatMap(goal => goal.milestones);
+  const allMilestones = activeGoals.flatMap(goal => goal.milestones);
   const completedMilestones = allMilestones.filter(milestone => milestone.achieved).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
   const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
@@ -242,7 +243,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
 
         <div className="overflow-x-auto">
           <div className="min-w-[600px] space-y-3.5">
-            {state.routines.map(rot => {
+            {activeRoutines.map(rot => {
               const linkedGoal = state.goals.find(g => g.id === rot.goalId);
               
               return (
@@ -307,6 +308,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-amber-300" /> Minimum Day</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-slate-200" /> Được thay thế / chủ động nghỉ</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-dashed border-slate-300 bg-white" /> Chưa có dữ liệu</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-slate-100 bg-slate-50 opacity-50" /> Không nằm trong lịch</span>
         </div>
       </div>
     );

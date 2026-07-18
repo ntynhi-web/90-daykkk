@@ -138,7 +138,7 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
       <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <p className="life-kicker text-emerald-600">05 · Thói quen giữ nhịp</p>
+            <p className="life-kicker text-emerald-600">Thói quen giữ nhịp · {routines.length} việc hôm nay</p>
             <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">{completedCount}/{routines.length} xong</span>
           </div>
           <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Bạn đã giữ nhịp nào?</h2>
@@ -160,7 +160,7 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
       {showPlanner && (
         <div className="border-b border-indigo-100 bg-indigo-50/60 p-5">
           <div className="mb-4 flex items-center justify-between">
-            <div><p className="text-xs font-black text-slate-950">Lập routine cố định cho chu kỳ 90 ngày</p><p className="mt-1 text-[10px] text-slate-500">App sẽ tự tạo từng block trong Lịch biểu và không tạo trùng.</p></div>
+            <div><p className="text-xs font-black text-slate-950">Lập routine cố định cho chu kỳ hiện tại</p><p className="mt-1 text-[10px] text-slate-500">App sẽ tự tạo từng block trong Lịch biểu và không tạo trùng.</p></div>
             <button onClick={() => setShowPlanner(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white"><X className="h-4 w-4" /></button>
           </div>
           <div className="grid gap-3 md:grid-cols-4">

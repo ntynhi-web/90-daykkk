@@ -105,7 +105,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
     <section id="section-life-maintenance" className="life-panel overflow-hidden border-t-4 border-t-indigo-500">
       <div className={`flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:px-6 ${expanded ? "border-b border-slate-100" : ""}`}>
         <div>
-          <p className="life-kicker mb-2 text-slate-500">06 · Việc duy trì cuộc sống</p>
+          <p className="life-kicker mb-2 text-slate-500">Việc duy trì cuộc sống · {visibleChores.length} việc đến hạn</p>
           <h2 className="font-display text-lg font-extrabold text-slate-950">Những việc nhỏ cần được xử lý</h2>
           <p className="mt-1 text-xs text-slate-400">Nhà cửa, mua sắm và việc lặt vặt — luôn có chỗ riêng nhưng không lấn át trọng tâm.</p>
         </div>
@@ -138,8 +138,18 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
         </form>
       )}
 
-      {expanded && <div className="grid gap-2 p-4 md:grid-cols-2 md:p-6">
-        {visibleChores.length > 0 ? visibleChores.map(chore => {
+      {expanded && <div className="space-y-5 p-4 md:p-6">
+        {visibleChores.length > 0 ? Object.entries(categories).map(([categoryKey, categoryConfig]) => {
+          const categoryChores = visibleChores.filter(chore => chore.category === categoryKey);
+          if (categoryChores.length === 0) return null;
+          const CategoryIcon = categoryConfig.icon;
+          const categoryDone = categoryChores.filter(chore => isCompletedToday(chore, today)).length;
+          return <section key={categoryKey} className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800"><CategoryIcon className="h-4 w-4 text-indigo-500" />{categoryConfig.label}</div>
+              <span className="text-[10px] font-bold text-slate-500">{categoryDone}/{categoryChores.length} xong</span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">{categoryChores.map(chore => {
           const config = categories[chore.category];
           const Icon = config.icon;
           const done = isCompletedToday(chore, today);
@@ -164,6 +174,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
               <button onClick={() => deleteChore(chore.id)} className="rounded-lg p-2 text-slate-300 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100" aria-label="Xóa chore"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           );
+        })}</div></section>;
         }) : (
           <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
             <Home className="mx-auto h-5 w-5 text-slate-300" />
