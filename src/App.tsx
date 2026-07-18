@@ -227,7 +227,7 @@ export default function App() {
           <div className="space-y-2">
             <div className="flex justify-between items-center text-[11px]">
               <span className="life-kicker text-slate-400">Cycle progress</span>
-              <span className="font-mono font-black text-white">{stats.currentDay}/90</span>
+              <span className="font-mono font-black text-white">{stats.currentDay}/{stats.totalDays}</span>
             </div>
             
             {/* Cycle progress bar */}
@@ -275,7 +275,7 @@ export default function App() {
               </h1>
               <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium">
                 <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100 font-bold">
-                  Ngày {stats.currentDay}/90
+                  Ngày {stats.currentDay}/{stats.totalDays}
                 </span>
                 <span>({cyclePercentage}% Chu kỳ)</span>
                 <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden inline-block border border-slate-200/50">
@@ -295,7 +295,7 @@ export default function App() {
                 {activeTab === 'settings' && "Đánh Giá & Điều Chỉnh"}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                {activeTab === 'journeys' && "Hành trình bento 90 ngày của bạn với lộ trình cột mốc chi tiết."}
+                {activeTab === 'journeys' && `Hành trình ${stats.totalDays} ngày của bạn với lộ trình cột mốc chi tiết.`}
                 {activeTab === 'calendar' && "Quản lý và tối ưu hóa thời gian, tránh xung đột lịch biểu."}
                 {activeTab === 'progress' && "Sự phân bổ hoạt động, phễu lead, thể trạng và chỉ số trading."}
                 {activeTab === 'settings' && "Đánh giá tuần, chạy thử nghiệm thói quen và sao lưu dữ liệu."}
