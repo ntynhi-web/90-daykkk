@@ -368,6 +368,7 @@ export interface CoachHistoryEntry {
 export interface AppState {
   startDate: string;
   endDate: string;
+  personalScheduleSeedVersion?: number;
   dailyFocusGoalId?: string | null;
   dailyFocusDate?: string | null;
   weeklyFocusGoalId?: string | null;
