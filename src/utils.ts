@@ -400,6 +400,19 @@ const getConfirmedRoutines = (): Routine[] => [
   { id: "routine_sleep", goalId: "G4", name: "Health · Ngủ phục hồi", frequency: "Hàng ngày · 22:45–05:30", minimumDay: "Lên giường trước 23:00", target: "Ngủ 22:45–05:30", evidence: "Giờ ngủ và thức dậy", status: "pending", active: true }
 ];
 
+const getConfirmedLifeAnchors = () => [
+  { id: "anchor_cats", title: "Chăm sóc và yêu thương hai bé mèo", description: "Cho Rainy và Lacky ăn, quan sát sức khỏe và dành thời gian kết nối.", icon: "cat" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
+  { id: "anchor_spiritual", title: "Khoảng lặng tinh thần", description: "Thắp nhang và dành vài phút tĩnh tâm.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true }
+];
+
+const getConfirmedChores = (): Chore[] => [
+  { id: "chore_cat_litter", title: "Dọn khay cát cho mèo", category: "pet", frequency: "daily", dueDate: "2026-07-19", dueTime: "18:45", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
+  { id: "chore_home_reset", title: "Reset nhà 30 phút", category: "home", frequency: "daily", dueDate: "2026-07-19", dueTime: "18:30", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
+  { id: "chore_shopping", title: "Kiểm tra và mua đồ dùng cần thiết", category: "errand", frequency: "weekly", dueDate: "2026-07-23", dueTime: "17:30", completed: false, lastCompletedDate: null, notes: "Kiểm tra vào thứ Năm; chọn nơi nhận phù hợp.", createdAt: new Date().toISOString() },
+  { id: "chore_market", title: "Đi chợ và chuẩn bị thực phẩm", category: "errand", frequency: "weekly", dueDate: "2026-07-25", dueTime: "16:00", completed: false, lastCompletedDate: null, notes: "Ưu tiên thứ Bảy, có thể chuyển sang Chủ nhật.", createdAt: new Date().toISOString() },
+  { id: "chore_vacuum", title: "Vệ sinh máy hút bụi", category: "home", frequency: "weekly", dueDate: "2026-07-25", dueTime: "14:00", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() }
+];
+
 /** Confirmed personal plan captured on 18/07/2026. Applied once to each personal workspace. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
   const startDate = "2026-07-19";
@@ -536,30 +549,10 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
 
-  const legacyGoals: Goal[] = (state.goals || []).map((goal, index) => {
-    const legacyId = `legacy_${goal.id}_${index}`;
-    return {
-      ...goal,
-      id: legacyId,
-      name: `${goal.name} · kế hoạch trước`,
-      status: "archived",
-      currentMilestoneId: null,
-      milestones: (goal.milestones || []).map(item => ({ ...item, id: `legacy_${item.id}`, goalId: legacyId }))
-    };
-  });
-  const newRoutineIds = new Set(routines.map(item => item.id));
-  const preservedRoutines = (state.routines || []).filter(item => !newRoutineIds.has(item.id)).map(item => ({ ...item, active: false }));
   const scheduleKey = (item: ScheduleItem) => `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
   const combinedSchedule = new Map<string, ScheduleItem>();
-  const inactiveRoutineIds = new Set(preservedRoutines.map(item => item.id));
-  const staleTitles = ["b2b: icp & offer deep work", "yoga chiều", "fund: setup 1 & backtest", "b2b: website & offer", "đi bộ thể thao 30 phút", "tắm cho 2 mèo"];
-  (state.scheduleItems || [])
-    .filter(item => !inactiveRoutineIds.has(item.routineId || ""))
-    .filter(item => !item.id.startsWith("sched_default_") && !item.id.startsWith("fixed_"))
-    .filter(item => !staleTitles.includes(item.title.trim().toLowerCase()))
-    .forEach(item => combinedSchedule.set(scheduleKey(item), item));
   scheduleItems.forEach(item => {
-    const existing = combinedSchedule.get(scheduleKey(item));
+    const existing = (state.scheduleItems || []).find(previous => scheduleKey(previous) === scheduleKey(item));
     combinedSchedule.set(scheduleKey(item), existing ? { ...item, id: existing.id, completed: existing.completed } : item);
   });
   const newTasks = [
@@ -571,9 +564,9 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const newTaskIds = new Set(newTasks.map(item => item.id));
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 7, personalPlanStartedAt: new Date().toISOString(),
-    weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals: [...goals, ...legacyGoals], routines: [...routines, ...preservedRoutines],
-    priorityTasks: [...newTasks, ...(state.priorityTasks || []).filter(item => !newTaskIds.has(item.id))],
+    ...state, startDate, endDate, personalScheduleSeedVersion: 8, personalPlanStartedAt: new Date().toISOString(),
+    weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals, routines,
+    lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     weeklyAvailability: [
       { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:30", blockedEnd: "18:30" },
@@ -626,6 +619,46 @@ export function migrateAppState(rawState: any): AppState {
       !((item.id.startsWith("confirmed_") || item.id.startsWith("rainy_") || item.id.startsWith("fund_weekly_")) && item.date < "2026-07-19")
     );
     migrated.personalScheduleSeedVersion = 7;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 7) {
+    const activeGoalByCategory = new Map((migrated.goals || [])
+      .filter((goal: Goal) => goal.status === "active" && ["G1", "G2", "G3", "G4"].includes(goal.id))
+      .map((goal: Goal) => [goal.category, goal.id]));
+    const historicalGoalMap = new Map((migrated.goals || [])
+      .filter((goal: Goal) => !["G1", "G2", "G3", "G4"].includes(goal.id))
+      .map((goal: Goal) => [goal.id, activeGoalByCategory.get(goal.category) || null]));
+    const remapGoalId = (goalId?: string | null) => historicalGoalMap.get(goalId || "") || goalId;
+
+    migrated.goals = (migrated.goals || []).filter((goal: Goal) => ["G1", "G2", "G3", "G4"].includes(goal.id));
+    migrated.activities = (migrated.activities || []).map((activity: ActivityEntry) => ({ ...activity, goalId: remapGoalId(activity.goalId) || activity.goalId }));
+    migrated.routineLogs = (migrated.routineLogs || []).map((log: any) => ({ ...log, goalId: remapGoalId(log.goalId) || log.goalId }));
+    migrated.routines = getConfirmedRoutines();
+
+    const allowedSchedulePrefixes = ["confirmed_", "rainy_", "lacky_", "fund_weekly_"];
+    const canonicalSchedule = new Map<string, ScheduleItem>();
+    (migrated.scheduleItems || [])
+      .filter((item: ScheduleItem) => allowedSchedulePrefixes.some(prefix => item.id.startsWith(prefix)))
+      .filter((item: ScheduleItem) => item.date >= "2026-07-19" && item.date <= "2026-10-13")
+      .forEach((item: ScheduleItem) => {
+        const key = `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
+        const previous = canonicalSchedule.get(key);
+        canonicalSchedule.set(key, previous?.completed ? previous : item);
+      });
+    migrated.scheduleItems = [...canonicalSchedule.values()].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+
+    const existingAnchors = new Map((migrated.lifeAnchors || []).map((anchor: any) => [anchor.id, anchor]));
+    migrated.lifeAnchors = getConfirmedLifeAnchors().map(anchor => ({ ...anchor, lastCompletedDate: (existingAnchors.get(anchor.id) as any)?.lastCompletedDate || null }));
+    const existingChores = new Map((migrated.chores || []).map((chore: Chore) => [chore.id, chore]));
+    migrated.chores = getConfirmedChores().map(chore => {
+      const existing = existingChores.get(chore.id) as Chore | undefined;
+      return { ...chore, completed: existing?.completed || false, lastCompletedDate: existing?.lastCompletedDate || null };
+    });
+    const canonicalTaskIds = new Set(["task_fund_checklist", "task_b2b_foundation", "task_career_cv", "task_health_baseline"]);
+    migrated.priorityTasks = (migrated.priorityTasks || []).filter((task: any) => canonicalTaskIds.has(task.id));
+    migrated.startDate = "2026-07-19";
+    migrated.endDate = "2026-10-13";
+    migrated.personalScheduleSeedVersion = 8;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
