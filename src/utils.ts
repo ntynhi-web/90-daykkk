@@ -20,7 +20,7 @@ export function formatDisplayDate(dateStr: string): string {
 
 const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleItem[] => {
   const templates = [
-    { key: 'office', title: 'Đi làm tại công ty', days: [1, 3, 5], startTime: '08:00', endTime: '18:40', type: 'personal' as const, notes: 'Bao gồm thời gian chuẩn bị, di chuyển và về đến nhà.' },
+    { key: 'office', title: 'Đi làm tại công ty', days: [1, 3, 5], startTime: '08:00', endTime: '18:00', type: 'personal' as const, notes: 'Khung làm việc cố định; cho phép tối đa 2 việc phát sinh có xác nhận.' },
     { key: 'home', title: 'Làm việc tại nhà', days: [2, 4], startTime: '09:00', endTime: '17:30', type: 'personal' as const, notes: 'Khung làm việc cố định tại nhà; có thể chỉnh lại giờ trong Lịch biểu.' },
     { key: 'cat_bath', title: 'Tắm cho 2 mèo', days: [6], startTime: '10:00', endTime: '11:00', type: 'habit' as const, notes: 'Thực hiện mỗi thứ Bảy.' }
   ];
@@ -43,6 +43,7 @@ const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleI
         journeyId: null,
         type: template.type,
         locked: template.key === 'office' || template.key === 'home',
+        lockedCapacity: template.key === 'office' || template.key === 'home' ? 2 : undefined,
         notes: template.notes,
         completed: false
       });
@@ -244,7 +245,7 @@ export function getDefaultAppState(): AppState {
   return {
     startDate,
     endDate,
-    personalScheduleSeedVersion: 2,
+    personalScheduleSeedVersion: 3,
     weeklyFocusGoalId: "G1",
     weeklySupportGoalIds: ["G2", "G3"],
     onboardingCompleted: false,
@@ -509,7 +510,7 @@ export function migrateAppState(rawState: any): AppState {
   if (!Array.isArray(migrated.scheduleItems) || migrated.scheduleItems.length === 0) {
     migrated.scheduleItems = getDefaultAppState().scheduleItems;
   }
-  if ((migrated.personalScheduleSeedVersion || 0) < 2) {
+  if ((migrated.personalScheduleSeedVersion || 0) < 3) {
     if (!migrated.chores.some((chore: Chore) => chore.id === 'chore_bathe_two_cats')) {
       const catBath = (getDefaultAppState().chores || []).find(chore => chore.id === 'chore_bathe_two_cats');
       if (catBath) migrated.chores.push(catBath);
@@ -517,7 +518,9 @@ export function migrateAppState(rawState: any): AppState {
     const fixedSchedule = getPersonalFixedSchedule(migrated.startDate, migrated.endDate);
     const scheduleKey = (item: ScheduleItem) => `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
     const uniqueExisting = new Map<string, ScheduleItem>();
-    migrated.scheduleItems.forEach((item: ScheduleItem) => {
+    migrated.scheduleItems
+      .filter((item: ScheduleItem) => !(item.id?.startsWith('fixed_office_') || (item.locked && item.title === 'Đi làm tại công ty')))
+      .forEach((item: ScheduleItem) => {
       const key = scheduleKey(item);
       if (!uniqueExisting.has(key)) uniqueExisting.set(key, item);
     });
@@ -526,10 +529,10 @@ export function migrateAppState(rawState: any): AppState {
     fixedSchedule.forEach(item => {
       const sameSlot = migrated.scheduleItems.find((current: ScheduleItem) => scheduleKey(current) === scheduleKey(item));
       if (sameSlot) {
-        Object.assign(sameSlot, { locked: item.locked, type: item.type, notes: item.notes });
+        Object.assign(sameSlot, { locked: item.locked, lockedCapacity: item.lockedCapacity, type: item.type, notes: item.notes });
       } else if (!scheduleIds.has(item.id)) migrated.scheduleItems.push(item);
     });
-    migrated.personalScheduleSeedVersion = 2;
+    migrated.personalScheduleSeedVersion = 3;
   }
   if (!Array.isArray(migrated.weeklyAvailability) || migrated.weeklyAvailability.length === 0) {
     migrated.weeklyAvailability = getDefaultAppState().weeklyAvailability;
