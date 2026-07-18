@@ -333,6 +333,8 @@ export interface ScheduleItem {
   milestoneId?: string | null;
   taskId?: string | null;
   routineId?: string | null;
+  /** Khung bận cố định: lịch mới không được phép đè lên. */
+  locked?: boolean;
   type?: 'task' | 'habit' | 'review' | 'milestone' | 'personal';
   notes?: string;
   completed?: boolean;
