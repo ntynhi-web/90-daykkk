@@ -335,6 +335,9 @@ export interface ScheduleItem {
   routineId?: string | null;
   /** Khung bận cố định: lịch mới không được phép đè lên. */
   locked?: boolean;
+  /** Số việc ngoại lệ được phép đặt bên trong khung khóa. */
+  lockedCapacity?: number;
+  insideLockedBlock?: boolean;
   type?: 'task' | 'habit' | 'review' | 'milestone' | 'personal';
   notes?: string;
   completed?: boolean;
