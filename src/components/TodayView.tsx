@@ -35,7 +35,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   const { currentDay, daysRemaining } = getCycleStats(state.startDate, todayStr, state.endDate);
 
   const handleStartPersonalPlanToday = () => {
-    if (!window.confirm(`Bắt đầu chu kỳ 90 ngày từ hôm nay ${formatDisplayDate(todayStr)}? App sẽ dời deadline và lịch theo cùng số ngày, nhưng không xóa nhật ký hiện có.`)) return;
+    if (!window.confirm(`Bắt đầu chu kỳ hiện tại từ hôm nay ${formatDisplayDate(todayStr)}? App sẽ dời deadline và lịch theo cùng số ngày, nhưng không xóa nhật ký hiện có.`)) return;
     const oldStart = new Date(`${state.startDate}T12:00:00`);
     const nextStart = new Date(`${todayStr}T12:00:00`);
     const deltaDays = Math.round((nextStart.getTime() - oldStart.getTime()) / (24 * 60 * 60 * 1000));
@@ -1033,7 +1033,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
         <section className="overflow-hidden rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-950 via-indigo-900 to-violet-800 p-5 text-white shadow-xl shadow-indigo-100 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Kế hoạch cá nhân đã sẵn sàng</p>
-            <h2 className="mt-2 font-display text-xl font-black">Bắt đầu chu kỳ 90 ngày từ hôm nay</h2>
+            <h2 className="mt-2 font-display text-xl font-black">Bắt đầu chu kỳ hiện tại từ hôm nay</h2>
             <p className="mt-2 max-w-2xl text-xs leading-relaxed text-indigo-100">Giữ các mục tiêu Fund → B2B → Marketing Job → Health, dời toàn bộ lịch theo ngày mới và lưu vào tài khoản Google của bạn. Nhật ký hiện có không bị xóa.</p>
           </div>
           <button onClick={handleStartPersonalPlanToday} className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-xs font-black text-indigo-800 shadow-lg transition hover:-translate-y-0.5 sm:mt-0 sm:w-auto"><Play className="h-4 w-4 fill-current" /> Áp dụng và bắt đầu hôm nay</button>
@@ -1710,7 +1710,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100"><Target className="h-4 w-4" /></span>
             Ba hành trình đang tiến tới
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Tiến trình đạt các mốc cột mốc trong chu kỳ 90 ngày của bạn.</p>
+          <p className="text-xs text-slate-400 mt-0.5">Tiến trình đạt các cột mốc trong chu kỳ hiện tại của bạn.</p>
         </div>
 
         {activeJourneys.length > 0 ? (
