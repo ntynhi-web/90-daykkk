@@ -42,6 +42,7 @@ const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleI
         goalId: null,
         journeyId: null,
         type: template.type,
+        locked: template.key === 'office' || template.key === 'home',
         notes: template.notes,
         completed: false
       });
@@ -243,7 +244,7 @@ export function getDefaultAppState(): AppState {
   return {
     startDate,
     endDate,
-    personalScheduleSeedVersion: 1,
+    personalScheduleSeedVersion: 2,
     weeklyFocusGoalId: "G1",
     weeklySupportGoalIds: ["G2", "G3"],
     onboardingCompleted: false,
@@ -508,17 +509,27 @@ export function migrateAppState(rawState: any): AppState {
   if (!Array.isArray(migrated.scheduleItems) || migrated.scheduleItems.length === 0) {
     migrated.scheduleItems = getDefaultAppState().scheduleItems;
   }
-  if ((migrated.personalScheduleSeedVersion || 0) < 1) {
+  if ((migrated.personalScheduleSeedVersion || 0) < 2) {
     if (!migrated.chores.some((chore: Chore) => chore.id === 'chore_bathe_two_cats')) {
       const catBath = (getDefaultAppState().chores || []).find(chore => chore.id === 'chore_bathe_two_cats');
       if (catBath) migrated.chores.push(catBath);
     }
     const fixedSchedule = getPersonalFixedSchedule(migrated.startDate, migrated.endDate);
+    const scheduleKey = (item: ScheduleItem) => `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
+    const uniqueExisting = new Map<string, ScheduleItem>();
+    migrated.scheduleItems.forEach((item: ScheduleItem) => {
+      const key = scheduleKey(item);
+      if (!uniqueExisting.has(key)) uniqueExisting.set(key, item);
+    });
+    migrated.scheduleItems = [...uniqueExisting.values()];
     const scheduleIds = new Set(migrated.scheduleItems.map((item: ScheduleItem) => item.id));
     fixedSchedule.forEach(item => {
-      if (!scheduleIds.has(item.id)) migrated.scheduleItems.push(item);
+      const sameSlot = migrated.scheduleItems.find((current: ScheduleItem) => scheduleKey(current) === scheduleKey(item));
+      if (sameSlot) {
+        Object.assign(sameSlot, { locked: item.locked, type: item.type, notes: item.notes });
+      } else if (!scheduleIds.has(item.id)) migrated.scheduleItems.push(item);
     });
-    migrated.personalScheduleSeedVersion = 1;
+    migrated.personalScheduleSeedVersion = 2;
   }
   if (!Array.isArray(migrated.weeklyAvailability) || migrated.weeklyAvailability.length === 0) {
     migrated.weeklyAvailability = getDefaultAppState().weeklyAvailability;

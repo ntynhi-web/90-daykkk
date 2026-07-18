@@ -81,6 +81,8 @@ export function mergeScheduleItems(existing: ScheduleItem[], incoming: ScheduleI
   const merged = new Map(existing.map(item => [key(item), item]));
   incoming.forEach(item => {
     const previous = merged.get(key(item));
+    const overlapsLocked = [...merged.values()].some(current => current.locked && current.date === item.date && current.startTime < item.endTime && item.startTime < current.endTime && key(current) !== key(item));
+    if (overlapsLocked) return;
     merged.set(key(item), previous ? { ...item, id: previous.id, completed: previous.completed } : item);
   });
   return [...merged.values()].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
