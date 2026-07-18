@@ -1,4 +1,4 @@
-import { AppState, Goal, Routine, ActivityEntry, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, Experiment, WeeklyReview, Recommendation, Chore } from "./types";
+import { AppState, Goal, Routine, ActivityEntry, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, Experiment, WeeklyReview, Recommendation, Chore, ScheduleItem } from "./types";
 
 // Helper to format Date to YYYY-MM-DD
 export function formatDateStr(date: Date): string {
@@ -17,6 +17,41 @@ export function formatDisplayDate(dateStr: string): string {
   }
   return dateStr;
 }
+
+const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleItem[] => {
+  const templates = [
+    { key: 'office', title: 'Đi làm tại công ty', days: [1, 3, 5], startTime: '08:00', endTime: '18:40', type: 'personal' as const, notes: 'Bao gồm thời gian chuẩn bị, di chuyển và về đến nhà.' },
+    { key: 'home', title: 'Làm việc tại nhà', days: [2, 4], startTime: '09:00', endTime: '17:30', type: 'personal' as const, notes: 'Khung làm việc cố định tại nhà; có thể chỉnh lại giờ trong Lịch biểu.' },
+    { key: 'cat_bath', title: 'Tắm cho 2 mèo', days: [6], startTime: '10:00', endTime: '11:00', type: 'habit' as const, notes: 'Thực hiện mỗi thứ Bảy.' }
+  ];
+  const result: ScheduleItem[] = [];
+  for (let cursor = startDate; cursor <= endDate;) {
+    const weekday = new Date(`${cursor}T12:00:00`).getDay();
+    templates.forEach(template => {
+      if (template.days.includes(weekday)) result.push({
+        id: `fixed_${template.key}_${cursor}`,
+        title: template.title,
+        date: cursor,
+        startTime: template.startTime,
+        endTime: template.endTime,
+        estimatedMinutes: (() => {
+          const [sh, sm] = template.startTime.split(':').map(Number);
+          const [eh, em] = template.endTime.split(':').map(Number);
+          return (eh * 60 + em) - (sh * 60 + sm);
+        })(),
+        goalId: null,
+        journeyId: null,
+        type: template.type,
+        notes: template.notes,
+        completed: false
+      });
+    });
+    const date = new Date(`${cursor}T12:00:00`);
+    date.setDate(date.getDate() + 1);
+    cursor = formatDateStr(date);
+  }
+  return result;
+};
 
 // Automatically calculate end date based on a 90-day cycle
 export function calculateEndDate(startDateStr: string): string {
@@ -182,6 +217,18 @@ export function getDefaultAppState(): AppState {
       createdAt: new Date().toISOString()
     },
     {
+      id: "chore_bathe_two_cats",
+      title: "Tắm cho 2 mèo",
+      category: "pet",
+      frequency: "weekly",
+      dueDate: startDate,
+      dueTime: "10:00",
+      completed: false,
+      lastCompletedDate: null,
+      notes: "Mỗi thứ Bảy, 10:00–11:00.",
+      createdAt: new Date().toISOString()
+    },
+    {
       id: "chore_buy_body_wash",
       title: "Mua sữa tắm",
       category: "errand",
@@ -196,6 +243,7 @@ export function getDefaultAppState(): AppState {
   return {
     startDate,
     endDate,
+    personalScheduleSeedVersion: 1,
     weeklyFocusGoalId: "G1",
     weeklySupportGoalIds: ["G2", "G3"],
     onboardingCompleted: false,
@@ -318,7 +366,8 @@ export function getDefaultAppState(): AppState {
         type: "habit",
         notes: "Uông nước và nghe nhạc nhẹ nhàng.",
         completed: false
-      }
+      },
+      ...getPersonalFixedSchedule(startDate, endDate)
     ],
     weeklyAvailability: [
       { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:00", blockedEnd: "18:40" },
@@ -458,6 +507,18 @@ export function migrateAppState(rawState: any): AppState {
   // 4. Ensure scheduleItems is present
   if (!Array.isArray(migrated.scheduleItems) || migrated.scheduleItems.length === 0) {
     migrated.scheduleItems = getDefaultAppState().scheduleItems;
+  }
+  if ((migrated.personalScheduleSeedVersion || 0) < 1) {
+    if (!migrated.chores.some((chore: Chore) => chore.id === 'chore_bathe_two_cats')) {
+      const catBath = (getDefaultAppState().chores || []).find(chore => chore.id === 'chore_bathe_two_cats');
+      if (catBath) migrated.chores.push(catBath);
+    }
+    const fixedSchedule = getPersonalFixedSchedule(migrated.startDate, migrated.endDate);
+    const scheduleIds = new Set(migrated.scheduleItems.map((item: ScheduleItem) => item.id));
+    fixedSchedule.forEach(item => {
+      if (!scheduleIds.has(item.id)) migrated.scheduleItems.push(item);
+    });
+    migrated.personalScheduleSeedVersion = 1;
   }
   if (!Array.isArray(migrated.weeklyAvailability) || migrated.weeklyAvailability.length === 0) {
     migrated.weeklyAvailability = getDefaultAppState().weeklyAvailability;
