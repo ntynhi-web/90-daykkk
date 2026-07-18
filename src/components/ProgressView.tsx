@@ -47,7 +47,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
 
   const parseNumbers = (value: string) => (value.match(/\d+(?:[.,]\d+)?/g) || []).map(item => Number(item.replace(',', '.')));
   const healthNumbers = parseNumbers(`${healthGoal?.desiredOutcome || ''} ${healthGoal?.milestones.map(m => m.targetValue).join(' ') || ''}`);
-  const g3InitialWeight = healthNumbers[0] || weightRecords[0]?.weight || 64.5;
+  const g3InitialWeight = Math.max(64.5, ...healthNumbers, weightRecords[0]?.weight || 0);
   const g3TargetWeight = healthNumbers.length > 1 ? Math.min(...healthNumbers) : 54;
   const g3CurrentWeight = weightRecords.length > 0 ? weightRecords[weightRecords.length - 1].weight : g3InitialWeight;
   const g3WeightLoss = Math.round((g3InitialWeight - g3CurrentWeight) * 10) / 10;
@@ -83,7 +83,14 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     if (!routine.scheduleDays?.length) return true;
     return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
   };
-  const activeRoutines = state.routines.filter(routine => routine.active !== false);
+  const canonicalRoutineIds = new Set([
+    'routine_fund_daily', 'routine_fund_weekly', 'routine_b2b_career', 'routine_english',
+    'routine_yoga', 'routine_walk', 'routine_healthy_eating', 'routine_skincare_am',
+    'routine_skincare_pm', 'routine_haircare', 'routine_sleep'
+  ]);
+  const activeRoutines = state.routines.filter(routine =>
+    routine.active !== false && ((state.personalScheduleSeedVersion || 0) < 8 || canonicalRoutineIds.has(routine.id))
+  );
   const routineOpportunities = activeRoutines.flatMap(routine => eligibleRoutineDays
     .filter(date => routineIsDue(routine, date))
     .filter(date => !routineLogs.some(log => log.routineId === routine.id && log.date === date && log.status === 'skipped'))
@@ -468,7 +475,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 <div className="grid grid-cols-2 gap-3 text-xs pt-1">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
                     <span className="text-slate-400 text-[10px] block font-semibold uppercase">ĐÃ GIẢM CÂN</span>
-                    <span className="text-base font-bold text-slate-800 font-mono mt-0.5 block">{g3WeightLoss} kg</span>
+                    <span className="text-base font-bold text-slate-800 font-mono mt-0.5 block">{weightRecords.length ? `${g3WeightLoss} kg` : 'Chưa ghi'}</span>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
                     <span className="text-slate-400 text-[10px] block font-semibold uppercase">ĐI BỘ TRUNG BÌNH</span>
@@ -485,8 +492,12 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                   <p className="text-xs text-slate-500">Tỷ lệ chuyển đổi từ Outreach của các đối tác tiềm năng.</p>
                 </div>
 
-                {/* Conversion steps block imitating Stitch style */}
-                <div className="py-4 space-y-2.5">
+                {state.b2bLeads.length === 0 ? (
+                  <div className="my-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                    <p className="text-sm font-black text-slate-700">Chưa có dữ liệu outreach</p>
+                    <p className="mt-1 text-xs text-slate-500">Thêm lead hoặc ghi nhận hoạt động tiếp cận đầu tiên để bắt đầu đo phễu.</p>
+                  </div>
+                ) : <div className="py-4 space-y-2.5">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-slate-700">Tổng số leads đã tiếp cận:</span>
                     <span className="font-bold text-slate-900 font-mono">{state.b2bLeads.length} leads</span>
@@ -507,7 +518,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       <span className="font-bold text-emerald-800">{b2bStatusCounts.paying}</span>
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 <div className="text-[10px] text-slate-400 italic text-center pt-2 border-t border-slate-100">
                   Dữ liệu được tự động cập nhật từ các hoạt động ghi nhận check-in hàng ngày.
