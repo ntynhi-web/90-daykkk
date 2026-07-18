@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, AlertCircle, Sparkles, Trash2, Check } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, AlertCircle, Sparkles, Trash2, Check, LockKeyhole } from "lucide-react";
 import { AppState, ScheduleItem } from "../types";
 
 interface CalendarViewProps {
@@ -24,6 +24,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
   const [newStartTime, setNewStartTime] = useState("09:00");
   const [newEndTime, setNewEndTime] = useState("10:00");
   const [newDate, setNewDate] = useState(selectedDate);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const activeJourneys = (state.goals || []).filter(g => g.status === 'active');
   const selectedWeekday = new Date(`${selectedDate}T12:00:00`).getDay();
@@ -109,6 +110,15 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
     e.preventDefault();
     if (!newTitle.trim()) return;
 
+    if (newEndTime <= newStartTime) {
+      setAddError('Giờ hoàn tất phải sau giờ bắt đầu.');
+      return;
+    }
+    const lockedConflict = (state.scheduleItems || []).find(item => item.locked && item.date === newDate && item.startTime < newEndTime && newStartTime < item.endTime);
+    if (lockedConflict) {
+      setAddError(`Không thể xếp trùng “${lockedConflict.title}” (${lockedConflict.startTime}–${lockedConflict.endTime}).`);
+      return;
+    }
     const newItem: ScheduleItem = {
       id: `schedule_${Date.now()}`,
       title: newTitle,
@@ -124,6 +134,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
     });
 
     setNewTitle("");
+    setAddError(null);
     setShowAddModal(false);
   };
 
@@ -392,20 +403,25 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                                   const colors = getJourneyColor(event.journeyId);
                                   const hasConflict = overlapMap[event.id];
 
+                                  const [sh, sm] = event.startTime.split(':').map(Number);
+                                  const [eh, em] = event.endTime.split(':').map(Number);
+                                  const duration = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
                                   return (
                                     <div
                                       key={event.id}
-                                      className={`p-1.5 rounded-lg border text-[10px] leading-tight ${colors.bg} ${hasConflict ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs group/item`}
+                                      style={{ height: `${Math.max(44, duration / 60 * 55 - 4)}px` }}
+                                      className={`relative z-10 p-1.5 rounded-lg border text-[10px] leading-tight ${event.locked ? 'border-slate-700 bg-slate-800 text-white shadow-md' : colors.bg} ${hasConflict && !event.locked ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs group/item overflow-hidden`}
                                     >
-                                      <div className="font-bold text-slate-800 line-clamp-1">{event.title}</div>
-                                      <div className="text-[8px] text-slate-500 font-mono mt-0.5">{event.startTime}</div>
+                                      <div className={`font-bold line-clamp-2 ${event.locked ? 'text-white' : 'text-slate-800'}`}>{event.title}</div>
+                                      <div className={`text-[8px] font-mono mt-0.5 ${event.locked ? 'text-slate-200' : 'text-slate-500'}`}>{event.startTime}–{event.endTime}</div>
+                                      {event.locked && <div className="mt-1 flex items-center gap-1 text-[8px] font-black uppercase tracking-wide text-sky-200"><LockKeyhole className="h-2.5 w-2.5" /> Đã khóa</div>}
                                       
-                                      <button
+                                      {!event.locked && <button
                                         onClick={() => handleDeleteEvent(event.id)}
                                         className="absolute top-1 right-1 p-0.5 bg-white rounded border border-slate-100 text-slate-400 hover:text-rose-600 opacity-0 group-hover/item:opacity-100 transition-all cursor-pointer"
                                       >
                                         <Trash2 className="w-2.5 h-2.5" />
-                                      </button>
+                                      </button>}
                                     </div>
                                   );
                                 })}
@@ -523,6 +539,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
               </div>
 
               <form onSubmit={handleAddEvent} className="space-y-4">
+                {addError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-700">{addError}</div>}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600">Tiêu đề công việc</label>
                   <input
