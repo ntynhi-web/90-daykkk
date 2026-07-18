@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Plus, AlertCircle, Sparkles, Trash2, Check, LockKeyhole } from "lucide-react";
 import { AppState, ScheduleItem } from "../types";
+import { isScheduleValidForDate } from "../utils";
 
 interface CalendarViewProps {
   state: AppState;
@@ -98,7 +99,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
     return overlaps;
   };
 
-  const itemsForSelected = (state.scheduleItems || []).filter(item => {
+  const itemsForSelected = (state.scheduleItems || []).filter(item => isScheduleValidForDate(item)).filter(item => {
     if (viewMode === 'day') {
       return item.date === selectedDate;
     } else {
