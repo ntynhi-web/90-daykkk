@@ -101,6 +101,14 @@ export interface Routine {
   active?: boolean;
   /** 0 = Chủ nhật, 1 = Thứ hai ... 6 = Thứ bảy. Bỏ trống nghĩa là mỗi ngày. */
   scheduleDays?: number[];
+  /** Giờ cố định và quy luật dùng để sinh lịch trong toàn bộ chu kỳ. */
+  startTime?: string;
+  endTime?: string;
+  durationMinutes?: number;
+  recurrence?: 'daily' | 'weekly_days' | 'interval';
+  intervalDays?: number;
+  recurrenceStartDate?: string;
+  calendarEnabled?: boolean;
   timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'any';
   /** Các routine cùng nhóm có thể thay thế nhau trong một ngày. */
   substitutionGroup?: 'movement';
@@ -324,6 +332,7 @@ export interface ScheduleItem {
   journeyId?: string | null;
   milestoneId?: string | null;
   taskId?: string | null;
+  routineId?: string | null;
   type?: 'task' | 'habit' | 'review' | 'milestone' | 'personal';
   notes?: string;
   completed?: boolean;

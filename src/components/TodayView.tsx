@@ -10,6 +10,7 @@ import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate 
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import LifeOperations from "./LifeOperations";
+import { expandRecurringSchedule, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
 
 interface TodayViewProps {
   state: AppState;
@@ -83,6 +84,10 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       startTime: string;
       endTime: string;
       journeyId: string | null;
+      recurrence: ScheduleRecurrence;
+      intervalDays?: number;
+      scheduleDays?: number[];
+      recurrenceEndDate?: string | null;
     }>;
     routineUpdates: Array<{
       routineId: string;
@@ -273,6 +278,29 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
     sentences.forEach(sentence => {
       const normalized = sentence.toLowerCase();
+      const pointTime = normalized.match(/(?:lúc|vào)\s*(\d{1,2})(?:\s*(?:h|giờ|:)(\d{1,2})?)?/i);
+      const recurringDaily = /mỗi ngày|hàng ngày|7\s*ngày\s*(?:mỗi|một)\s*tuần|bảy ngày một tuần/i.test(normalized);
+      const intervalMatch = normalized.match(/(?:mỗi|cách nhau)\s*(\d+)\s*ngày|(?:7|bảy)\s*ngày\s*(?:một|1)\s*lần/i);
+      const weekdayMap: Array<[RegExp, number]> = [[/chủ nhật/i, 0], [/thứ hai|thứ 2/i, 1], [/thứ ba|thứ 3/i, 2], [/thứ tư|thứ 4/i, 3], [/thứ năm|thứ 5/i, 4], [/thứ sáu|thứ 6/i, 5], [/thứ bảy|thứ 7/i, 6]];
+      const selectedDays = weekdayMap.filter(([pattern]) => pattern.test(normalized)).map(([, day]) => day);
+      if (pointTime && (recurringDaily || intervalMatch || selectedDays.length > 0)) {
+        const startHour = String(Number(pointTime[1])).padStart(2, '0');
+        const startMinute = String(Number(pointTime[2] || 0)).padStart(2, '0');
+        const startTotal = Number(startHour) * 60 + Number(startMinute);
+        const endTotal = Math.min(startTotal + 30, 23 * 60 + 59);
+        const title = sentence.replace(/\b(tôi|mình)\s+(muốn|sẽ|cần|định)\s*/gi, '').trim();
+        const journeyId = /backtest|fund|trading|setup/i.test(sentence) ? 'G1' : /b2b|marketing|sales/i.test(sentence) ? 'G2' : /yoga|sức khỏe|health|đi bộ/i.test(sentence) ? 'G3' : null;
+        scheduleSuggestions.push({
+          title, date: todayStr, startTime: `${startHour}:${startMinute}`,
+          endTime: `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`,
+          journeyId,
+          recurrence: recurringDaily ? 'daily' : intervalMatch ? 'interval' : 'weekly_days',
+          intervalDays: intervalMatch ? Number(intervalMatch[1] || 7) : undefined,
+          scheduleDays: selectedDays.length ? selectedDays : undefined,
+          recurrenceEndDate: state.endDate
+        });
+        return;
+      }
       let timeframe: 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'specific_date' | 'no_date' = 'no_date';
       let dueDate: string | null = null;
       if (/\b(ngày mai|mai)\b/.test(normalized)) {
@@ -382,7 +410,11 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           date: s.date || todayStr,
           startTime: s.startTime || "09:00",
           endTime: s.endTime || "10:00",
-          journeyId: s.journeyId && s.journeyId !== "null" ? s.journeyId : null
+          journeyId: s.journeyId && s.journeyId !== "null" ? s.journeyId : null,
+          recurrence: s.recurrence || 'once',
+          intervalDays: s.intervalDays || undefined,
+          scheduleDays: Array.isArray(s.scheduleDays) ? s.scheduleDays : undefined,
+          recurrenceEndDate: s.recurrenceEndDate || null
         })),
         routineUpdates: (data.routineUpdates || []).map((r: any) => ({
           routineId: r.routineId,
@@ -660,16 +692,33 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
     // 5. Add schedule suggestions as real schedule items
     if (editableCheckIn.scheduleSuggestions.length > 0) {
-      const newScheds: ScheduleItem[] = editableCheckIn.scheduleSuggestions.map((s, idx) => ({
-        id: `sched_${Date.now()}_${idx}`,
-        title: s.title,
-        date: s.date,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        journeyId: s.journeyId,
-        taskId: createdTasks.find(task => task.title.trim().toLowerCase() === s.title.trim().toLowerCase() || (task.journeyId === s.journeyId && task.dueDate === s.date))?.id || null
-      }));
-      updatedState.scheduleItems = [...(updatedState.scheduleItems || []), ...newScheds];
+      const recurringRoutines: Routine[] = editableCheckIn.scheduleSuggestions
+        .filter(s => s.recurrence && s.recurrence !== 'once' && s.journeyId)
+        .map((s, idx) => ({
+          id: `routine_ai_${Date.now()}_${idx}`,
+          goalId: s.journeyId as string,
+          name: s.title,
+          frequency: s.recurrence === 'daily' ? 'Mỗi ngày' : s.recurrence === 'interval' ? `Mỗi ${s.intervalDays || 7} ngày` : 'Các thứ cố định',
+          minimumDay: `Thực hiện từ ${s.startTime} đến ${s.endTime}`,
+          target: `Hoàn thành lúc ${s.endTime}`,
+          evidence: 'Đánh dấu hoàn thành trong lịch hoặc routine.',
+          status: 'pending', active: true, calendarEnabled: true,
+          recurrence: s.recurrence as Exclude<ScheduleRecurrence, 'once'>,
+          intervalDays: s.intervalDays,
+          scheduleDays: s.scheduleDays,
+          recurrenceStartDate: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime
+        }));
+      const newScheds: ScheduleItem[] = editableCheckIn.scheduleSuggestions.flatMap((s, idx) => {
+        const routine = s.recurrence !== 'once' ? recurringRoutines.find(item => item.name === s.title && item.startTime === s.startTime) : undefined;
+        return expandRecurringSchedule({ ...s, routineId: routine?.id || null }, state.startDate, state.endDate).map(item => ({
+          ...item,
+          taskId: createdTasks.find(task => task.title.trim().toLowerCase() === s.title.trim().toLowerCase() || (task.journeyId === s.journeyId && task.dueDate === s.date))?.id || null
+        }));
+      });
+      updatedState.routines = [...updatedState.routines, ...recurringRoutines];
+      updatedState.scheduleItems = mergeScheduleItems(updatedState.scheduleItems || [], newScheds);
     }
 
     const changeRecord = {
@@ -686,7 +735,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       }
     };
     updatedState.aiChangeHistory = [changeRecord, ...(state.aiChangeHistory || [])].slice(0, 5);
-    setSaveNotice(`Đã lưu ${editableCheckIn.activities.length} hoạt động, ${editableCheckIn.taskSuggestions.length} việc và ${editableCheckIn.scheduleSuggestions.length} lịch.`);
+    setSaveNotice(`Đã lưu ${editableCheckIn.activities.length} hoạt động, ${editableCheckIn.taskSuggestions.length} việc và ${editableCheckIn.scheduleSuggestions.length} quy tắc lịch.`);
     onChangeState(updatedState);
     setShowConfirmModal(false);
     setTranscript("");
@@ -2009,7 +2058,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
                             <div key={idx} className="p-3 bg-violet-50/30 border border-violet-100/50 rounded-xl flex items-center justify-between gap-3 text-xs text-slate-700 font-medium">
                               <div>
                                 <span>Xếp lịch: <strong>{s.title}</strong></span>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">Khung giờ: {s.startTime} - {s.endTime} ngày {s.date}</span>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">Khung giờ: {s.startTime} - {s.endTime} từ {s.date}{s.recurrence === 'daily' ? ' · mỗi ngày đến hết chu kỳ' : s.recurrence === 'interval' ? ` · lặp mỗi ${s.intervalDays || 7} ngày` : s.recurrence === 'weekly_days' ? ' · theo các thứ đã chọn' : ''}</span>
                               </div>
                               <button
                                 onClick={() => {

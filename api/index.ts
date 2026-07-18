@@ -168,7 +168,9 @@ ${JSON.stringify(chores.map((chore: any) => ({
    - Một kế hoạch cho tương lai không phải là activity đã hoàn thành hôm nay.
 
 4. ĐỀ XUẤT LỊCH TRÌNH MỚI (scheduleSuggestions): Nếu người dùng muốn lên lịch, đặt giờ thực hiện việc gì (ví dụ: "ngày mai tôi muốn làm 10 backtest từ 9 giờ đến 10 giờ"):
-   - Trích xuất title, date (định dạng YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), và journeyId tương ứng hoặc null.
+   - Trích xuất title, date (ngày bắt đầu, YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), journeyId và quy luật lặp.
+   - recurrence chỉ được là once, daily, weekly_days hoặc interval. "Mỗi ngày" hay "7 ngày một tuần" = daily. "Mỗi 7 ngày/7 ngày một lần" = interval với intervalDays=7. Các thứ cố định = weekly_days với scheduleDays (0=CN, 1=T2...6=T7).
+   - Với lịch lặp, recurrenceEndDate mặc định là ngày kết thúc chu kỳ ${currentCycle.endDate || '90 ngày sau ngày bắt đầu'}; không cần tạo từng ngày trong JSON vì app sẽ tự mở rộng và chống trùng.
    - Chỉ tạo scheduleSuggestion khi có ngày/ngữ cảnh ngày đủ rõ. Nếu chỉ nói "tuần sau" mà không có thứ/ngày/giờ, hãy tạo taskSuggestion có dueDate thay vì tự bịa giờ.
    - "Ngày mai" phải là ${addDays(todayStr, 1)}, không được gán thành hôm nay.
 
@@ -255,9 +257,13 @@ Hãy phân tích thật kỹ và trả về cấu trúc JSON khớp chính xác 
                   date: { type: Type.STRING },
                   startTime: { type: Type.STRING },
                   endTime: { type: Type.STRING },
-                  journeyId: { type: Type.STRING, nullable: true }
+                  journeyId: { type: Type.STRING, nullable: true },
+                  recurrence: { type: Type.STRING, description: "once, daily, weekly_days hoặc interval" },
+                  intervalDays: { type: Type.INTEGER, nullable: true },
+                  scheduleDays: { type: Type.ARRAY, items: { type: Type.INTEGER }, nullable: true, description: "0=CN, 1=T2 ... 6=T7" },
+                  recurrenceEndDate: { type: Type.STRING, nullable: true, description: "YYYY-MM-DD hoặc null" }
                 },
-                required: ["title", "date", "startTime", "endTime"]
+                required: ["title", "date", "startTime", "endTime", "recurrence"]
               }
             },
             routineUpdates: {
