@@ -402,7 +402,7 @@ const getConfirmedRoutines = (): Routine[] => [
 
 /** Confirmed personal plan captured on 18/07/2026. Applied once to each personal workspace. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
-  const startDate = "2026-07-18";
+  const startDate = "2026-07-19";
   const endDate = "2026-10-13";
   const milestone = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number): any => ({
     id, goalId, title, targetValue, currentValue: "0", dueDate, order,
@@ -514,7 +514,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const date = new Date(`${cursor}T12:00:00`); date.setDate(date.getDate() + 1); cursor = formatDateStr(date);
   }
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
-  for (let date = "2026-07-18"; date <= endDate;) {
+  for (let date = "2026-07-25"; date <= endDate;) {
     addOnce(`rainy_${date}`, "Tắm Rainy", date, "10:00", "11:00", null, "habit", "Lặp mỗi 7 ngày, thứ Bảy.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
@@ -530,7 +530,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`lacky_${originalDate}`, "Tắm Lacky", scheduledDate, "11:00", "12:00", null, "habit", `Mốc chu kỳ 10 ngày: ${originalDate}; chuyển sang ngày rảnh gần nhất nếu trùng lịch công ty.`);
     const next = new Date(`${originalDate}T12:00:00`); next.setDate(next.getDate() + 10); date = formatDateStr(next);
   }
-  for (let date = startDate; date <= endDate;) {
+  for (let date = "2026-07-25"; date <= endDate;) {
     addOnce(`fund_weekly_a_${date}`, "Review Fund tuần · Phần 1", date, "08:00", "10:00", "G1", "review");
     addOnce(`fund_weekly_b_${date}`, "Review Fund tuần · Phần 2", date, "11:00", "13:00", "G1", "review", "Tổng 4 giờ; tách quanh lịch tắm Rainy.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
@@ -571,7 +571,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const newTaskIds = new Set(newTasks.map(item => item.id));
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 6, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 7, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals: [...goals, ...legacyGoals], routines: [...routines, ...preservedRoutines],
     priorityTasks: [...newTasks, ...(state.priorityTasks || []).filter(item => !newTaskIds.has(item.id))],
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
@@ -617,6 +617,15 @@ export function migrateAppState(rawState: any): AppState {
       .map((routine: Routine) => routine.id === "routine_outreach" ? { ...routine, active: false } : routine);
     migrated.routines = [...canonical, ...preserved];
     migrated.personalScheduleSeedVersion = 6;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 6) {
+    migrated.startDate = "2026-07-19";
+    migrated.endDate = "2026-10-13";
+    migrated.scheduleItems = (migrated.scheduleItems || []).filter((item: ScheduleItem) =>
+      !((item.id.startsWith("confirmed_") || item.id.startsWith("rainy_") || item.id.startsWith("fund_weekly_")) && item.date < "2026-07-19")
+    );
+    migrated.personalScheduleSeedVersion = 7;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
