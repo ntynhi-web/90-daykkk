@@ -32,7 +32,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   };
 
   const todayStr = getHoChiMinhDate(0);
-  const { currentDay, daysRemaining } = getCycleStats(state.startDate, todayStr);
+  const { currentDay, daysRemaining } = getCycleStats(state.startDate, todayStr, state.endDate);
 
   const handleStartPersonalPlanToday = () => {
     if (!window.confirm(`Bắt đầu chu kỳ 90 ngày từ hôm nay ${formatDisplayDate(todayStr)}? App sẽ dời deadline và lịch theo cùng số ngày, nhưng không xóa nhật ký hiện có.`)) return;
