@@ -564,7 +564,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const newTaskIds = new Set(newTasks.map(item => item.id));
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 8, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 9, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals, routines,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
@@ -659,6 +659,11 @@ export function migrateAppState(rawState: any): AppState {
     migrated.startDate = "2026-07-19";
     migrated.endDate = "2026-10-13";
     migrated.personalScheduleSeedVersion = 8;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) >= 4 && (migrated.personalScheduleSeedVersion || 0) < 9) {
+    migrated.routines = getConfirmedRoutines();
+    migrated.personalScheduleSeedVersion = 9;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
