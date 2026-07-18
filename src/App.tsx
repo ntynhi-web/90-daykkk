@@ -117,7 +117,7 @@ export default function App() {
   };
 
   // Live cycle tracking calculations
-  const stats = getCycleStats(state.startDate, formatDateStr(new Date()));
+  const stats = getCycleStats(state.startDate, formatDateStr(new Date()), state.endDate);
   const cyclePercentage = Math.round((stats.currentDay / stats.totalDays) * 100);
 
   if (authLoading) {
