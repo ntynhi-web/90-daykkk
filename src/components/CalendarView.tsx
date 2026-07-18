@@ -25,6 +25,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
   const [newEndTime, setNewEndTime] = useState("10:00");
   const [newDate, setNewDate] = useState(selectedDate);
   const [addError, setAddError] = useState<string | null>(null);
+  const [allowLockedOverride, setAllowLockedOverride] = useState(false);
 
   const activeJourneys = (state.goals || []).filter(g => g.status === 'active');
   const selectedWeekday = new Date(`${selectedDate}T12:00:00`).getDay();
@@ -80,6 +81,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
         const itemA = items[i];
         const itemB = items[j];
         if (itemA.date === itemB.date) {
+          if ((itemA.locked && itemB.insideLockedBlock) || (itemB.locked && itemA.insideLockedBlock)) continue;
           const startA = parseInt(itemA.startTime.replace(":", ""));
           const endA = parseInt(itemA.endTime.replace(":", ""));
           const startB = parseInt(itemB.startTime.replace(":", ""));
@@ -115,8 +117,13 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
       return;
     }
     const lockedConflict = (state.scheduleItems || []).find(item => item.locked && item.date === newDate && item.startTime < newEndTime && newStartTime < item.endTime);
-    if (lockedConflict) {
-      setAddError(`Không thể xếp trùng “${lockedConflict.title}” (${lockedConflict.startTime}–${lockedConflict.endTime}).`);
+    const exceptionCount = lockedConflict ? (state.scheduleItems || []).filter(item => item.insideLockedBlock && item.date === newDate && item.startTime < lockedConflict.endTime && lockedConflict.startTime < item.endTime).length : 0;
+    if (lockedConflict && !allowLockedOverride) {
+      setAddError(`“${lockedConflict.title}” đang khóa ${lockedConflict.startTime}–${lockedConflict.endTime}. Bật “Việc phát sinh” nếu bạn thật sự cần thêm.`);
+      return;
+    }
+    if (lockedConflict && exceptionCount >= (lockedConflict.lockedCapacity || 2)) {
+      setAddError(`Khung này đã có đủ ${lockedConflict.lockedCapacity || 2} việc phát sinh. Hãy dời hoặc xóa một việc trước.`);
       return;
     }
     const newItem: ScheduleItem = {
@@ -125,7 +132,8 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
       date: newDate,
       startTime: newStartTime,
       endTime: newEndTime,
-      journeyId: newJourneyId || null
+      journeyId: newJourneyId || null,
+      insideLockedBlock: Boolean(lockedConflict)
     };
 
     onChangeState({
@@ -135,6 +143,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
 
     setNewTitle("");
     setAddError(null);
+    setAllowLockedOverride(false);
     setShowAddModal(false);
   };
 
@@ -410,11 +419,12 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                                     <div
                                       key={event.id}
                                       style={{ height: `${Math.max(44, duration / 60 * 55 - 4)}px` }}
-                                      className={`relative z-10 p-1.5 rounded-lg border text-[10px] leading-tight ${event.locked ? 'border-slate-700 bg-slate-800 text-white shadow-md' : colors.bg} ${hasConflict && !event.locked ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs group/item overflow-hidden`}
+                                      className={`relative ${event.insideLockedBlock ? 'z-20 ring-2 ring-orange-300' : 'z-10'} p-1.5 rounded-lg border text-[10px] leading-tight ${event.locked ? 'border-slate-700 bg-slate-800 text-white shadow-md' : colors.bg} ${hasConflict && !event.locked && !event.insideLockedBlock ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs group/item overflow-hidden`}
                                     >
                                       <div className={`font-bold line-clamp-2 ${event.locked ? 'text-white' : 'text-slate-800'}`}>{event.title}</div>
                                       <div className={`text-[8px] font-mono mt-0.5 ${event.locked ? 'text-slate-200' : 'text-slate-500'}`}>{event.startTime}–{event.endTime}</div>
                                       {event.locked && <div className="mt-1 flex items-center gap-1 text-[8px] font-black uppercase tracking-wide text-sky-200"><LockKeyhole className="h-2.5 w-2.5" /> Đã khóa</div>}
+                                      {event.insideLockedBlock && <div className="mt-1 text-[8px] font-black uppercase tracking-wide text-orange-700">Việc phát sinh</div>}
                                       
                                       {!event.locked && <button
                                         onClick={() => handleDeleteEvent(event.id)}
@@ -540,6 +550,12 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
 
               <form onSubmit={handleAddEvent} className="space-y-4">
                 {addError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-700">{addError}</div>}
+                {(state.scheduleItems || []).some(item => item.locked && item.date === newDate && item.startTime < newEndTime && newStartTime < item.endTime) && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs text-orange-900">
+                    <input type="checkbox" checked={allowLockedOverride} onChange={event => { setAllowLockedOverride(event.target.checked); setAddError(null); }} className="mt-0.5 h-4 w-4 accent-orange-600" />
+                    <span><strong className="block">Đây là việc phát sinh trong giờ làm</strong><span className="mt-1 block text-[10px] text-orange-700">Cho phép tối đa 2 việc ngoại lệ trong khung khóa. Việc này sẽ được đánh dấu riêng.</span></span>
+                  </label>
+                )}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600">Tiêu đề công việc</label>
                   <input
