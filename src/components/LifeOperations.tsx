@@ -14,6 +14,12 @@ interface LifeOperationsProps {
 const choreDoneToday = (chore: Chore, today: string) =>
   chore.frequency === "one_time" ? chore.completed : chore.lastCompletedDate === today;
 
+const choreIsVisibleToday = (chore: Chore, today: string) => {
+  if (chore.frequency === "daily") return true;
+  if (chore.frequency === "weekly") return chore.lastCompletedDate === today || !chore.dueDate || chore.dueDate <= today;
+  return !chore.completed || chore.lastCompletedDate === today;
+};
+
 export default function LifeOperations({ state, today, onChangeState }: LifeOperationsProps) {
   const [expanded, setExpanded] = useState(false);
   const [activePanel, setActivePanel] = useState<'anchors' | 'routines' | 'chores'>('anchors');
@@ -27,7 +33,7 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
     const yogaDue = scheduled.some(routine => routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('yoga'));
     const dueRoutines = scheduled.filter(routine => !(yogaDue && routine.substitutionGroup === 'movement' && routine.name.toLowerCase().includes('đi bộ')));
     const routinesDone = dueRoutines.filter(routine => logs.some(log => log.routineId === routine.id && log.date === today && ['minimum', 'completed'].includes(log.status))).length;
-    const visibleChores = (state.chores || []).filter(chore => chore.frequency === 'daily' || chore.frequency === 'weekly' || !chore.completed);
+    const visibleChores = (state.chores || []).filter(chore => choreIsVisibleToday(chore, today));
     const choresDone = visibleChores.filter(chore => choreDoneToday(chore, today)).length;
     return {
       anchors: { done: anchorsDone, total: anchors.length },
