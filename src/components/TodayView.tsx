@@ -6,7 +6,7 @@ import {
   ListTodo, Siren, Brain, Zap, Archive, Target, Repeat2, MessageSquareText, Bot, Gauge, Lightbulb, CalendarClock, Undo2
 } from "lucide-react";
 import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Chore, ChoreCategory, ChoreFrequency, CoachHistoryEntry } from "../types";
-import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate, getPersonalFixedSchedule } from "../utils";
+import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate, getPersonalFixedSchedule, isScheduleValidForDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import LifeOperations from "./LifeOperations";
@@ -877,7 +877,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   };
 
   // Section 2: Today's Schedule and Overlaps
-  const todaySchedule = (state.scheduleItems || []).filter(item => item.date === todayStr)
+  const todaySchedule = (state.scheduleItems || []).filter(item => item.date === todayStr && isScheduleValidForDate(item))
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const currentTime = new Intl.DateTimeFormat("en-GB", {
