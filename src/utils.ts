@@ -81,7 +81,7 @@ export function getCycleStats(startDateStr: string, currentDateStr: string, endD
     end.setHours(0,0,0,0);
     const totalDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1);
     const diffTime = current.getTime() - start.getTime();
-    const currentDay = Math.max(1, Math.floor(diffTime / (24 * 60 * 60 * 1000)) + 1);
+    const currentDay = current < start ? 0 : Math.floor(diffTime / (24 * 60 * 60 * 1000)) + 1;
     const daysRemaining = Math.max(0, totalDays - currentDay);
     
     return {
@@ -90,7 +90,7 @@ export function getCycleStats(startDateStr: string, currentDateStr: string, endD
       totalDays
     };
   } catch {
-    return { currentDay: 1, daysRemaining: 89, totalDays: 90 };
+    return { currentDay: 0, daysRemaining: 90, totalDays: 90 };
   }
 }
 
