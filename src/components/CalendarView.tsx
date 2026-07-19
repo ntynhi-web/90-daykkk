@@ -388,74 +388,67 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                     })}
                   </div>
 
-                  {/* Grid Content */}
-                  <div className="divide-y divide-slate-100">
+                  {/* Fixed time grid. Events are positioned independently so long blocks do not stretch an hour row. */}
+                  <div className="relative h-[825px]">
                     {Array.from({ length: 15 }, (_, i) => {
                       const hour = i + 8;
                       const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-
                       return (
-                        <div key={hour} className="grid grid-cols-8 min-h-[55px]">
-                          {/* Hour tag */}
-                          <div className="p-2 text-right border-r border-slate-100 text-[10px] font-mono font-bold text-slate-400 flex items-start justify-end">
-                            {hourStr}
-                          </div>
-
-                          {/* 7 Days of week */}
-                          {getWeekDays().map(dayStr => {
-                            const dayEvents = (state.scheduleItems || []).filter(
-                              event => event.date === dayStr && parseInt(event.startTime.split(':')[0]) === hour
-                            );
-
-                            return (
-                              <div key={dayStr} className="p-1 border-r border-slate-100 bg-slate-50/10 hover:bg-slate-50/30 transition-all relative flex flex-col gap-1 min-h-[55px]">
-                                {dayEvents.map(event => {
-                                  const colors = getJourneyColor(event.journeyId);
-                                  const hasConflict = overlapMap[event.id];
-
-                                  const [sh, sm] = event.startTime.split(':').map(Number);
-                                  const [eh, em] = event.endTime.split(':').map(Number);
-                                  const duration = Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
-                                  return (
-                                    <div
-                                      key={event.id}
-                                      style={{ height: `${Math.max(44, duration / 60 * 55 - 4)}px` }}
-                                      className={`relative ${event.insideLockedBlock ? 'z-20 ring-2 ring-orange-300' : 'z-10'} p-1.5 rounded-lg border text-[10px] leading-tight ${event.locked ? 'border-slate-700 bg-slate-800 text-white shadow-md' : colors.bg} ${hasConflict && !event.locked && !event.insideLockedBlock ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs group/item overflow-hidden`}
-                                    >
-                                      <div className={`font-bold line-clamp-2 ${event.locked ? 'text-white' : 'text-slate-800'}`}>{event.title}</div>
-                                      <div className={`text-[8px] font-mono mt-0.5 ${event.locked ? 'text-slate-200' : 'text-slate-500'}`}>{event.startTime}–{event.endTime}</div>
-                                      {event.locked && <div className="mt-1 flex items-center gap-1 text-[8px] font-black uppercase tracking-wide text-sky-200"><LockKeyhole className="h-2.5 w-2.5" /> Đã khóa</div>}
-                                      {event.insideLockedBlock && <div className="mt-1 text-[8px] font-black uppercase tracking-wide text-orange-700">Việc phát sinh</div>}
-                                      
-                                      {!event.locked && <button
-                                        onClick={() => handleDeleteEvent(event.id)}
-                                        className="absolute top-1 right-1 p-0.5 bg-white rounded border border-slate-100 text-slate-400 hover:text-rose-600 opacity-0 group-hover/item:opacity-100 transition-all cursor-pointer"
-                                      >
-                                        <Trash2 className="w-2.5 h-2.5" />
-                                      </button>}
-                                    </div>
-                                  );
-                                })}
-
-                                {dayEvents.length === 0 && (
-                                  <button
-                                    onClick={() => {
-                                      setNewStartTime(`${hour.toString().padStart(2, '0')}:00`);
-                                      setNewEndTime(`${(hour + 1).toString().padStart(2, '0')}:00`);
-                                      setNewDate(dayStr);
-                                      setShowAddModal(true);
-                                    }}
-                                    className="absolute inset-0 opacity-0 hover:opacity-100 bg-indigo-50/20 text-indigo-600 flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer"
-                                  >
-                                    + Xếp
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
+                        <div key={hour} className="grid h-[55px] grid-cols-8 border-b border-slate-100">
+                          <div className="border-r border-slate-100 p-2 text-right text-[10px] font-mono font-bold text-slate-400">{hourStr}</div>
+                          {getWeekDays().map(dayStr => (
+                            <button
+                              key={dayStr}
+                              onClick={() => {
+                                setNewStartTime(`${hour.toString().padStart(2, '0')}:00`);
+                                setNewEndTime(`${(hour + 1).toString().padStart(2, '0')}:00`);
+                                setNewDate(dayStr);
+                                setShowAddModal(true);
+                              }}
+                              className="border-r border-slate-100 bg-slate-50/10 text-[10px] font-bold text-transparent transition hover:bg-indigo-50/40 hover:text-indigo-500"
+                            >
+                              + Xếp
+                            </button>
+                          ))}
                         </div>
                       );
                     })}
+
+                    {getWeekDays().flatMap((dayStr, dayIndex) =>
+                      (state.scheduleItems || [])
+                        .filter(event => event.date === dayStr && isScheduleValidForDate(event))
+                        .map(event => {
+                          const colors = getJourneyColor(event.journeyId);
+                          const hasConflict = overlapMap[event.id];
+                          const [sh, sm] = event.startTime.split(':').map(Number);
+                          const [eh, em] = event.endTime.split(':').map(Number);
+                          const startMinutes = sh * 60 + sm;
+                          const endMinutes = eh * 60 + em;
+                          const visibleStart = Math.max(8 * 60, startMinutes);
+                          const visibleEnd = Math.min(23 * 60, endMinutes);
+                          if (visibleEnd <= visibleStart) return null;
+                          const top = ((visibleStart - 8 * 60) / 60) * 55;
+                          const height = Math.max(24, ((visibleEnd - visibleStart) / 60) * 55 - 4);
+                          return (
+                            <div
+                              key={event.id}
+                              style={{
+                                top: `${top + 2}px`,
+                                height: `${height}px`,
+                                left: `calc(${(dayIndex + 1) * 12.5}% + 4px)`,
+                                width: 'calc(12.5% - 8px)'
+                              }}
+                              className={`group/item absolute p-1.5 rounded-lg border text-[10px] leading-tight ${event.insideLockedBlock ? 'z-30 ring-2 ring-orange-300' : 'z-20'} ${event.locked ? 'border-slate-700 bg-slate-800 text-white shadow-md' : colors.bg} ${hasConflict && !event.locked && !event.insideLockedBlock ? 'border-rose-300 bg-rose-50' : ''} shadow-3xs overflow-hidden`}
+                            >
+                              <div className={`font-bold line-clamp-2 ${event.locked ? 'text-white' : 'text-slate-800'}`}>{event.title}</div>
+                              <div className={`mt-0.5 text-[8px] font-mono ${event.locked ? 'text-slate-200' : 'text-slate-500'}`}>{event.startTime}–{event.endTime}</div>
+                              {event.locked && <div className="mt-1 flex items-center gap-1 text-[8px] font-black uppercase tracking-wide text-sky-200"><LockKeyhole className="h-2.5 w-2.5" /> Đã khóa</div>}
+                              {event.insideLockedBlock && <div className="mt-1 text-[8px] font-black uppercase tracking-wide text-orange-700">Việc phát sinh</div>}
+                              {!event.locked && <button onClick={() => handleDeleteEvent(event.id)} className="absolute right-1 top-1 rounded border border-slate-100 bg-white p-0.5 text-slate-400 opacity-0 transition hover:text-rose-600 group-hover/item:opacity-100"><Trash2 className="h-2.5 w-2.5" /></button>}
+                            </div>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               </div>
