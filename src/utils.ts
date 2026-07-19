@@ -419,7 +419,8 @@ const getConfirmedRoutines = (): Routine[] => [
 
 const getConfirmedLifeAnchors = () => [
   { id: "anchor_cats", title: "Chăm sóc và yêu thương hai bé mèo", description: "Cho Rainy và Lacky ăn, quan sát sức khỏe và dành thời gian kết nối.", icon: "cat" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
-  { id: "anchor_spiritual", title: "Khoảng lặng tinh thần", description: "Thắp nhang và dành vài phút tĩnh tâm.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true }
+  { id: "anchor_spiritual", title: "Khoảng lặng tinh thần", description: "Thắp nhang và dành vài phút tĩnh tâm.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
+  { id: "anchor_law_of_attraction", title: "Đọc Law of Attraction", description: "Đọc và suy ngẫm hằng ngày để nuôi dưỡng niềm tin, sự tập trung và tư duy thịnh vượng.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true }
 ];
 
 const getConfirmedChores = (): Chore[] => [
@@ -686,6 +687,15 @@ export function migrateAppState(rawState: any): AppState {
   if ((migrated.personalScheduleSeedVersion || 0) === 9) {
     migrated.scheduleItems = (migrated.scheduleItems || []).filter((item: ScheduleItem) => isScheduleValidForDate(item));
     migrated.personalScheduleSeedVersion = 10;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 10) {
+    const existingAnchors = new Map((migrated.lifeAnchors || []).map((anchor: any) => [anchor.id, anchor]));
+    migrated.lifeAnchors = getConfirmedLifeAnchors().map(anchor => ({
+      ...anchor,
+      lastCompletedDate: (existingAnchors.get(anchor.id) as any)?.lastCompletedDate || null
+    }));
+    migrated.personalScheduleSeedVersion = 11;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {

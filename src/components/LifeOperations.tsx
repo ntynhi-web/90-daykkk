@@ -43,8 +43,8 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
   }, [logs, state.chores, state.lifeAnchors, state.routines, today, weekday]);
 
   const panels = [
-    { id: 'anchors' as const, label: 'Điều làm cuộc sống có ý nghĩa', value: summary.anchors, icon: HeartHandshake, tone: 'rose' },
-    { id: 'routines' as const, label: 'Chăm sóc bản thân', value: summary.routines, icon: Sparkles, tone: 'emerald' },
+    { id: 'anchors' as const, label: 'Tinh thần & điều mình trân trọng', value: summary.anchors, icon: HeartHandshake, tone: 'rose' },
+    { id: 'routines' as const, label: 'Hoạt động lặp lại theo lịch', value: summary.routines, icon: Sparkles, tone: 'emerald' },
     { id: 'chores' as const, label: 'Việc nhà cần vận hành', value: summary.chores, icon: ListChecks, tone: 'slate' }
   ];
 
@@ -53,8 +53,8 @@ export default function LifeOperations({ state, today, onChangeState }: LifeOper
       <button type="button" onClick={() => setExpanded(value => !value)} className="flex w-full items-center justify-between gap-4 p-5 text-left md:p-6">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">04 · Nền tảng cuộc sống</p>
-          <h2 className="mt-2 font-display text-xl font-black text-slate-950">Không quên những điều thiết yếu</h2>
-          <p className="mt-1 text-sm text-slate-600">Tình cảm, sức khỏe và việc nhà được tách riêng — không còn trông như cùng một loại task.</p>
+          <h2 className="mt-2 font-display text-xl font-black text-slate-950">Giữ cuộc sống cân bằng và có chủ đích</h2>
+          <p className="mt-1 text-sm text-slate-600">Điều nuôi dưỡng tinh thần, hoạt động lặp lại và việc nhà được quản lý thành ba nhóm rõ ràng.</p>
         </div>
         <span className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600">
           {expanded ? 'Thu gọn' : 'Mở chi tiết'} <ChevronDown className={`h-4 w-4 transition ${expanded ? 'rotate-180' : ''}`} />

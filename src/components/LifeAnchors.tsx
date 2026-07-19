@@ -36,9 +36,9 @@ export default function LifeAnchors({ state, today, onChangeState }: LifeAnchors
     <section id="section-life-anchors" className="life-panel overflow-hidden border-t-4 border-t-amber-400">
       <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <div>
-          <p className="life-kicker text-amber-700">04 · Điều quan trọng với tôi</p>
-          <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Những điều làm hôm nay có ý nghĩa</h2>
-          <p className="mt-1 text-xs text-slate-400">Không phải KPI hay chores. Chỉ là lời nhắc dịu dàng về điều bạn muốn gìn giữ.</p>
+          <p className="life-kicker text-amber-700">Tinh thần & điều mình trân trọng</p>
+          <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Những điều nuôi dưỡng đời sống tinh thần</h2>
+          <p className="mt-1 text-xs text-slate-400">Không phải KPI hay việc nhà: đây là tình yêu, niềm tin và khoảng lặng bạn muốn dành thời gian mỗi ngày.</p>
         </div>
         <span className="w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-800">
           {completedCount}/{anchors.length} đã được chăm sóc
