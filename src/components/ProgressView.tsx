@@ -5,7 +5,7 @@ import {
   Coffee, ShieldCheck, HelpCircle, Activity, Target, Zap, Compass, Sparkles, Scale, Plus, Trash2, ArrowRight,
   BriefcaseBusiness, HeartPulse, CandlestickChart
 } from "lucide-react";
-import { AppState, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord } from "../types";
+import { AppState, B2BLead, JobApplication, HealthRecord, LifestyleRecord, BatchTestRecord, RoutineLog } from "../types";
 import { formatDisplayDate } from "../utils";
 
 interface ProgressViewProps {
@@ -78,7 +78,25 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     day: "2-digit"
   }).format(new Date(Date.now() - (14 - i) * 86_400_000)));
   const eligibleRoutineDays = last15Days.filter(day => day >= state.startDate);
-  const routineLogs = state.routineLogs || [];
+  const persistedRoutineLogs = state.routineLogs || [];
+  // Older calendar completions did not create routineLogs. Treat their completed
+  // routine blocks as real evidence so history repairs itself without fake data.
+  const inferredRoutineLogs: RoutineLog[] = (state.scheduleItems || [])
+    .filter(item => item.completed && item.routineId)
+    .filter(item => !persistedRoutineLogs.some(log => log.routineId === item.routineId && log.date === item.date))
+    .map(item => ({
+      id: `inferred_${item.routineId}_${item.date}`,
+      routineId: item.routineId as string,
+      goalId: item.goalId || item.journeyId || state.routines.find(routine => routine.id === item.routineId)?.goalId || '',
+      date: item.date,
+      status: 'completed',
+      source: 'manual',
+      evidence: `Hoàn thành trong Lịch: ${item.title}`,
+      activityId: null,
+      createdTimestamp: Date.now(),
+      updatedTimestamp: Date.now()
+    }));
+  const routineLogs = [...persistedRoutineLogs, ...inferredRoutineLogs];
   const routineIsDue = (routine: typeof state.routines[number], date: string) => {
     if (!routine.scheduleDays?.length) return true;
     return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
