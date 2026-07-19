@@ -159,6 +159,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<'important_urgent' | 'important' | 'urgent' | 'later'>('important_urgent');
   const [newTaskJourneyId, setNewTaskJourneyId] = useState("");
+  const [journalDraft, setJournalDraft] = useState({ work: "", result: "", lesson: "", goalId: "G1" });
+  const [unexpectedDraft, setUnexpectedDraft] = useState({ title: "", priority: "urgent" as PriorityTask['priority'], goalId: "", startTime: "", endTime: "" });
 
   // Speech recognition ref
   const recognitionRef = useRef<any>(null);
@@ -869,6 +871,43 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     setNewTaskTitle("");
   };
 
+  const saveDailyJournal = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!journalDraft.work.trim()) return;
+    const timestamp = Date.now();
+    const entry: ActivityEntry = {
+      id: `journal_${timestamp}`, date: todayStr, goalId: journalDraft.goalId || null, source: 'manual',
+      activity: journalDraft.work.trim(), output: {},
+      outcome: journalDraft.result.trim() ? { result: journalDraft.result.trim() } : {},
+      outcomeStatus: journalDraft.result.trim() ? 'measured' : 'not_applicable', outcomeReviewDate: null,
+      insight: journalDraft.lesson.trim() || null, nextAction: null, confidence: 1,
+      createdTimestamp: timestamp, updatedTimestamp: timestamp
+    };
+    onChangeState({ ...state, activities: [entry, ...state.activities] });
+    setJournalDraft(value => ({ ...value, work: '', result: '', lesson: '' }));
+    setSaveNotice('Đã lưu nhật ký hôm nay vào Kết quả.');
+  };
+
+  const saveUnexpectedTask = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!unexpectedDraft.title.trim()) return;
+    const timestamp = Date.now();
+    const task: PriorityTask = {
+      id: `unexpected_${timestamp}`, title: unexpectedDraft.title.trim(), priority: unexpectedDraft.priority,
+      completed: false, journeyId: unexpectedDraft.goalId || null, goalId: unexpectedDraft.goalId || null,
+      dueDate: todayStr, createdAt: new Date().toISOString(), activityType: 'execution'
+    };
+    const schedule = unexpectedDraft.startTime && unexpectedDraft.endTime > unexpectedDraft.startTime ? [{
+      id: `unexpected_schedule_${timestamp}`, title: task.title, date: todayStr,
+      startTime: unexpectedDraft.startTime, endTime: unexpectedDraft.endTime,
+      goalId: unexpectedDraft.goalId || null, journeyId: unexpectedDraft.goalId || null,
+      taskId: task.id, type: 'task' as const, completed: false
+    }] : [];
+    onChangeState({ ...state, priorityTasks: [task, ...(state.priorityTasks || [])], scheduleItems: [...(state.scheduleItems || []), ...schedule] });
+    setUnexpectedDraft(value => ({ ...value, title: '', startTime: '', endTime: '' }));
+    setSaveNotice(schedule.length ? 'Đã thêm việc phát sinh vào ưu tiên và lịch hôm nay.' : 'Đã thêm việc phát sinh vào ưu tiên hôm nay.');
+  };
+
   const moveTaskPriority = (taskId: string, targetPriority: 'important_urgent' | 'important' | 'urgent' | 'later') => {
     onChangeState({
       ...state,
@@ -1282,6 +1321,34 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           </div>
         </div>
         )}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <form onSubmit={saveDailyJournal} className="rounded-[24px] border border-sky-200 bg-sky-50/45 p-5 shadow-sm md:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="life-kicker text-sky-700">Nhật ký công việc hằng ngày</p><h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Hôm nay bạn thực sự đã làm gì?</h2><p className="mt-1 text-xs text-slate-500">Bản ghi này đi vào Kết quả, không tự tạo thêm task.</p></div>
+            <MessageSquareText className="h-5 w-5 text-sky-600" />
+          </div>
+          <div className="mt-4 grid gap-3">
+            <select aria-label="Mục tiêu của nhật ký" value={journalDraft.goalId} onChange={event => setJournalDraft({ ...journalDraft, goalId: event.target.value })} className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700">{state.goals.filter(goal => goal.status === 'active').map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select>
+            <textarea value={journalDraft.work} onChange={event => setJournalDraft({ ...journalDraft, work: event.target.value })} placeholder="Công việc đã thực hiện…" className="min-h-20 rounded-xl border border-sky-200 bg-white px-3 py-3 text-xs outline-none focus:border-sky-500" />
+            <div className="grid gap-3 sm:grid-cols-2"><input value={journalDraft.result} onChange={event => setJournalDraft({ ...journalDraft, result: event.target.value })} placeholder="Kết quả/đầu ra" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /><input value={journalDraft.lesson} onChange={event => setJournalDraft({ ...journalDraft, lesson: event.target.value })} placeholder="Vấn đề hoặc bài học" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /></div>
+            <button disabled={!journalDraft.work.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-xs font-black text-white disabled:opacity-40"><Save className="h-4 w-4" /> Lưu nhật ký</button>
+          </div>
+        </form>
+
+        <form onSubmit={saveUnexpectedTask} className="rounded-[24px] border border-amber-200 bg-amber-50/45 p-5 shadow-sm md:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="life-kicker text-amber-700">Việc phát sinh</p><h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Thêm việc ngoài kế hoạch</h2><p className="mt-1 text-xs text-slate-500">Không thay đổi routine cố định; có thể đưa vào lịch hôm nay nếu có giờ.</p></div>
+            <Zap className="h-5 w-5 text-amber-600" />
+          </div>
+          <div className="mt-4 grid gap-3">
+            <input value={unexpectedDraft.title} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, title: event.target.value })} placeholder="Ví dụ: xử lý giấy tờ phát sinh…" className="rounded-xl border border-amber-200 bg-white px-3 py-3 text-xs outline-none focus:border-amber-500" />
+            <div className="grid gap-3 sm:grid-cols-2"><select aria-label="Mức ưu tiên" value={unexpectedDraft.priority} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, priority: event.target.value as PriorityTask['priority'] })} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold"><option value="important_urgent">Quan trọng & khẩn cấp</option><option value="urgent">Khẩn cấp</option><option value="important">Quan trọng</option><option value="later">Có thể để sau</option></select><select aria-label="Mục tiêu liên quan" value={unexpectedDraft.goalId} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, goalId: event.target.value })} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs"><option value="">Không thuộc mục tiêu</option>{state.goals.filter(goal => goal.status === 'active').map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></div>
+            <div className="grid grid-cols-2 gap-3"><label className="text-[10px] font-bold text-slate-500">Bắt đầu<input type="time" value={unexpectedDraft.startTime} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, startTime: event.target.value })} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs" /></label><label className="text-[10px] font-bold text-slate-500">Kết thúc<input type="time" value={unexpectedDraft.endTime} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, endTime: event.target.value })} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs" /></label></div>
+            <button disabled={!unexpectedDraft.title.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-xs font-black text-white disabled:opacity-40"><Plus className="h-4 w-4" /> Thêm việc phát sinh</button>
+          </div>
+        </form>
       </section>
 
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
