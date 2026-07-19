@@ -83,7 +83,9 @@ export default function FocusOverview({ state, today, currentDay, onChangeState 
   const emergencyGoal = activeGoals.find(goal => (state.priorityTasks || []).some(task => linkedGoalId(task) === goal.id && !task.completed && task.priority === 'important_urgent' && (!task.dueDate || task.dueDate <= today)));
   const weeklyGoal = activeGoals.find(goal => goal.id === state.weeklyFocusGoalId);
   const sessionGoal = activeGoals.find(goal => goal.id === state.activeFocusSession?.goalId);
-  const focusGoal = sessionGoal || emergencyGoal || savedFocus || weeklyGoal || rankedGoals[0] || null;
+  // An active session stays pinned, otherwise the user's explicit daily choice wins.
+  // Urgency remains a recommendation and must not silently override “Đổi ưu tiên”.
+  const focusGoal = sessionGoal || savedFocus || emergencyGoal || weeklyGoal || rankedGoals[0] || null;
   const supportOrder = (state.weeklySupportGoalIds || []).map(id => activeGoals.find(goal => goal.id === id)).filter(Boolean) as Goal[];
   const maintenanceLimit = dailyMode === 'normal' ? 2 : dailyMode === 'busy' ? 1 : 0;
   const maintenanceGoals = [...supportOrder, ...rankedGoals.filter(goal => !supportOrder.some(item => item.id === goal.id))].filter(goal => goal.id !== focusGoal?.id).slice(0, maintenanceLimit);

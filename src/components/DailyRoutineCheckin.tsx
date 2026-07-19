@@ -138,11 +138,11 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
       <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <p className="life-kicker text-emerald-600">Thói quen giữ nhịp · {routines.length} việc hôm nay</p>
+            <p className="life-kicker text-emerald-600">Cập nhật hoạt động lặp lại · {routines.length} việc theo lịch hôm nay</p>
             <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[9px] font-black text-white shadow-sm">{completedCount}/{routines.length} xong</span>
           </div>
-          <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Bạn đã giữ nhịp nào?</h2>
-          <p className="mt-1 text-xs text-slate-400">Chọn mức tối thiểu hoặc hoàn thành. Dữ liệu này sẽ đi thẳng vào Kết quả.</p>
+          <h2 className="mt-2 font-display text-lg font-extrabold text-slate-950">Bạn đã hoàn thành hoạt động nào?</h2>
+          <p className="mt-1 text-xs text-slate-400">Đây là các việc lặp lại đúng ngày hôm nay. Đánh dấu Minimum hoặc Hoàn thành để cập nhật ngay Lịch sử routine trong Kết quả.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setShowPlanner(true)} className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-[10px] font-black text-white shadow-sm hover:bg-indigo-700">

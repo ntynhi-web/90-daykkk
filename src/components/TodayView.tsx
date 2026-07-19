@@ -964,6 +964,28 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       createdTimestamp: Date.now(),
       updatedTimestamp: Date.now()
     };
+    const linkedRoutine = target.routineId
+      ? state.routines.find(routine => routine.id === target.routineId)
+      : null;
+    const existingRoutineLog = target.routineId
+      ? (state.routineLogs || []).find(log => log.routineId === target.routineId && log.date === target.date)
+      : null;
+    const nextRoutineLogs = !target.routineId
+      ? (state.routineLogs || [])
+      : completed
+        ? [{
+            id: existingRoutineLog?.id || `routine_log_${target.routineId}_${target.date}`,
+            routineId: target.routineId,
+            goalId: linkedRoutine?.goalId || scheduleGoalId || '',
+            date: target.date,
+            status: 'completed' as const,
+            source: 'manual' as const,
+            evidence: `Hoàn thành từ Lịch hôm nay: ${target.title}`,
+            activityId,
+            createdTimestamp: existingRoutineLog?.createdTimestamp || Date.now(),
+            updatedTimestamp: Date.now()
+          }, ...(state.routineLogs || []).filter(log => !(log.routineId === target.routineId && log.date === target.date))]
+        : (state.routineLogs || []).filter(log => !(log.routineId === target.routineId && log.date === target.date));
     onChangeState({
       ...state,
       scheduleItems: (state.scheduleItems || []).map(item =>
@@ -974,7 +996,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       ),
       activities: completed
         ? [linkedActivity, ...state.activities.filter(activity => activity.id !== activityId)]
-        : state.activities.filter(activity => activity.id !== activityId)
+        : state.activities.filter(activity => activity.id !== activityId),
+      routineLogs: nextRoutineLogs
     });
   };
 
@@ -1367,7 +1390,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
           {todaySchedule.length > 0 ? (
             <div className="space-y-2">
-              {todaySchedule.slice(0, 3).map(item => {
+              {todaySchedule.map(item => {
                 const isPast = !item.completed && item.endTime < currentTime;
                 const scheduleGoalId = item.journeyId || item.goalId || null;
                 return (
@@ -1391,7 +1414,6 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
                   </button>
                 );
               })}
-              {todaySchedule.length > 3 && <p className="pt-2 text-center text-xs font-bold text-indigo-600">+{todaySchedule.length - 3} block khác · xem toàn bộ trong Lịch biểu</p>}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
