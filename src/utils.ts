@@ -18,6 +18,23 @@ export function formatDisplayDate(dateStr: string): string {
   return dateStr;
 }
 
+export function isScheduleValidForDate(item: ScheduleItem): boolean {
+  const weekday = new Date(`${item.date}T12:00:00`).getDay();
+  const rules: Array<[string, number[]]> = [
+    ["confirmed_office_prep_", [1, 3, 5]], ["confirmed_office_", [1, 3, 5]],
+    ["confirmed_wfh_", [2, 4]], ["confirmed_yoga_mon_", [1]], ["confirmed_yoga_evening_", [2, 4]],
+    ["confirmed_fund_mon_open_", [1]], ["confirmed_fund_mwf_", [1, 3, 5]], ["confirmed_fund_tt_", [2, 4]],
+    ["confirmed_b2b_career_", [1, 3, 5]], ["confirmed_home_reset_office_", [1, 3, 5]],
+    ["confirmed_home_reset_home_", [2, 4]], ["confirmed_laundry_tue_", [2]], ["confirmed_laundry_sat_", [6]],
+    ["confirmed_cooking_tt_", [2, 4]], ["confirmed_cooking_sat_", [6]], ["confirmed_home_clean_", [0, 2]],
+    ["confirmed_shopping_", [4]], ["confirmed_market_", [6]], ["confirmed_haircare_", [0, 1, 3, 5]],
+    ["confirmed_skincare_pm_", [0, 1, 2, 3, 4, 5, 6]], ["confirmed_sleep_", [0, 1, 2, 3, 4, 5, 6]],
+    ["rainy_", [6]], ["fund_weekly_", [6]]
+  ];
+  const rule = rules.find(([prefix]) => item.id.startsWith(prefix));
+  return !rule || rule[1].includes(weekday);
+}
+
 export const getPersonalFixedSchedule = (startDate: string, endDate: string): ScheduleItem[] => {
   const templates = [
     { key: 'office', title: 'Đi làm tại công ty', days: [1, 3, 5], startTime: '08:00', endTime: '18:00', type: 'personal' as const, notes: 'Khung làm việc cố định; cho phép tối đa 2 việc phát sinh có xác nhận.' },
@@ -664,6 +681,11 @@ export function migrateAppState(rawState: any): AppState {
   if ((migrated.personalScheduleSeedVersion || 0) >= 4 && (migrated.personalScheduleSeedVersion || 0) < 9) {
     migrated.routines = getConfirmedRoutines();
     migrated.personalScheduleSeedVersion = 9;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 9) {
+    migrated.scheduleItems = (migrated.scheduleItems || []).filter((item: ScheduleItem) => isScheduleValidForDate(item));
+    migrated.personalScheduleSeedVersion = 10;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
