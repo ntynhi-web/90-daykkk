@@ -404,13 +404,14 @@ export function getDefaultAppState(): AppState {
 }
 
 const getConfirmedRoutines = (): Routine[] => [
-  { id: "routine_fund_daily", goalId: "G1", name: "Fund · Giao dịch & review", frequency: "Thứ 2–6", minimumDay: "Review checklist 15 phút", target: "Hoàn thành block Fund theo lịch và ghi journal", evidence: "Checklist + journal", status: "pending", scheduleDays: [1,2,3,4,5], active: true },
-  { id: "routine_fund_weekly", goalId: "G1", name: "Fund · Review tuần", frequency: "Thứ 7 · 4 giờ", minimumDay: "Tổng kết 1 giờ", target: "Review tuần đủ 4 giờ", evidence: "Bài học, lỗi và kế hoạch tuần mới", status: "pending", scheduleDays: [6], active: true },
-  { id: "routine_b2b_career", goalId: "G2", name: "B2B/Career · Focus block", frequency: "T2, T4, T6 · 60 phút", minimumDay: "30 phút hoặc 1 đầu ra", target: "60 phút cho B2B, CV hoặc freelance", evidence: "Asset, proposal hoặc application", status: "pending", scheduleDays: [1,3,5], active: true },
+  { id: "routine_fund_daily", goalId: "G1", name: "Fund · Giao dịch & journal", frequency: "Thứ 2–6 · 06:30–08:00", minimumDay: "Review checklist và ghi journal 15 phút", target: "Hoàn thành phiên Fund theo lịch, không giao dịch cảm tính", evidence: "Checklist + journal", status: "pending", scheduleDays: [1,2,3,4,5], active: true },
+  { id: "routine_fund_weekly", goalId: "G1", name: "Fund · Review tuần", frequency: "Thứ 7 · phiên rút gọn khi tuần có việc phát sinh", minimumDay: "Tổng kết 30 phút", target: "Review dữ liệu, lỗi và kế hoạch tuần mới", evidence: "Bài học + bước tiếp theo", status: "pending", scheduleDays: [6], active: true },
+  { id: "routine_b2b_career", goalId: "G3", name: "Career/Freelance · Focus block", frequency: "3 phiên/tuần theo năng lượng", minimumDay: "30 phút hoặc 1 đầu ra", target: "CV, portfolio, nghiên cứu job hoặc gửi hồ sơ", evidence: "Asset, proposal hoặc application", status: "pending", active: true },
+  { id: "routine_b2b_optional", goalId: "G2", name: "B2B · Tiến một đầu ra nhỏ", frequency: "Khi còn năng lượng sau Health và Career", minimumDay: "15 phút chỉnh một phần website", target: "Một đầu ra có thể review", evidence: "Trang, form hoặc tin nhắn đã hoàn tất", status: "pending", active: true },
   { id: "routine_english", goalId: "G3", name: "Career · English-first", frequency: "Hàng ngày", minimumDay: "30 phút nội dung tiếng Anh", target: "Ưu tiên nghe, nói và làm việc bằng tiếng Anh", evidence: "Phút thực hành", status: "pending", active: true },
-  { id: "routine_yoga", goalId: "G4", name: "Health · Yoga", frequency: "T2 sáng · T3/T5 tối", minimumDay: "15 phút", target: "Hoàn thành buổi theo lịch", evidence: "Số phút", status: "pending", scheduleDays: [1,2,4], substitutionGroup: "movement", active: true },
-  { id: "routine_walk", goalId: "G4", name: "Health · Đi bộ", frequency: "T4, T6, T7/CN nếu không dọn nặng", minimumDay: "15 phút", target: "30 phút", evidence: "Phút hoặc bước", status: "pending", scheduleDays: [0,3,5,6], substitutionGroup: "movement", active: true },
+  { id: "routine_exercise_weekend", goalId: "G4", name: "Health · Vận động cuối tuần", frequency: "Thứ 7 và Chủ nhật · 30–35 phút", minimumDay: "Đi bộ hoặc vận động 15 phút", target: "30–35 phút và hướng tới 5.000 bước/ngày", evidence: "Phút hoặc bước", status: "pending", scheduleDays: [0,6], substitutionGroup: "movement", active: true },
   { id: "routine_healthy_eating", goalId: "G4", name: "Health · Ăn uống lành mạnh", frequency: "Hàng ngày", minimumDay: "Một lựa chọn ăn uống tốt hơn", target: "Ăn đủ chất và hạn chế thực phẩm gây hại", evidence: "Ghi chú ngắn", status: "pending", active: true },
+  { id: "routine_warm_water", goalId: "G4", name: "Health · Uống nước ấm", frequency: "Sáng và tối", minimumDay: "Ít nhất một cốc nước ấm", target: "Uống nước ấm buổi sáng và tối", evidence: "Checklist", status: "pending", active: true },
   { id: "routine_skincare_am", goalId: "G4", name: "Beauty · Skincare sáng", frequency: "Hàng ngày", minimumDay: "Làm sạch và chống nắng", target: "Routine sáng đầy đủ", evidence: "Checklist", status: "pending", active: true },
   { id: "routine_skincare_pm", goalId: "G4", name: "Beauty · Skincare tối", frequency: "Hàng ngày · 22:30", minimumDay: "Làm sạch và dưỡng ẩm", target: "Face + body", evidence: "Checklist", status: "pending", active: true },
   { id: "routine_haircare", goalId: "G4", name: "Beauty · Tắm gội & da đầu", frequency: "T2, T4, T6, CN", minimumDay: "Gội và làm sạch da đầu", target: "Hoàn thành routine tóc/da đầu", evidence: "Checklist", status: "pending", scheduleDays: [0,1,3,5], active: true },
@@ -418,22 +419,22 @@ const getConfirmedRoutines = (): Routine[] => [
 ];
 
 const getConfirmedLifeAnchors = () => [
-  { id: "anchor_cats", title: "Chăm sóc và yêu thương hai bé mèo", description: "Cho Rainy và Lacky ăn, quan sát sức khỏe và dành thời gian kết nối.", icon: "cat" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
+  { id: "anchor_cats", title: "Chăm sóc và yêu thương hai bé mèo", description: "Cho Ranny và Lacky ăn, quan sát sức khỏe và dành thời gian kết nối.", icon: "cat" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
   { id: "anchor_spiritual", title: "Khoảng lặng tinh thần", description: "Thắp nhang và dành vài phút tĩnh tâm.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true },
   { id: "anchor_law_of_attraction", title: "Đọc Law of Attraction", description: "Đọc và suy ngẫm hằng ngày để nuôi dưỡng niềm tin, sự tập trung và tư duy thịnh vượng.", icon: "spiritual" as const, frequency: "daily" as const, lastCompletedDate: null, active: true }
 ];
 
 const getConfirmedChores = (): Chore[] => [
-  { id: "chore_cat_litter", title: "Dọn khay cát cho mèo", category: "pet", frequency: "daily", dueDate: "2026-07-19", dueTime: "18:45", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
-  { id: "chore_home_reset", title: "Reset nhà 30 phút", category: "home", frequency: "daily", dueDate: "2026-07-19", dueTime: "18:30", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
-  { id: "chore_shopping", title: "Kiểm tra và mua đồ dùng cần thiết", category: "errand", frequency: "weekly", dueDate: "2026-07-23", dueTime: "17:30", completed: false, lastCompletedDate: null, notes: "Kiểm tra vào thứ Năm; chọn nơi nhận phù hợp.", createdAt: new Date().toISOString() },
+  { id: "chore_cat_litter", title: "Dọn khay cát cho mèo", category: "pet", frequency: "daily", dueDate: "2026-07-24", dueTime: "18:45", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
+  { id: "chore_home_reset", title: "Reset một khu vực nhà 15–20 phút", category: "home", frequency: "daily", dueDate: "2026-07-24", dueTime: "18:45", completed: false, lastCompletedDate: null, notes: "Nhà 80 m², hai tầng: dọn theo khu vực; không ép hoàn thành cả nhà trong một lần.", createdAt: new Date().toISOString() },
+  { id: "chore_shopping", title: "Kiểm tra và mua đồ dùng cần thiết", category: "errand", frequency: "weekly", dueDate: "2026-07-30", dueTime: "17:30", completed: false, lastCompletedDate: null, notes: "Kiểm tra vào thứ Năm; chọn nơi nhận phù hợp.", createdAt: new Date().toISOString() },
   { id: "chore_market", title: "Đi chợ và chuẩn bị thực phẩm", category: "errand", frequency: "weekly", dueDate: "2026-07-25", dueTime: "16:00", completed: false, lastCompletedDate: null, notes: "Ưu tiên thứ Bảy, có thể chuyển sang Chủ nhật.", createdAt: new Date().toISOString() },
   { id: "chore_vacuum", title: "Vệ sinh máy hút bụi", category: "home", frequency: "weekly", dueDate: "2026-07-25", dueTime: "14:00", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() }
 ];
 
-/** Confirmed personal plan captured on 18/07/2026. Applied once to each personal workspace. */
+/** Latest confirmed personal plan, consolidated through 24/07/2026. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
-  const startDate = "2026-07-19";
+  const startDate = "2026-07-24";
   const endDate = "2026-10-13";
   const milestone = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number): any => ({
     id, goalId, title, targetValue, currentValue: "0", dueDate, order,
@@ -444,7 +445,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     {
       id: "G1", name: "Fund & Trading System", description: "Ôn kiến thức, kiểm chứng setup và chỉ mua tài khoản quỹ sau khi vượt cổng đánh giá.",
       desiredOutcome: "Có một setup nhất quán, checklist rõ ràng, dữ liệu backtest và demo đủ tin cậy để đánh giá tài khoản quỹ 10.000 USD.",
-      priority: "highest", deadline: endDate, startDate, mainMetric: "Checklist · Backtest · Tuân thủ · Drawdown", currentProgress: 0,
+      priority: "secondary", deadline: endDate, startDate, mainMetric: "Checklist · Backtest · Tuân thủ · Drawdown", currentProgress: 0,
       currentMilestone: "Ôn kiến thức và hoàn thiện checklist", currentMilestoneId: "fund_knowledge", status: "active",
       nextAction: "Đọc lại kiến thức và viết checklist Setup 1", accentColor: "purple", category: "fund_backtest", icon: "chart",
       notes: "Không mua tài khoản chỉ vì hết hai tuần; chỉ chuyển bước khi dữ liệu backtest và demo đạt ngưỡng đã định.",
@@ -460,9 +461,9 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     {
       id: "G2", name: "B2B Marketing Agency", description: "Xây nền tảng tiếng Việt, portfolio agency, outreach, SEO và social.",
       desiredOutcome: "Có website, portfolio, hệ thống tiếp cận khách hàng và ít nhất một cơ hội B2B đủ điều kiện.",
-      priority: "secondary", deadline: endDate, startDate, mainMetric: "Website · Case study · Proposal · Qualified calls", currentProgress: 0,
-      currentMilestone: "Xây website tiếng Việt và định vị offer", currentMilestoneId: "b2b_foundation", status: "active",
-      nextAction: "Chốt ICP, offer và cấu trúc website tiếng Việt", accentColor: "blue", category: "business", icon: "briefcase",
+      priority: "normal", deadline: endDate, startDate, mainMetric: "Website · Case study · Proposal · Qualified calls", currentProgress: 0,
+      currentMilestone: "Hoàn thiện homepage và form", currentMilestoneId: "b2b_foundation", status: "active",
+      nextAction: "Hoàn thiện homepage, form và nhắn lại Dung", accentColor: "blue", category: "business", icon: "briefcase",
       notes: "Outreach dùng chung một pipeline, gắn nhãn B2B Agency để không đếm trùng Career/Freelance.",
       milestones: [
         milestone("G2", "b2b_foundation", "Chốt ICP, offer và website tiếng Việt", "Website foundation hoàn chỉnh", "2026-08-01", 0),
@@ -477,8 +478,8 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       id: "G3", name: "Career 30M+", description: "CV, portfolio và pipeline ứng tuyển/freelance cho công việc net trên 30 triệu.",
       desiredOutcome: "Nhận được offer công việc phù hợp với mức lương net từ 30 triệu hoặc pipeline freelance tương đương.",
       priority: "secondary", deadline: endDate, startDate, mainMetric: "CV · Case study · Applications · Interviews · Offer", currentProgress: 0,
-      currentMilestone: "Chỉnh lại CV theo vị trí mục tiêu", currentMilestoneId: "career_cv", status: "active",
-      nextAction: "Chốt vị trí mục tiêu và viết lại thành tích trong CV bằng số liệu", accentColor: "emerald", category: "career", icon: "career",
+      currentMilestone: "Tìm freelance và nghiên cứu dự án phù hợp", currentMilestoneId: "career_cv", status: "active",
+      nextAction: "Dành 2–3 giờ nghiên cứu shop Aleron và chốt hướng xử lý", accentColor: "emerald", category: "career", icon: "career",
       notes: "Mục tiêu outreach chung: Career/Freelance 10 hồ sơ/tuần và B2B 5 proposal/tuần.",
       milestones: [
         milestone("G3", "career_cv", "Hoàn thiện CV", "1 CV chính và phiên bản theo vai trò", "2026-07-26", 0),
@@ -492,7 +493,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     {
       id: "G4", name: "Health & Beauty", description: "Giảm cân an toàn và duy trì hệ thống chăm sóc sức khỏe, da, tóc và vóc dáng.",
       desiredOutcome: "Tiến gần mục tiêu 54 kg với nhịp sống bền vững, ngủ đủ, vận động đều và chăm sóc cá nhân nhất quán.",
-      priority: "normal", deadline: endDate, startDate, mainMetric: "Cân nặng · Vòng eo · Giấc ngủ · Routine", currentProgress: 0,
+      priority: "highest", deadline: endDate, startDate, mainMetric: "Cân nặng · Vòng eo · Giấc ngủ · Routine", currentProgress: 0,
       currentMilestone: "Thiết lập baseline và routine 14 ngày", currentMilestoneId: "health_baseline", status: "active",
       nextAction: "Ghi cân nặng, vòng eo và hoàn thành skincare sáng/tối", accentColor: "rose", category: "health", icon: "heart",
       notes: "Mốc 54 kg là định hướng; ưu tiên tốc độ an toàn, năng lượng và khả năng duy trì.",
@@ -511,16 +512,16 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
 
   type Template = { key: string; title: string; days: number[]; startTime: string; endTime: string; goalId?: string | null; type?: ScheduleItem["type"]; locked?: boolean; notes?: string };
   const templates: Template[] = [
-    { key: "office_prep", title: "Chuẩn bị đi làm", days: [1,3,5], startTime: "08:00", endTime: "08:30", type: "personal" },
-    { key: "office", title: "Đi làm tại công ty", days: [1,3,5], startTime: "08:30", endTime: "18:30", type: "personal", locked: true, notes: "Khóa lịch; chỉ cho phép tối đa 2 việc phát sinh có xác nhận." },
+    { key: "morning_reset", title: "Thức dậy · vệ sinh cá nhân", days: [0,1,2,3,4,5,6], startTime: "05:30", endTime: "05:50", type: "personal" },
+    { key: "morning_mindset", title: "Law of Attraction · thắp nhang · nước ấm", days: [0,1,2,3,4,5,6], startTime: "05:50", endTime: "06:20", type: "habit" },
+    { key: "fund_weekday", title: "Fund: giao dịch và ghi journal", days: [1,2,3,4,5], startTime: "06:30", endTime: "08:00", goalId: "G1", type: "review" },
+    { key: "office_prep", title: "Chuẩn bị đi làm", days: [1,3,5], startTime: "08:00", endTime: "08:10", type: "personal" },
+    { key: "office", title: "Đi làm tại công ty", days: [1,3,5], startTime: "08:10", endTime: "18:40", type: "personal", locked: true, notes: "Khóa lịch; chỉ cho phép tối đa 2 việc phát sinh có xác nhận." },
     { key: "wfh", title: "Làm việc tại nhà", days: [2,4], startTime: "09:00", endTime: "18:00", type: "personal", locked: true, notes: "Có thể xử lý việc nhà ngắn trong khung linh hoạt." },
-    { key: "yoga_mon", title: "Yoga sáng", days: [1], startTime: "05:45", endTime: "06:45", goalId: "G4", type: "habit" },
-    { key: "yoga_evening", title: "Yoga tối", days: [2,4], startTime: "18:15", endTime: "19:20", goalId: "G4", type: "habit" },
-    { key: "fund_mon_open", title: "Fund: xem thị trường đầu tuần", days: [1], startTime: "07:15", endTime: "08:00", goalId: "G1", type: "review" },
-    { key: "fund_mwf", title: "Fund: giao dịch và review", days: [1,3,5], startTime: "21:00", endTime: "22:30", goalId: "G1", type: "review" },
-    { key: "fund_tt", title: "Fund: deep practice", days: [2,4], startTime: "19:30", endTime: "22:30", goalId: "G1", type: "review" },
-    { key: "b2b_career", title: "B2B · CV · Freelance", days: [1,3,5], startTime: "19:00", endTime: "20:00", goalId: "G2", type: "task" },
-    { key: "home_reset_office", title: "Reset nhà và dọn khay cát", days: [1,3,5], startTime: "18:30", endTime: "19:00", type: "habit" },
+    { key: "exercise_weekend", title: "Vận động 30–35 phút", days: [0,6], startTime: "06:30", endTime: "07:05", goalId: "G4", type: "habit", notes: "Đi bộ/chạy nhẹ; hướng tới 5.000 bước, không ép mục tiêu 1.000 kcal." },
+    { key: "fund_evening", title: "Fund: thực hành có chọn lọc", days: [2,4], startTime: "20:00", endTime: "21:30", goalId: "G1", type: "review", notes: "Tối đa 2 buổi/tuần để bảo vệ sức khỏe và giấc ngủ." },
+    { key: "career_freelance", title: "Career/Freelance focus", days: [1,3,5], startTime: "19:30", endTime: "20:30", goalId: "G3", type: "task" },
+    { key: "home_reset_office", title: "Reset một khu vực nhà và dọn khay cát", days: [1,3,5], startTime: "18:40", endTime: "19:10", type: "habit" },
     { key: "home_reset_home", title: "Reset nhà và dọn khay cát", days: [2,4], startTime: "18:00", endTime: "18:15", type: "habit" },
     { key: "laundry_tue", title: "Giặt đồ", days: [2], startTime: "11:00", endTime: "11:30", type: "habit" },
     { key: "laundry_sat", title: "Giặt đồ", days: [6], startTime: "13:15", endTime: "13:45", type: "habit" },
@@ -530,7 +531,8 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { key: "shopping", title: "Mua đồ dùng cần thiết", days: [4], startTime: "17:30", endTime: "18:00", type: "personal" },
     { key: "market", title: "Đi chợ", days: [6], startTime: "16:00", endTime: "17:00", type: "personal" },
     { key: "haircare", title: "Tắm gội và chăm sóc da đầu", days: [1,3,5,0], startTime: "20:00", endTime: "20:30", goalId: "G4", type: "habit" },
-    { key: "skincare_pm", title: "Skincare tối", days: [0,1,2,3,4,5,6], startTime: "22:30", endTime: "22:45", goalId: "G4", type: "habit" },
+    { key: "warm_water_pm", title: "Uống nước ấm buổi tối", days: [0,1,2,3,4,5,6], startTime: "22:10", endTime: "22:15", goalId: "G4", type: "habit" },
+    { key: "skincare_pm", title: "Skincare tối", days: [0,1,2,3,4,5,6], startTime: "22:15", endTime: "22:35", goalId: "G4", type: "habit" },
     { key: "sleep", title: "Ngủ phục hồi", days: [0,1,2,3,4,5,6], startTime: "22:45", endTime: "23:59", goalId: "G4", type: "habit" }
   ];
 
@@ -545,8 +547,8 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const date = new Date(`${cursor}T12:00:00`); date.setDate(date.getDate() + 1); cursor = formatDateStr(date);
   }
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
-  for (let date = "2026-07-25"; date <= endDate;) {
-    addOnce(`rainy_${date}`, "Tắm Rainy", date, "10:00", "11:00", null, "habit", "Lặp mỗi 7 ngày, thứ Bảy.");
+  for (let date = "2026-07-28"; date <= endDate;) {
+    addOnce(`ranny_${date}`, "Tắm Ranny", date, "11:00", "12:00", null, "habit", "Lặp mỗi 7 ngày; mốc đã xác nhận là thứ Ba.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
   for (let date = "2026-07-21"; date <= endDate;) {
@@ -561,11 +563,18 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`lacky_${originalDate}`, "Tắm Lacky", scheduledDate, "11:00", "12:00", null, "habit", `Mốc chu kỳ 10 ngày: ${originalDate}; chuyển sang ngày rảnh gần nhất nếu trùng lịch công ty.`);
     const next = new Date(`${originalDate}T12:00:00`); next.setDate(next.getDate() + 10); date = formatDateStr(next);
   }
-  for (let date = "2026-07-25"; date <= endDate;) {
-    addOnce(`fund_weekly_a_${date}`, "Review Fund tuần · Phần 1", date, "08:00", "10:00", "G1", "review");
-    addOnce(`fund_weekly_b_${date}`, "Review Fund tuần · Phần 2", date, "11:00", "13:00", "G1", "review", "Tổng 4 giờ; tách quanh lịch tắm Rainy.");
+  for (let date = "2026-08-01"; date <= endDate;) {
+    addOnce(`fund_weekly_${date}`, "Review Fund tuần", date, "08:00", "10:00", "G1", "review", "Có thể dùng Minimum Day 30 phút khi tuần có việc gia đình/phát sinh.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
+  addOnce("once_blanket_20260725", "Phơi/nhận chăn mền", "2026-07-25", "07:30", "09:00", null, "personal");
+  addOnce("once_tv_repair_20260725", "Khung chờ kỹ thuật TV", "2026-07-25", "09:00", "12:00", null, "personal", "Nếu chưa đến, tiếp tục giữ khung dự phòng ngày 26/07.");
+  addOnce("once_ai_agent_20260725", "Họp AI Agent", "2026-07-25", "14:00", "16:00", "G3", "task");
+  addOnce("once_friend_dinner_20260725", "Đi ăn với bạn", "2026-07-25", "18:00", "20:00", null, "personal");
+  addOnce("once_tv_repair_20260726", "Dự phòng kỹ thuật TV", "2026-07-26", "09:00", "12:00", null, "personal");
+  addOnce("once_salary_20260730", "Nhận lương", "2026-07-30", "18:00", "18:10", null, "personal");
+  addOnce("once_mother_checkup_20260730", "Đưa mẹ đi khám bệnh", "2026-07-30", "13:30", "16:30", null, "personal", "Ngày ưu tiên gia đình; chủ động sắp xếp lại công việc tại nhà.");
+  addOnce("once_finance_review_20260730", "Review tài chính cá nhân", "2026-07-30", "19:00", "19:45", null, "review", "Cân đối thu nhập, chi phí, quỹ dự phòng và ngân sách tháng 8.");
 
   const scheduleKey = (item: ScheduleItem) => `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
   const combinedSchedule = new Map<string, ScheduleItem>();
@@ -574,24 +583,33 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     combinedSchedule.set(scheduleKey(item), existing ? { ...item, id: existing.id, completed: existing.completed } : item);
   });
   const newTasks = [
-    { id: "task_fund_checklist", title: "Ôn kiến thức và viết checklist Setup 1", description: "Đầu ra: trading plan và checklist có thể dùng khi backtest", goalId: "G1", milestoneId: "fund_knowledge", priority: "important_urgent" as const, estimatedMinutes: 90, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_b2b_foundation", title: "Chốt ICP, offer và sitemap website", description: "Đầu ra: foundation website tiếng Việt", goalId: "G2", milestoneId: "b2b_foundation", priority: "important" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_career_cv", title: "Chỉnh CV cho vị trí net 30M+", description: "Đầu ra: CV định vị rõ và thành tích có số liệu", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_health_baseline", title: "Ghi baseline Health & Beauty", description: "Cân nặng, vòng eo, ảnh và routine sáng/tối", goalId: "G4", milestoneId: "health_baseline", priority: "urgent" as const, estimatedMinutes: 20, completed: false, createdAt: new Date().toISOString() }
+    { id: "task_health_reset", title: "Khởi động lại sức khỏe nhẹ nhàng", description: "Cân nặng 64,8 kg lúc 09:00 ngày 24/07; uống nước ấm, ăn bớt dầu mỡ và vận động vừa sức", goalId: "G4", milestoneId: "health_baseline", priority: "important_urgent" as const, estimatedMinutes: 20, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_b2b_homepage", title: "Hoàn thiện homepage và form B2B", description: "Chỉnh homepage, hoàn thiện form và nhắn lại Dung trong tuần", goalId: "G2", milestoneId: "b2b_foundation", priority: "important" as const, estimatedMinutes: 90, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_freelance_aleron", title: "Nghiên cứu shop Aleron", description: "Dành 2–3 giờ nghiên cứu trước khi nhận/chốt hướng freelance", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 150, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_website_decision", title: "Chốt hướng xử lý website đang quá nặng", description: "Quyết định tiếp tục, tinh gọn hay tạm dừng; tránh phụ thuộc kéo dài với đồng nghiệp", goalId: "G2", milestoneId: "b2b_foundation", priority: "important_urgent" as const, estimatedMinutes: 45, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_fund_materials", title: "Tải tài liệu Fund và tạo môi trường tập trung", description: "Lưu tài liệu về máy; tạm rời nhóm/Telegram để tập trung thực hành", goalId: "G1", milestoneId: "fund_knowledge", priority: "important" as const, estimatedMinutes: 30, completed: false, createdAt: new Date().toISOString() }
   ];
   const newTaskIds = new Set(newTasks.map(item => item.id));
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 9, personalPlanStartedAt: new Date().toISOString(),
-    weeklyFocusGoalId: "G1", weeklySupportGoalIds: ["G2", "G3"], dailyFocusGoalId: "G1", goals, routines,
+    ...state, startDate, endDate, personalScheduleSeedVersion: 12, personalPlanStartedAt: new Date().toISOString(),
+    weeklyFocusGoalId: "G4", weeklySupportGoalIds: ["G3", "G1"], dailyFocusGoalId: "G4", goals, routines,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
+    healthRecords: {
+      ...(state.healthRecords || {}),
+      "2026-07-24": {
+        date: "2026-07-24", weight: 64.8, sleepHours: null, energy: null, steps: null,
+        strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false,
+        notes: "Cân lúc 09:00. Tuần có nhiều việc gia đình, giấy tờ, SIM/điện thoại và một buổi trị liệu; ưu tiên khởi động lại sức khỏe nhẹ nhàng."
+      }
+    },
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     weeklyAvailability: [
-      { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:30", blockedEnd: "18:30" },
+      { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:10", blockedEnd: "18:40" },
       { dayOfWeek: 2, mode: "home", label: "Làm việc tại nhà", blockedStart: "09:00", blockedEnd: "18:00" },
-      { dayOfWeek: 3, mode: "office", label: "Làm tại công ty", blockedStart: "08:30", blockedEnd: "18:30" },
+      { dayOfWeek: 3, mode: "office", label: "Làm tại công ty", blockedStart: "08:10", blockedEnd: "18:40" },
       { dayOfWeek: 4, mode: "home", label: "Làm việc tại nhà", blockedStart: "09:00", blockedEnd: "18:00" },
-      { dayOfWeek: 5, mode: "office", label: "Làm tại công ty", blockedStart: "08:30", blockedEnd: "18:30" },
+      { dayOfWeek: 5, mode: "office", label: "Làm tại công ty", blockedStart: "08:10", blockedEnd: "18:40" },
       { dayOfWeek: 6, mode: "rest", label: "Review, chăm nhà và phục hồi" },
       { dayOfWeek: 0, mode: "rest", label: "Nghỉ và tổng kết cá nhân" }
     ]
@@ -696,6 +714,12 @@ export function migrateAppState(rawState: any): AppState {
       lastCompletedDate: (existingAnchors.get(anchor.id) as any)?.lastCompletedDate || null
     }));
     migrated.personalScheduleSeedVersion = 11;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 11) {
+    // Replace the previous canonical plan in one pass while preserving actual
+    // check-ins, history, experiments and cloud-backed user records.
+    return applyConfirmedPersonalPlan(migrated);
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
