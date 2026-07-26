@@ -61,8 +61,9 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       personalPlanStartedAt: new Date().toISOString(),
       dailyFocusDate: null,
       dailyModeDate: todayStr,
-      weeklyFocusGoalId: 'G1',
-      weeklySupportGoalIds: ['G2', 'G3'],
+      weeklyFocusGoalId: 'G3',
+      weeklySupportGoalIds: ['G1', 'G2'],
+      dailyFocusGoalId: 'G3',
       goals: state.goals.map(goal => ({
         ...goal,
         startDate: todayStr,
