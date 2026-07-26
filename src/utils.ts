@@ -404,18 +404,14 @@ export function getDefaultAppState(): AppState {
 }
 
 const getConfirmedRoutines = (): Routine[] => [
-  { id: "routine_fund_daily", goalId: "G1", name: "Fund · Giao dịch & journal", frequency: "Thứ 2–6 · 06:30–08:00", minimumDay: "Review checklist và ghi journal 15 phút", target: "Hoàn thành phiên Fund theo lịch, không giao dịch cảm tính", evidence: "Checklist + journal", status: "pending", scheduleDays: [1,2,3,4,5], active: true },
-  { id: "routine_fund_weekly", goalId: "G1", name: "Fund · Review tuần", frequency: "Thứ 7 · phiên rút gọn khi tuần có việc phát sinh", minimumDay: "Tổng kết 30 phút", target: "Review dữ liệu, lỗi và kế hoạch tuần mới", evidence: "Bài học + bước tiếp theo", status: "pending", scheduleDays: [6], active: true },
-  { id: "routine_b2b_career", goalId: "G3", name: "Career/Freelance · Focus block", frequency: "3 phiên/tuần theo năng lượng", minimumDay: "30 phút hoặc 1 đầu ra", target: "CV, portfolio, nghiên cứu job hoặc gửi hồ sơ", evidence: "Asset, proposal hoặc application", status: "pending", active: true },
-  { id: "routine_b2b_optional", goalId: "G2", name: "B2B · Tiến một đầu ra nhỏ", frequency: "Khi còn năng lượng sau Health và Career", minimumDay: "15 phút chỉnh một phần website", target: "Một đầu ra có thể review", evidence: "Trang, form hoặc tin nhắn đã hoàn tất", status: "pending", active: true },
-  { id: "routine_english", goalId: "G3", name: "Career · English-first", frequency: "Hàng ngày", minimumDay: "30 phút nội dung tiếng Anh", target: "Ưu tiên nghe, nói và làm việc bằng tiếng Anh", evidence: "Phút thực hành", status: "pending", active: true },
+  { id: "routine_freelance_focus", goalId: "G3", name: "Freelancer · Block tạo thu nhập", frequency: "Thứ 2, 4, 6 hoặc theo deadline", minimumDay: "30 phút cho một đầu việc có thể giao", target: "60–120 phút tạo đầu ra có thể nghiệm thu hoặc bán", evidence: "Link/file bàn giao, proposal hoặc doanh thu", status: "pending", scheduleDays: [1,3,5], active: true },
+  { id: "routine_fund_focus", goalId: "G1", name: "Fund · Checklist & thực hành", frequency: "Thứ 3, 5, 7 · tối thiểu 60 phút", minimumDay: "Theo dõi thị trường và ghi thêm 1 dòng checklist", target: "60 phút theo dõi, cập nhật checklist/backtest/journal", evidence: "Checklist, ảnh chart hoặc journal", status: "pending", scheduleDays: [2,4,6], active: true },
+  { id: "routine_fund_weekly", goalId: "G1", name: "Fund · Review tuần", frequency: "Cuối block thứ 7", minimumDay: "Ghi 1 bài học và 1 bước tiếp theo", target: "Review dữ liệu, lỗi và kế hoạch tuần mới", evidence: "Bài học + bước tiếp theo", status: "pending", scheduleDays: [6], active: true },
+  { id: "routine_b2b_maintenance", goalId: "G2", name: "B2B · Content & entity", frequency: "Một chu kỳ mỗi 2–3 ngày; không cộng dồn", minimumDay: "15 phút cho dàn ý, website hoặc entity", target: "Hoàn thiện 1 bài chỉn chu qua các bước nghiên cứu → viết → đăng/entity", evidence: "URL, bản nháp hoặc phần website đã chỉnh", status: "pending", scheduleDays: [0,3,6], active: true },
+  { id: "routine_english", goalId: "G3", name: "Freelancer · English-first", frequency: "Lồng vào công việc, không phải checklist riêng", minimumDay: "Ưu tiên một tài liệu hoặc trao đổi bằng tiếng Anh", target: "Dùng tiếng Anh trong công việc thật", evidence: "Tài liệu hoặc trao đổi", status: "pending", active: false },
   { id: "routine_exercise_weekend", goalId: "G4", name: "Health · Vận động cuối tuần", frequency: "Thứ 7 và Chủ nhật · 30–35 phút", minimumDay: "Đi bộ hoặc vận động 15 phút", target: "30–35 phút và hướng tới 5.000 bước/ngày", evidence: "Phút hoặc bước", status: "pending", scheduleDays: [0,6], substitutionGroup: "movement", active: true },
-  { id: "routine_healthy_eating", goalId: "G4", name: "Health · Ăn uống lành mạnh", frequency: "Hàng ngày", minimumDay: "Một lựa chọn ăn uống tốt hơn", target: "Ăn đủ chất và hạn chế thực phẩm gây hại", evidence: "Ghi chú ngắn", status: "pending", active: true },
-  { id: "routine_warm_water", goalId: "G4", name: "Health · Uống nước ấm", frequency: "Sáng và tối", minimumDay: "Ít nhất một cốc nước ấm", target: "Uống nước ấm buổi sáng và tối", evidence: "Checklist", status: "pending", active: true },
-  { id: "routine_skincare_am", goalId: "G4", name: "Beauty · Skincare sáng", frequency: "Hàng ngày", minimumDay: "Làm sạch và chống nắng", target: "Routine sáng đầy đủ", evidence: "Checklist", status: "pending", active: true },
-  { id: "routine_skincare_pm", goalId: "G4", name: "Beauty · Skincare tối", frequency: "Hàng ngày · 22:30", minimumDay: "Làm sạch và dưỡng ẩm", target: "Face + body", evidence: "Checklist", status: "pending", active: true },
-  { id: "routine_haircare", goalId: "G4", name: "Beauty · Tắm gội & da đầu", frequency: "T2, T4, T6, CN", minimumDay: "Gội và làm sạch da đầu", target: "Hoàn thành routine tóc/da đầu", evidence: "Checklist", status: "pending", scheduleDays: [0,1,3,5], active: true },
-  { id: "routine_sleep", goalId: "G4", name: "Health · Ngủ phục hồi", frequency: "Hàng ngày · 22:45–05:30", minimumDay: "Lên giường trước 23:00", target: "Ngủ 22:45–05:30", evidence: "Giờ ngủ và thức dậy", status: "pending", active: true }
+  { id: "routine_health_foundation", goalId: "G4", name: "Health · Nền sức khỏe", frequency: "Hàng ngày", minimumDay: "Chọn 1: ăn tốt hơn, uống đủ nước hoặc ngủ trước 23:00", target: "Ăn điều độ, đủ nước và ngủ phục hồi", evidence: "Một ghi chú ngắn", status: "pending", active: true },
+  { id: "routine_beauty_foundation", goalId: "G4", name: "Beauty · Chăm sóc tối thiểu", frequency: "Hàng ngày", minimumDay: "Làm sạch và dưỡng ẩm", target: "Skincare và chăm sóc cơ thể phù hợp năng lượng", evidence: "Checklist gọn", status: "pending", active: true }
 ];
 
 const getConfirmedLifeAnchors = () => [
@@ -432,7 +428,7 @@ const getConfirmedChores = (): Chore[] => [
   { id: "chore_vacuum", title: "Vệ sinh máy hút bụi", category: "home", frequency: "weekly", dueDate: "2026-07-25", dueTime: "14:00", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() }
 ];
 
-/** Latest confirmed personal plan, consolidated through 24/07/2026. */
+/** Latest confirmed personal plan, reprioritized through 26/07/2026. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
   const startDate = "2026-07-24";
   const endDate = "2026-10-13";
@@ -446,8 +442,8 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       id: "G1", name: "Fund & Trading System", description: "Ôn kiến thức, kiểm chứng setup và chỉ mua tài khoản quỹ sau khi vượt cổng đánh giá.",
       desiredOutcome: "Có một setup nhất quán, checklist rõ ràng, dữ liệu backtest và demo đủ tin cậy để đánh giá tài khoản quỹ 10.000 USD.",
       priority: "secondary", deadline: endDate, startDate, mainMetric: "Checklist · Backtest · Tuân thủ · Drawdown", currentProgress: 0,
-      currentMilestone: "Ôn kiến thức và hoàn thiện checklist", currentMilestoneId: "fund_knowledge", status: "active",
-      nextAction: "Đọc lại kiến thức và viết checklist Setup 1", accentColor: "purple", category: "fund_backtest", icon: "chart",
+      currentMilestone: "Hoàn thiện checklist Setup 1", currentMilestoneId: "fund_checklist", status: "active",
+      nextAction: "Dành 60 phút theo dõi thị trường và viết checklist Setup 1", accentColor: "purple", category: "fund_backtest", icon: "chart",
       notes: "Không mua tài khoản chỉ vì hết hai tuần; chỉ chuyển bước khi dữ liệu backtest và demo đạt ngưỡng đã định.",
       milestones: [
         milestone("G1", "fund_knowledge", "Ôn lại kiến thức và trading plan", "Kiến thức được hệ thống hóa", "2026-07-25", 0),
@@ -459,44 +455,44 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       ]
     },
     {
-      id: "G2", name: "B2B Marketing Agency", description: "Xây nền tảng tiếng Việt, portfolio agency, outreach, SEO và social.",
-      desiredOutcome: "Có website, portfolio, hệ thống tiếp cận khách hàng và ít nhất một cơ hội B2B đủ điều kiện.",
+      id: "G2", name: "B2B · Chế độ duy trì", description: "Duy trì tài sản B2B bằng nội dung chỉn chu, entity và cải tiến website; chưa ép tìm khách hằng ngày.",
+      desiredOutcome: "Website và hệ thống entity ngày càng mạnh, có nội dung đều và sẵn sàng thu lead khi thị trường phản hồi.",
       priority: "normal", deadline: endDate, startDate, mainMetric: "Website · Case study · Proposal · Qualified calls", currentProgress: 0,
-      currentMilestone: "Hoàn thiện homepage và form", currentMilestoneId: "b2b_foundation", status: "active",
-      nextAction: "Hoàn thiện homepage, form và nhắn lại Dung", accentColor: "blue", category: "business", icon: "briefcase",
-      notes: "Outreach dùng chung một pipeline, gắn nhãn B2B Agency để không đếm trùng Career/Freelance.",
+      currentMilestone: "Ổn định website, content và entity", currentMilestoneId: "b2b_foundation", status: "active",
+      nextAction: "Chọn một phần: dàn ý bài mới, chỉnh website hoặc bổ sung entity", accentColor: "blue", category: "business", icon: "briefcase",
+      notes: "Không đặt KPI outreach hằng ngày. Chu kỳ 2–3 ngày tạo một tiến triển; phễu thu lead chỉ được nghiên cứu nhẹ.",
       milestones: [
         milestone("G2", "b2b_foundation", "Chốt ICP, offer và website tiếng Việt", "Website foundation hoàn chỉnh", "2026-08-01", 0),
         milestone("G2", "b2b_portfolio", "Hoàn thiện portfolio agency", "Case study và bằng chứng rõ ràng", "2026-08-15", 1),
-        milestone("G2", "b2b_proposal", "Khởi chạy proposal B2B", "5 proposal phù hợp mỗi tuần", "2026-08-22", 2),
-        milestone("G2", "b2b_seo", "Vận hành SEO theo cụm chủ đề", "1 bài trụ cột + 1 bài hỗ trợ/tuần", "2026-09-15", 3),
+        milestone("G2", "b2b_proposal", "Phác thảo hệ thống thu lead", "Có sơ đồ phễu và bước thử nhỏ", "2026-08-22", 2),
+        milestone("G2", "b2b_seo", "Vận hành content và entity", "Một bài chỉn chu mỗi 2–3 ngày theo năng lượng", "2026-09-15", 3),
         milestone("G2", "b2b_social", "Đồng bộ LinkedIn và social", "Kênh, hồ sơ và CTA nhất quán", "2026-09-20", 4),
         milestone("G2", "b2b_pipeline", "Tạo cơ hội khách hàng đủ điều kiện", "Có cuộc hẹn/proposal thương lượng", "2026-10-13", 5)
       ]
     },
     {
-      id: "G3", name: "Career 30M+", description: "CV, portfolio và pipeline ứng tuyển/freelance cho công việc net trên 30 triệu.",
-      desiredOutcome: "Nhận được offer công việc phù hợp với mức lương net từ 30 triệu hoặc pipeline freelance tương đương.",
-      priority: "secondary", deadline: endDate, startDate, mainMetric: "CV · Case study · Applications · Interviews · Offer", currentProgress: 0,
-      currentMilestone: "Tìm freelance và nghiên cứu dự án phù hợp", currentMilestoneId: "career_cv", status: "active",
-      nextAction: "Dành 2–3 giờ nghiên cứu shop Aleron và chốt hướng xử lý", accentColor: "emerald", category: "career", icon: "career",
-      notes: "Mục tiêu outreach chung: Career/Freelance 10 hồ sơ/tuần và B2B 5 proposal/tuần.",
+      id: "G3", name: "Freelancer · Thu nhập trước", description: "Ưu tiên dự án freelance có khả năng tạo tiền gần nhất, bao gồm Reel và các đầu việc có thể nghiệm thu.",
+      desiredOutcome: "Có ít nhất một dự án freelance được giao đúng hạn, được thanh toán và tạo nền cho nguồn thu lặp lại.",
+      priority: "highest", deadline: endDate, startDate, mainMetric: "Đầu ra giao được · Proposal · Khách trả tiền · Doanh thu", currentProgress: 0,
+      currentMilestone: "Chốt việc freelance có khả năng tạo tiền", currentMilestoneId: "career_cv", status: "active",
+      nextAction: "Nghiên cứu shop Aleron 2–3 giờ hoặc hoàn thành Reel gần doanh thu nhất", accentColor: "emerald", category: "career", icon: "career",
+      notes: "Freelancer có deadline và doanh thu được ưu tiên trước. Không đặt KPI gửi hồ sơ cứng khi đang có dự án cần bàn giao.",
       milestones: [
-        milestone("G3", "career_cv", "Hoàn thiện CV", "1 CV chính và phiên bản theo vai trò", "2026-07-26", 0),
-        milestone("G3", "career_clients", "Tổng hợp khách hàng và dự án đã làm", "Danh mục đầy đủ", "2026-07-31", 1),
-        milestone("G3", "career_results", "Tổng hợp kết quả và bằng chứng", "Thành tích được lượng hóa", "2026-08-05", 2),
-        milestone("G3", "career_portfolio", "Hoàn thiện portfolio", "Case study dễ đọc và dễ gửi", "2026-08-12", 3),
-        milestone("G3", "career_outreach", "Vận hành ứng tuyển và proposal", "10 hồ sơ Career/Freelance mỗi tuần", "2026-09-01", 4),
-        milestone("G3", "career_offer", "Đạt offer net 30M+", "Ít nhất 1 offer phù hợp", "2026-10-13", 5)
+        milestone("G3", "career_cv", "Chọn việc gần doanh thu nhất", "Một dự án/Reel được chốt hướng xử lý", "2026-07-31", 0),
+        milestone("G3", "career_clients", "Hoàn thành đầu ra có thể giao", "Một file/Reel/deliverable được nghiệm thu", "2026-08-07", 1),
+        milestone("G3", "career_results", "Nhận khoản thanh toán đầu tiên", "Có doanh thu freelance được ghi nhận", "2026-08-15", 2),
+        milestone("G3", "career_portfolio", "Đóng gói bằng chứng freelance", "Một case study ngắn từ công việc thật", "2026-08-31", 3),
+        milestone("G3", "career_outreach", "Duy trì pipeline vừa sức", "Luôn có 1–3 cơ hội phù hợp, không spam", "2026-09-15", 4),
+        milestone("G3", "career_offer", "Ổn định nguồn thu phụ", "Có khách quay lại hoặc doanh thu lặp lại", "2026-10-13", 5)
       ]
     },
     {
       id: "G4", name: "Health & Beauty", description: "Giảm cân an toàn và duy trì hệ thống chăm sóc sức khỏe, da, tóc và vóc dáng.",
       desiredOutcome: "Tiến gần mục tiêu 54 kg với nhịp sống bền vững, ngủ đủ, vận động đều và chăm sóc cá nhân nhất quán.",
-      priority: "highest", deadline: endDate, startDate, mainMetric: "Cân nặng · Vòng eo · Giấc ngủ · Routine", currentProgress: 0,
-      currentMilestone: "Thiết lập baseline và routine 14 ngày", currentMilestoneId: "health_baseline", status: "active",
-      nextAction: "Ghi cân nặng, vòng eo và hoàn thành skincare sáng/tối", accentColor: "rose", category: "health", icon: "heart",
-      notes: "Mốc 54 kg là định hướng; ưu tiên tốc độ an toàn, năng lượng và khả năng duy trì.",
+      priority: "normal", deadline: endDate, startDate, mainMetric: "Năng lượng · Ăn uống · Giấc ngủ · Chăm sóc tối thiểu", currentProgress: 0,
+      currentMilestone: "Giữ nền sức khỏe ổn định", currentMilestoneId: "health_baseline", status: "active",
+      nextAction: "Chọn đúng một hành động nền: ăn tốt hơn, vận động nhẹ hoặc skincare", accentColor: "rose", category: "health", icon: "heart",
+      notes: "Health & Beauty là nền ổn định, không cạnh tranh với Freelancer và Fund. Không ép giảm cân nhanh hay hoàn thành nhiều checklist.",
       milestones: [
         milestone("G4", "health_baseline", "Baseline và routine 14 ngày", "Cân nặng, vòng eo, ảnh và checklist", "2026-08-01", 0),
         milestone("G4", "health_62", "Mốc 62 kg", "62 kg", "2026-08-15", 1),
@@ -514,13 +510,15 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const templates: Template[] = [
     { key: "morning_reset", title: "Thức dậy · vệ sinh cá nhân", days: [0,1,2,3,4,5,6], startTime: "05:30", endTime: "05:50", type: "personal" },
     { key: "morning_mindset", title: "Law of Attraction · thắp nhang · nước ấm", days: [0,1,2,3,4,5,6], startTime: "05:50", endTime: "06:20", type: "habit" },
-    { key: "fund_weekday", title: "Fund: giao dịch và ghi journal", days: [1,2,3,4,5], startTime: "06:30", endTime: "08:00", goalId: "G1", type: "review" },
     { key: "office_prep", title: "Chuẩn bị đi làm", days: [1,3,5], startTime: "08:00", endTime: "08:10", type: "personal" },
     { key: "office", title: "Đi làm tại công ty", days: [1,3,5], startTime: "08:10", endTime: "18:40", type: "personal", locked: true, notes: "Khóa lịch; chỉ cho phép tối đa 2 việc phát sinh có xác nhận." },
     { key: "wfh", title: "Làm việc tại nhà", days: [2,4], startTime: "09:00", endTime: "18:00", type: "personal", locked: true, notes: "Có thể xử lý việc nhà ngắn trong khung linh hoạt." },
     { key: "exercise_weekend", title: "Vận động 30–35 phút", days: [0,6], startTime: "06:30", endTime: "07:05", goalId: "G4", type: "habit", notes: "Đi bộ/chạy nhẹ; hướng tới 5.000 bước, không ép mục tiêu 1.000 kcal." },
-    { key: "fund_evening", title: "Fund: thực hành có chọn lọc", days: [2,4], startTime: "20:00", endTime: "21:30", goalId: "G1", type: "review", notes: "Tối đa 2 buổi/tuần để bảo vệ sức khỏe và giấc ngủ." },
-    { key: "career_freelance", title: "Career/Freelance focus", days: [1,3,5], startTime: "19:30", endTime: "20:30", goalId: "G3", type: "task" },
+    { key: "freelance_focus", title: "Freelancer: đầu ra gần doanh thu nhất", days: [1,3,5], startTime: "19:30", endTime: "20:30", goalId: "G3", type: "task", notes: "Deadline có doanh thu được quyền thay block khác; cuối block ghi đúng một bước tiếp theo." },
+    { key: "fund_focus_tt", title: "Fund: theo dõi thị trường & checklist", days: [2,4], startTime: "20:00", endTime: "21:00", goalId: "G1", type: "review", notes: "Bảo vệ đủ 60 phút; kết thúc bằng checklist, chart hoặc journal." },
+    { key: "fund_focus_sat", title: "Fund: checklist, backtest & review", days: [6], startTime: "08:00", endTime: "09:00", goalId: "G1", type: "review", notes: "Một block 60 phút, không kéo dài thành cả buổi." },
+    { key: "b2b_content_wed", title: "B2B: content, website hoặc entity", days: [3], startTime: "20:45", endTime: "21:30", goalId: "G2", type: "task", notes: "Một bước trong chu kỳ nghiên cứu → viết → đăng/entity; không bắt buộc hoàn thành cả bài." },
+    { key: "b2b_content_sun", title: "B2B: hoàn thiện một đầu ra duy trì", days: [0], startTime: "09:00", endTime: "10:00", goalId: "G2", type: "task", notes: "Ưu tiên bài viết chỉn chu hoặc chỉnh hệ thống; phễu lead chỉ nghiên cứu nhẹ." },
     { key: "home_reset_office", title: "Reset một khu vực nhà và dọn khay cát", days: [1,3,5], startTime: "18:40", endTime: "19:10", type: "habit" },
     { key: "home_reset_home", title: "Reset nhà và dọn khay cát", days: [2,4], startTime: "18:00", endTime: "18:15", type: "habit" },
     { key: "laundry_tue", title: "Giặt đồ", days: [2], startTime: "11:00", endTime: "11:30", type: "habit" },
@@ -531,8 +529,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { key: "shopping", title: "Mua đồ dùng cần thiết", days: [4], startTime: "17:30", endTime: "18:00", type: "personal" },
     { key: "market", title: "Đi chợ", days: [6], startTime: "16:00", endTime: "17:00", type: "personal" },
     { key: "haircare", title: "Tắm gội và chăm sóc da đầu", days: [1,3,5,0], startTime: "20:00", endTime: "20:30", goalId: "G4", type: "habit" },
-    { key: "warm_water_pm", title: "Uống nước ấm buổi tối", days: [0,1,2,3,4,5,6], startTime: "22:10", endTime: "22:15", goalId: "G4", type: "habit" },
-    { key: "skincare_pm", title: "Skincare tối", days: [0,1,2,3,4,5,6], startTime: "22:15", endTime: "22:35", goalId: "G4", type: "habit" },
+    { key: "health_minimum", title: "Health & Beauty: nền tối thiểu", days: [0,1,2,3,4,5,6], startTime: "22:15", endTime: "22:35", goalId: "G4", type: "habit", notes: "Chọn mức phù hợp năng lượng; không biến thành danh sách dài." },
     { key: "sleep", title: "Ngủ phục hồi", days: [0,1,2,3,4,5,6], startTime: "22:45", endTime: "23:59", goalId: "G4", type: "habit" }
   ];
 
@@ -563,10 +560,6 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`lacky_${originalDate}`, "Tắm Lacky", scheduledDate, "11:00", "12:00", null, "habit", `Mốc chu kỳ 10 ngày: ${originalDate}; chuyển sang ngày rảnh gần nhất nếu trùng lịch công ty.`);
     const next = new Date(`${originalDate}T12:00:00`); next.setDate(next.getDate() + 10); date = formatDateStr(next);
   }
-  for (let date = "2026-08-01"; date <= endDate;) {
-    addOnce(`fund_weekly_${date}`, "Review Fund tuần", date, "08:00", "10:00", "G1", "review", "Có thể dùng Minimum Day 30 phút khi tuần có việc gia đình/phát sinh.");
-    const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
-  }
   addOnce("once_blanket_20260725", "Phơi/nhận chăn mền", "2026-07-25", "07:30", "09:00", null, "personal");
   addOnce("once_tv_repair_20260725", "Khung chờ kỹ thuật TV", "2026-07-25", "09:00", "12:00", null, "personal", "Nếu chưa đến, tiếp tục giữ khung dự phòng ngày 26/07.");
   addOnce("once_ai_agent_20260725", "Họp AI Agent", "2026-07-25", "14:00", "16:00", "G3", "task");
@@ -583,18 +576,22 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     combinedSchedule.set(scheduleKey(item), existing ? { ...item, id: existing.id, completed: existing.completed } : item);
   });
   const newTasks = [
-    { id: "task_health_reset", title: "Khởi động lại sức khỏe nhẹ nhàng", description: "Cân nặng 64,8 kg lúc 09:00 ngày 24/07; uống nước ấm, ăn bớt dầu mỡ và vận động vừa sức", goalId: "G4", milestoneId: "health_baseline", priority: "important_urgent" as const, estimatedMinutes: 20, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_b2b_homepage", title: "Hoàn thiện homepage và form B2B", description: "Chỉnh homepage, hoàn thiện form và nhắn lại Dung trong tuần", goalId: "G2", milestoneId: "b2b_foundation", priority: "important" as const, estimatedMinutes: 90, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_freelance_aleron", title: "Nghiên cứu shop Aleron", description: "Dành 2–3 giờ nghiên cứu trước khi nhận/chốt hướng freelance", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 150, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_website_decision", title: "Chốt hướng xử lý website đang quá nặng", description: "Quyết định tiếp tục, tinh gọn hay tạm dừng; tránh phụ thuộc kéo dài với đồng nghiệp", goalId: "G2", milestoneId: "b2b_foundation", priority: "important_urgent" as const, estimatedMinutes: 45, completed: false, createdAt: new Date().toISOString() },
-    { id: "task_fund_materials", title: "Tải tài liệu Fund và tạo môi trường tập trung", description: "Lưu tài liệu về máy; tạm rời nhóm/Telegram để tập trung thực hành", goalId: "G1", milestoneId: "fund_knowledge", priority: "important" as const, estimatedMinutes: 30, completed: false, createdAt: new Date().toISOString() }
+    { id: "task_freelance_income", title: "Chọn và hoàn thành việc freelance gần doanh thu nhất", description: "Ưu tiên Reel/dự án có deadline hoặc khả năng được trả tiền; không mở thêm dự án khi đầu ra này chưa rõ", goalId: "G3", milestoneId: "career_cv", priority: "important_urgent" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_freelance_aleron", title: "Nghiên cứu shop Aleron", description: "Dành một block 2–3 giờ khi lịch cho phép, sau đó chốt tiếp tục hay dừng", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 150, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_fund_checklist_v1", title: "Hoàn thiện checklist Fund phiên bản 1", description: "Mỗi block ít nhất 60 phút: theo dõi thị trường, bổ sung checklist và lưu bằng chứng", goalId: "G1", milestoneId: "fund_checklist", priority: "important" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_b2b_maintenance", title: "Duy trì content, entity và website B2B", description: "Một chu kỳ mỗi 2–3 ngày; mỗi block chỉ làm một bước nghiên cứu, viết, đăng/entity hoặc chỉnh website", goalId: "G2", milestoneId: "b2b_foundation", priority: "later" as const, estimatedMinutes: 45, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
-  const newTaskIds = new Set(newTasks.map(item => item.id));
+  const previousTasks = new Map((state.priorityTasks || []).map(task => [task.id, task]));
+  const canonicalTasks = newTasks.map(task => {
+    const previous = previousTasks.get(task.id);
+    return previous ? { ...task, completed: previous.completed, completedAt: previous.completedAt, status: previous.status } : task;
+  });
 
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 12, personalPlanStartedAt: new Date().toISOString(),
-    weeklyFocusGoalId: "G4", weeklySupportGoalIds: ["G3", "G1"], dailyFocusGoalId: "G4", goals, routines,
-    lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
+    ...state, startDate, endDate, personalScheduleSeedVersion: 13, personalPlanStartedAt: new Date().toISOString(),
+    weeklyFocusGoalId: "G3", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G3", goals, routines,
+    lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: canonicalTasks,
     healthRecords: {
       ...(state.healthRecords || {}),
       "2026-07-24": {
@@ -719,6 +716,12 @@ export function migrateAppState(rawState: any): AppState {
   if ((migrated.personalScheduleSeedVersion || 0) === 11) {
     // Replace the previous canonical plan in one pass while preserving actual
     // check-ins, history, experiments and cloud-backed user records.
+    return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 12) {
+    // Reprioritize active work without deleting actual check-ins or history:
+    // Freelancer → Fund → B2B maintenance → Health & Beauty foundation.
     return applyConfirmedPersonalPlan(migrated);
   }
 
@@ -1139,25 +1142,26 @@ export function getRecommendations(state: AppState): Recommendation[] {
   const g4 = state.goals.find(g => g.id === "G4");
   const g5 = state.goals.find(g => g.id === "G5");
 
-  // Recommendation 1: G1 Outreach
-  const g1Acts = state.activities.filter(a => a.goalId === "G1");
-  if (g1Acts.length === 0) {
+  // Recommendation 1: current income focus
+  const incomeGoal = state.goals.find(goal => goal.id === state.weeklyFocusGoalId) || g3;
+  const incomeActs = state.activities.filter(activity => activity.goalId === incomeGoal?.id);
+  if (incomeGoal && incomeActs.length === 0) {
     recommendations.push({
-      id: "rec_g1_start",
-      goalId: "G1",
-      title: "Khởi động tiếp cận khách hàng B2B",
-      reason: "B2B SaaS là mục tiêu có độ ưu tiên cao nhất của bạn. Bạn chưa ghi nhận hoạt động outreach nào trong chu kỳ này.",
-      minimumDayAlternative: "Lưu thông tin 1 lead tiềm năng và viết 1 câu mở đầu độc đáo.",
-      type: "outreach"
+      id: "rec_income_start",
+      goalId: incomeGoal.id,
+      title: "Tiến một đầu việc gần doanh thu nhất",
+      reason: `${incomeGoal.name} là trọng tâm hiện tại nhưng chưa có đầu ra được ghi nhận.`,
+      minimumDayAlternative: "Làm 15 phút và ghi rõ một bước tiếp theo để lần sau tiếp tục ngay.",
+      type: "routine"
     });
-  } else {
+  } else if (incomeGoal) {
     recommendations.push({
-      id: "rec_g1_continue",
-      goalId: "G1",
-      title: "Gửi 15 email tiếp cận theo ICP",
-      reason: "Tăng lượng outreach đều đặn để lấp đầy phễu khách hàng. G1 đang có sự tiến triển tốt.",
-      minimumDayAlternative: "Gửi duy nhất 1 email chất lượng cao đã cá nhân hóa.",
-      type: "outreach"
+      id: "rec_income_continue",
+      goalId: incomeGoal.id,
+      title: "Hoàn thiện đầu ra freelancer đang mở",
+      reason: "Ưu tiên việc có thể bàn giao hoặc tạo doanh thu trước khi mở thêm dự án.",
+      minimumDayAlternative: "Hoàn thành một phần có thể gửi để xin phản hồi.",
+      type: "routine"
     });
   }
 
