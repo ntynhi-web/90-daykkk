@@ -421,16 +421,16 @@ const getConfirmedLifeAnchors = () => [
 ];
 
 const getConfirmedChores = (): Chore[] => [
-  { id: "chore_cat_litter", title: "Dọn khay cát cho mèo", category: "pet", frequency: "daily", dueDate: "2026-07-24", dueTime: "18:45", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
-  { id: "chore_home_reset", title: "Reset một khu vực nhà 15–20 phút", category: "home", frequency: "daily", dueDate: "2026-07-24", dueTime: "18:45", completed: false, lastCompletedDate: null, notes: "Nhà 80 m², hai tầng: dọn theo khu vực; không ép hoàn thành cả nhà trong một lần.", createdAt: new Date().toISOString() },
+  { id: "chore_cat_litter", title: "Dọn khay cát cho mèo", category: "pet", frequency: "daily", dueDate: "2026-07-28", dueTime: "18:45", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() },
+  { id: "chore_home_reset", title: "Reset một khu vực nhà 15–20 phút", category: "home", frequency: "daily", dueDate: "2026-07-28", dueTime: "18:45", completed: false, lastCompletedDate: null, notes: "Nhà 80 m², hai tầng: dọn theo khu vực; không ép hoàn thành cả nhà trong một lần.", createdAt: new Date().toISOString() },
   { id: "chore_shopping", title: "Kiểm tra và mua đồ dùng cần thiết", category: "errand", frequency: "weekly", dueDate: "2026-07-30", dueTime: "17:30", completed: false, lastCompletedDate: null, notes: "Kiểm tra vào thứ Năm; chọn nơi nhận phù hợp.", createdAt: new Date().toISOString() },
-  { id: "chore_market", title: "Đi chợ và chuẩn bị thực phẩm", category: "errand", frequency: "weekly", dueDate: "2026-07-25", dueTime: "16:00", completed: false, lastCompletedDate: null, notes: "Ưu tiên thứ Bảy, có thể chuyển sang Chủ nhật.", createdAt: new Date().toISOString() },
-  { id: "chore_vacuum", title: "Vệ sinh máy hút bụi", category: "home", frequency: "weekly", dueDate: "2026-07-25", dueTime: "14:00", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() }
+  { id: "chore_market", title: "Đi chợ và chuẩn bị thực phẩm", category: "errand", frequency: "weekly", dueDate: "2026-08-01", dueTime: "16:00", completed: false, lastCompletedDate: null, notes: "Ưu tiên thứ Bảy, có thể chuyển sang Chủ nhật.", createdAt: new Date().toISOString() },
+  { id: "chore_vacuum", title: "Vệ sinh máy hút bụi", category: "home", frequency: "weekly", dueDate: "2026-08-01", dueTime: "14:00", completed: false, lastCompletedDate: null, createdAt: new Date().toISOString() }
 ];
 
-/** Latest confirmed personal plan, reprioritized through 26/07/2026. */
+/** Latest confirmed personal plan, clean cycle restarted on 28/07/2026. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
-  const startDate = "2026-07-24";
+  const startDate = "2026-07-28";
   const endDate = "2026-10-13";
   const milestone = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number): any => ({
     id, goalId, title, targetValue, currentValue: "0", dueDate, order,
@@ -446,9 +446,9 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       nextAction: "Dành 60 phút theo dõi thị trường và viết checklist Setup 1", accentColor: "purple", category: "fund_backtest", icon: "chart",
       notes: "Không mua tài khoản chỉ vì hết hai tuần; chỉ chuyển bước khi dữ liệu backtest và demo đạt ngưỡng đã định.",
       milestones: [
-        milestone("G1", "fund_knowledge", "Ôn lại kiến thức và trading plan", "Kiến thức được hệ thống hóa", "2026-07-25", 0),
-        milestone("G1", "fund_checklist", "Hoàn thiện checklist Setup 1", "1 checklist dùng được", "2026-07-31", 1),
-        milestone("G1", "fund_backtest", "Backtest và ghi trading journal", "Bộ dữ liệu đủ để đánh giá setup", "2026-08-08", 2),
+        milestone("G1", "fund_knowledge", "Ôn lại kiến thức và trading plan", "Kiến thức được hệ thống hóa", "2026-07-30", 0),
+        milestone("G1", "fund_checklist", "Hoàn thiện checklist Setup 1", "1 checklist dùng được", "2026-08-04", 1),
+        milestone("G1", "fund_backtest", "Backtest và ghi trading journal", "Bộ dữ liệu đủ để đánh giá setup", "2026-08-11", 2),
         milestone("G1", "fund_demo", "Thực hành demo nhất quán", "Tuân thủ rủi ro và drawdown", "2026-08-18", 3),
         milestone("G1", "fund_gate", "Vượt cổng đánh giá trước khi mua quỹ", "Đủ điều kiện theo checklist", "2026-08-31", 4),
         milestone("G1", "fund_account", "Đánh giá và mua tài khoản quỹ", "Quyết định dựa trên bằng chứng", "2026-09-05", 5)
@@ -548,7 +548,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`ranny_${date}`, "Tắm Ranny", date, "11:00", "12:00", null, "habit", "Lặp mỗi 7 ngày; mốc đã xác nhận là thứ Ba.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
-  for (let date = "2026-07-21"; date <= endDate;) {
+  for (let date = "2026-07-31"; date <= endDate;) {
     const originalDate = date;
     let scheduledDate = originalDate;
     const weekday = new Date(`${scheduledDate}T12:00:00`).getDay();
@@ -560,21 +560,13 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     addOnce(`lacky_${originalDate}`, "Tắm Lacky", scheduledDate, "11:00", "12:00", null, "habit", `Mốc chu kỳ 10 ngày: ${originalDate}; chuyển sang ngày rảnh gần nhất nếu trùng lịch công ty.`);
     const next = new Date(`${originalDate}T12:00:00`); next.setDate(next.getDate() + 10); date = formatDateStr(next);
   }
-  addOnce("once_blanket_20260725", "Phơi/nhận chăn mền", "2026-07-25", "07:30", "09:00", null, "personal");
-  addOnce("once_tv_repair_20260725", "Khung chờ kỹ thuật TV", "2026-07-25", "09:00", "12:00", null, "personal", "Nếu chưa đến, tiếp tục giữ khung dự phòng ngày 26/07.");
-  addOnce("once_ai_agent_20260725", "Họp AI Agent", "2026-07-25", "14:00", "16:00", "G3", "task");
-  addOnce("once_friend_dinner_20260725", "Đi ăn với bạn", "2026-07-25", "18:00", "20:00", null, "personal");
-  addOnce("once_tv_repair_20260726", "Dự phòng kỹ thuật TV", "2026-07-26", "09:00", "12:00", null, "personal");
   addOnce("once_salary_20260730", "Nhận lương", "2026-07-30", "18:00", "18:10", null, "personal");
   addOnce("once_mother_checkup_20260730", "Đưa mẹ đi khám bệnh", "2026-07-30", "13:30", "16:30", null, "personal", "Ngày ưu tiên gia đình; chủ động sắp xếp lại công việc tại nhà.");
   addOnce("once_finance_review_20260730", "Review tài chính cá nhân", "2026-07-30", "19:00", "19:45", null, "review", "Cân đối thu nhập, chi phí, quỹ dự phòng và ngân sách tháng 8.");
 
   const scheduleKey = (item: ScheduleItem) => `${item.title.trim().toLowerCase()}|${item.date}|${item.startTime}|${item.endTime}`;
   const combinedSchedule = new Map<string, ScheduleItem>();
-  scheduleItems.forEach(item => {
-    const existing = (state.scheduleItems || []).find(previous => scheduleKey(previous) === scheduleKey(item));
-    combinedSchedule.set(scheduleKey(item), existing ? { ...item, id: existing.id, completed: existing.completed } : item);
-  });
+  scheduleItems.forEach(item => combinedSchedule.set(scheduleKey(item), item));
   const newTasks = [
     { id: "task_freelance_income", title: "Chọn và hoàn thành việc freelance gần doanh thu nhất", description: "Ưu tiên Reel/dự án có deadline hoặc khả năng được trả tiền; không mở thêm dự án khi đầu ra này chưa rõ", goalId: "G3", milestoneId: "career_cv", priority: "important_urgent" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
     { id: "task_freelance_aleron", title: "Nghiên cứu shop Aleron", description: "Dành một block 2–3 giờ khi lịch cho phép, sau đó chốt tiếp tục hay dừng", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 150, completed: false, createdAt: new Date().toISOString() },
@@ -582,24 +574,14 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { id: "task_b2b_maintenance", title: "Duy trì content, entity và website B2B", description: "Một chu kỳ mỗi 2–3 ngày; mỗi block chỉ làm một bước nghiên cứu, viết, đăng/entity hoặc chỉnh website", goalId: "G2", milestoneId: "b2b_foundation", priority: "later" as const, estimatedMinutes: 45, completed: false, createdAt: new Date().toISOString() },
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
-  const previousTasks = new Map((state.priorityTasks || []).map(task => [task.id, task]));
-  const canonicalTasks = newTasks.map(task => {
-    const previous = previousTasks.get(task.id);
-    return previous ? { ...task, completed: previous.completed, completedAt: previous.completedAt, status: previous.status } : task;
-  });
-
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 13, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 14, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G3", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G3", goals, routines,
-    lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: canonicalTasks,
-    healthRecords: {
-      ...(state.healthRecords || {}),
-      "2026-07-24": {
-        date: "2026-07-24", weight: 64.8, sleepHours: null, energy: null, steps: null,
-        strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false,
-        notes: "Cân lúc 09:00. Tuần có nhiều việc gia đình, giấy tờ, SIM/điện thoại và một buổi trị liệu; ưu tiên khởi động lại sức khỏe nhẹ nhàng."
-      }
-    },
+    dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
+    lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
+    activities: [], routineLogs: [], weeklyReviews: [], experiments: [],
+    b2bLeads: [], jobApplications: [], healthRecords: {}, lifestyleRecords: {},
+    batchTestRecords: [], evidenceRecommendations: [], aiChangeHistory: [], coachHistory: [],
     scheduleItems: [...combinedSchedule.values()].sort((a,b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     weeklyAvailability: [
       { dayOfWeek: 1, mode: "office", label: "Làm tại công ty", blockedStart: "08:10", blockedEnd: "18:40" },
@@ -722,6 +704,12 @@ export function migrateAppState(rawState: any): AppState {
   if ((migrated.personalScheduleSeedVersion || 0) === 12) {
     // Reprioritize active work without deleting actual check-ins or history:
     // Freelancer → Fund → B2B maintenance → Health & Beauty foundation.
+    return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 13) {
+    // Start the latest plan as a genuinely clean cycle. Account/auth data lives
+    // outside AppState, while all previous cycle records are intentionally reset.
     return applyConfirmedPersonalPlan(migrated);
   }
 
