@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowDown, Check, Circle, Flag, LockKeyhole } from "lucide-react";
+import { Check, Circle, Flag, LockKeyhole } from "lucide-react";
 import { AppState, Goal } from "../types";
 import GoalIcon, { COLOR_MAP } from "./GoalIcon";
 import { formatDisplayDate } from "../utils";
@@ -93,13 +93,13 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
               </div>
 
               <div className="p-5">
-                <ol className={goal.id === "G3" ? "flex gap-3 overflow-x-auto pb-2" : "space-y-0"}>
-                  {goal.milestones.map((milestone, index) => {
+                <ol className="flex gap-3 overflow-x-auto pb-2">
+                  {goal.milestones.map(milestone => {
                     const isCurrent = milestone.id === current?.id;
                     const isCompleted = milestone.achieved;
 
                     return (
-                      <li key={milestone.id} className={goal.id === "G3" ? "flex min-w-[190px] flex-1 items-center" : ""}>
+                      <li key={milestone.id} className="flex min-w-[210px] flex-1 items-stretch">
                         <div className={`flex w-full gap-3 rounded-2xl border p-3.5 transition ${
                           isCompleted
                             ? "border-emerald-200 bg-emerald-50/80"
@@ -128,11 +128,6 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                             </p>
                           </div>
                         </div>
-                        {goal.id !== "G3" && index < goal.milestones.length - 1 && (
-                          <div className="ml-[27px] flex h-7 items-center">
-                            <ArrowDown className={`h-4 w-4 ${isCompleted ? "text-emerald-400" : "text-slate-300"}`} />
-                          </div>
-                        )}
                       </li>
                     );
                   })}
