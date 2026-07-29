@@ -9,6 +9,7 @@ import { AppState, Goal, Routine, ActivityEntry, PriorityTask, ScheduleItem, Cho
 import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate, getPersonalFixedSchedule, isScheduleValidForDate } from "../utils";
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
+import GoalRoadmapBlock from "./GoalRoadmapBlock";
 import LifeOperations from "./LifeOperations";
 import { expandRecurringSchedule, expandRoutine, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
 
@@ -1100,7 +1101,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
             <h2 className="mt-2 font-display text-xl font-black">Chu kỳ bắt đầu ngày {formatDisplayDate(state.startDate)}</h2>
             <p className="mt-2 max-w-2xl text-xs leading-relaxed text-indigo-100">Hôm nay app không giao routine, không tính thiếu việc và không làm giảm consistency. Day 1 sẽ tự mở đúng ngày bắt đầu.</p>
           </div>
-          <span className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-xs font-black text-white sm:mt-0 sm:w-auto"><Calendar className="h-4 w-4" /> Tự động bắt đầu 19/07</span>
+          <span className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-xs font-black text-white sm:mt-0 sm:w-auto"><Calendar className="h-4 w-4" /> Tự động bắt đầu {formatDisplayDate(state.startDate)}</span>
         </section>
       )}
 
@@ -1113,6 +1114,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
         onChangeState={onChangeState}
       />}
 
+      <GoalRoadmapBlock state={state} onChangeState={onChangeState} />
+
       {dueOutcomes.length > 0 && <section className="flex flex-col gap-3 rounded-[22px] border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white"><CalendarClock className="h-4 w-4" /></span><div><p className="text-xs font-black text-violet-950">{dueOutcomes.length} kết quả cần kiểm tra hôm nay</p><p className="mt-1 text-xs text-violet-700">{dueOutcomes.slice(0, 2).map(item => item.activity).join(' · ')}{dueOutcomes.length > 2 ? ` · +${dueOutcomes.length - 2} việc` : ''}</p></div></div><button onClick={onOpenProgress} className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white">Cập nhật kết quả</button></section>}
 
       {blockedTasks.length > 0 && <section className="rounded-[22px] border border-rose-200 bg-rose-50 p-4"><div className="flex items-start gap-3"><Siren className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><div className="min-w-0"><p className="text-sm font-black text-rose-950">Đang chờ & bị chặn · {blockedTasks.length} việc</p><p className="mt-1 text-sm text-rose-700">{blockedTasks[0].title}: {blockedTasks[0].blockedReason || 'chưa ghi lý do'}{blockedTasks[0].waitingUntil ? ` · kiểm tra ${formatDisplayDate(blockedTasks[0].waitingUntil)}` : ''}</p><p className="mt-2 text-xs font-bold text-rose-600">App đã chuyển sang việc khả dụng khác; task này vẫn được theo dõi riêng.</p></div></div></section>}
@@ -1121,7 +1124,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       <section id="section-quick-input" className={`relative overflow-hidden rounded-[24px] border shadow-sm ${captureExpanded ? "space-y-5 border-slate-800 bg-slate-950 p-5 md:p-7" : "border-indigo-100 bg-white p-4"}`}>
         <div className="relative flex items-start justify-between gap-4">
           <div>
-          <p className={`mb-2 text-xs font-black uppercase tracking-[0.16em] ${captureExpanded ? 'text-indigo-300' : 'text-indigo-600'}`}>02 · Ghi nhận hoặc điều chỉnh</p>
+          <p className={`mb-2 text-xs font-black uppercase tracking-[0.16em] ${captureExpanded ? 'text-indigo-300' : 'text-indigo-600'}`}>03 · Ghi nhận hoặc điều chỉnh</p>
           <h2 className={`font-display font-extrabold tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl text-white md:text-2xl" : "text-lg text-slate-950"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
@@ -1380,7 +1383,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
         <div className="life-panel border-t-4 border-t-indigo-500 p-5 md:p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="life-kicker text-indigo-600 mb-2">03 · Lịch hôm nay</p>
+              <p className="life-kicker text-indigo-600 mb-2">04 · Lịch hôm nay</p>
               <h2 className="font-display text-lg font-extrabold text-slate-950">Nhịp công việc hôm nay</h2>
               <p className="text-xs text-slate-400 mt-1">Chỉ hiển thị những block bạn cần thực hiện trong ngày.</p>
             </div>
