@@ -93,14 +93,14 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
               </div>
 
               <div className="p-5">
-                <ol className="space-y-0">
+                <ol className={goal.id === "G3" ? "flex gap-3 overflow-x-auto pb-2" : "space-y-0"}>
                   {goal.milestones.map((milestone, index) => {
                     const isCurrent = milestone.id === current?.id;
                     const isCompleted = milestone.achieved;
 
                     return (
-                      <li key={milestone.id}>
-                        <div className={`flex gap-3 rounded-2xl border p-3.5 transition ${
+                      <li key={milestone.id} className={goal.id === "G3" ? "flex min-w-[190px] flex-1 items-center" : ""}>
+                        <div className={`flex w-full gap-3 rounded-2xl border p-3.5 transition ${
                           isCompleted
                             ? "border-emerald-200 bg-emerald-50/80"
                             : isCurrent
@@ -128,7 +128,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                             </p>
                           </div>
                         </div>
-                        {index < goal.milestones.length - 1 && (
+                        {goal.id !== "G3" && index < goal.milestones.length - 1 && (
                           <div className="ml-[27px] flex h-7 items-center">
                             <ArrowDown className={`h-4 w-4 ${isCompleted ? "text-emerald-400" : "text-slate-300"}`} />
                           </div>

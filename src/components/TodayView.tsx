@@ -1094,6 +1094,27 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   return (
     <div id="today-dashboard-view" className="space-y-8">
 
+      <section id="section-daily-first" className="rounded-[28px] border border-indigo-200 bg-white p-5 shadow-md md:p-7">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">01 · Lịch hôm nay</p>
+            <h2 className="mt-2 font-display text-2xl font-black text-slate-950">Việc cần làm trong ngày</h2>
+            <p className="mt-1 text-xs text-slate-500">Thông tin hằng ngày luôn được đặt ở đầu dashboard.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1.5 text-[10px] font-black text-indigo-700">{todaySchedule.filter(item => item.completed).length}/{todaySchedule.length} xong</span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {todaySchedule.map(item => (
+            <button key={item.id} onClick={() => handleToggleScheduleItem(item.id)} className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${item.completed ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:border-indigo-300"}`}>
+              <span className="font-mono text-xs font-black text-indigo-700">{item.startTime === "00:00" && item.endTime === "23:59" ? "Chưa chốt giờ" : item.startTime}</span>
+              <span className={`min-w-0 flex-1 text-sm font-bold ${item.completed ? "text-emerald-800 line-through" : "text-slate-900"}`}>{item.title}</span>
+              {item.completed ? <Check className="h-4 w-4 text-emerald-700" /> : <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />}
+            </button>
+          ))}
+          {todaySchedule.length === 0 && <p className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Hôm nay chưa có lịch.</p>}
+        </div>
+      </section>
+
       {beforeCycle && (
         <section className="overflow-hidden rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-950 via-indigo-900 to-violet-800 p-5 text-white shadow-xl shadow-indigo-100 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div>
@@ -1379,7 +1400,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       </section>
 
       {/* TODAY AT A GLANCE — schedule plus exception-based alerts */}
-      <section id="section-today-command" className="grid grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
+      <section id="section-today-command" className="hidden grid-cols-1 lg:grid-cols-[1.45fr_0.75fr] gap-4">
         <div className="life-panel border-t-4 border-t-indigo-500 p-5 md:p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
