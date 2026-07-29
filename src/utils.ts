@@ -546,23 +546,24 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
   addOnce(
     "prep_scope_20260729",
-    "Chốt danh sách việc chính cho 4 mục tiêu",
+    "Freelancer: Hoàn thành course Outlier đầu tiên",
     "2026-07-29",
     "19:30",
-    "20:15",
-    null,
-    "review",
-    "Chỉ chọn các việc thật sự cần làm trong chu kỳ; chưa thực thi và chưa tính tiến độ."
+    "20:30",
+    "G3",
+    "task",
+    "Việc quan trọng nhất hôm nay; hoàn thành course đầu tiên trên Outlier."
   );
+  addOnce("today_yoga_20260729", "Healthy & Beauty: Tập yoga", "2026-07-29", "20:30", "21:00", "G4", "habit", "Hoạt động buổi tối; giờ có thể điều chỉnh trong app.");
   addOnce(
     "prep_sequence_20260730",
-    "Xếp thứ tự bước làm và hạn hoàn thành",
+    "Đưa mẹ đi khám bệnh",
     "2026-07-30",
-    "19:30",
-    "20:15",
+    "00:00",
+    "23:59",
     null,
-    "review",
-    "Rà lại roadmap dọc, deadline và kết quả cần tạo cho từng bước."
+    "personal",
+    "Việc gia đình quan trọng; chưa chốt giờ cụ thể."
   );
   addOnce(
     "prep_ready_20260731",
@@ -574,6 +575,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     "review",
     "Đảm bảo lịch không chồng chéo và chỉ giữ những block có thể thực hiện từ 01/08."
   );
+  addOnce("finance_summary_20260801", "Tổng hợp tài chính", "2026-08-01", "10:00", "11:00", null, "review", "Review thu nhập, chi phí, ngân sách và kế hoạch tháng 8; ngày đã chốt là 01/08/2026.");
   for (let date = "2026-08-04"; date <= endDate;) {
     addOnce(`ranny_${date}`, "Tắm Ranny", date, "11:00", "12:00", null, "habit", "Lặp mỗi 7 ngày; mốc đã xác nhận là thứ Ba.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
@@ -594,14 +596,18 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
   const combinedSchedule = new Map<string, ScheduleItem>();
   scheduleItems.forEach(item => combinedSchedule.set(scheduleKey(item), item));
   const newTasks = [
-    { id: "task_freelance_income", title: "Chọn và hoàn thành việc freelance gần doanh thu nhất", description: "Ưu tiên Reel/dự án có deadline hoặc khả năng được trả tiền; không mở thêm dự án khi đầu ra này chưa rõ", goalId: "G3", milestoneId: "career_cv", priority: "important_urgent" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
+    { id: "task_outlier_first_course", title: "Hoàn thành course Outlier đầu tiên", description: "Việc Freelancer quan trọng nhất ngày 29/07", goalId: "G3", journeyId: "G3", milestoneId: "career_cv", priority: "important_urgent" as const, estimatedMinutes: 60, dueDate: "2026-07-29", completed: false, createdAt: new Date().toISOString() },
+    { id: "task_mom_medical_visit", title: "Đưa mẹ đi khám bệnh", description: "Việc gia đình quan trọng; chưa chốt giờ", goalId: null, journeyId: null, priority: "important" as const, dueDate: "2026-07-30", completed: false, createdAt: new Date().toISOString() },
+    { id: "task_finance_august", title: "Tổng hợp tài chính", description: "Review thu nhập, chi phí, ngân sách và kế hoạch tháng 8", goalId: null, journeyId: null, priority: "important" as const, estimatedMinutes: 60, dueDate: "2026-08-01", completed: false, createdAt: new Date().toISOString() },
+    { id: "task_b2b_website_audit", title: "Xây trang Website Audit theo keyword", description: "Tháng 8: nghiên cứu keyword và search intent → lập cấu trúc → viết nội dung → thêm CTA thu lead", goalId: "G2", journeyId: "G2", milestoneId: "b2b_foundation", priority: "important" as const, estimatedMinutes: 180, dueDate: "2026-08-31", completed: false, createdAt: new Date().toISOString() },
+    { id: "task_yoga_20260729", title: "Tập yoga buổi tối", description: "Healthy & Beauty ngày 29/07", goalId: "G4", journeyId: "G4", milestoneId: "health_baseline", priority: "important" as const, estimatedMinutes: 30, dueDate: "2026-07-29", completed: false, createdAt: new Date().toISOString() },
     { id: "task_freelance_aleron", title: "Nghiên cứu shop Aleron", description: "Dành một block 2–3 giờ khi lịch cho phép, sau đó chốt tiếp tục hay dừng", goalId: "G3", milestoneId: "career_cv", priority: "important" as const, estimatedMinutes: 150, completed: false, createdAt: new Date().toISOString() },
     { id: "task_fund_checklist_v1", title: "Hoàn thiện checklist Fund phiên bản 1", description: "Mỗi block ít nhất 60 phút: theo dõi thị trường, bổ sung checklist và lưu bằng chứng", goalId: "G1", milestoneId: "fund_checklist", priority: "important" as const, estimatedMinutes: 60, completed: false, createdAt: new Date().toISOString() },
     { id: "task_b2b_maintenance", title: "Duy trì content, entity và website B2B", description: "Một chu kỳ mỗi 2–3 ngày; mỗi block chỉ làm một bước nghiên cứu, viết, đăng/entity hoặc chỉnh website", goalId: "G2", milestoneId: "b2b_foundation", priority: "later" as const, estimatedMinutes: 45, completed: false, createdAt: new Date().toISOString() },
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 16, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 17, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G3", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G3", goals, routines,
     dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
@@ -746,6 +752,11 @@ export function migrateAppState(rawState: any): AppState {
 
   if ((migrated.personalScheduleSeedVersion || 0) === 15) {
     // Add the 29–31/07 preparation phase without starting plan progress early.
+    return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 16) {
+    // Add the confirmed 29/07–August tasks and the daily-first dashboard layout.
     return applyConfirmedPersonalPlan(migrated);
   }
 
