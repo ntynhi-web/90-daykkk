@@ -544,6 +544,36 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const date = new Date(`${cursor}T12:00:00`); date.setDate(date.getDate() + 1); cursor = formatDateStr(date);
   }
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
+  addOnce(
+    "prep_scope_20260729",
+    "Chốt danh sách việc chính cho 4 mục tiêu",
+    "2026-07-29",
+    "19:30",
+    "20:15",
+    null,
+    "review",
+    "Chỉ chọn các việc thật sự cần làm trong chu kỳ; chưa thực thi và chưa tính tiến độ."
+  );
+  addOnce(
+    "prep_sequence_20260730",
+    "Xếp thứ tự bước làm và hạn hoàn thành",
+    "2026-07-30",
+    "19:30",
+    "20:15",
+    null,
+    "review",
+    "Rà lại roadmap dọc, deadline và kết quả cần tạo cho từng bước."
+  );
+  addOnce(
+    "prep_ready_20260731",
+    "Kiểm tra lịch và chốt kế hoạch Day 1",
+    "2026-07-31",
+    "19:30",
+    "20:00",
+    null,
+    "review",
+    "Đảm bảo lịch không chồng chéo và chỉ giữ những block có thể thực hiện từ 01/08."
+  );
   for (let date = "2026-08-04"; date <= endDate;) {
     addOnce(`ranny_${date}`, "Tắm Ranny", date, "11:00", "12:00", null, "habit", "Lặp mỗi 7 ngày; mốc đã xác nhận là thứ Ba.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
@@ -571,7 +601,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 15, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 16, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G3", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G3", goals, routines,
     dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
@@ -711,6 +741,11 @@ export function migrateAppState(rawState: any): AppState {
 
   if ((migrated.personalScheduleSeedVersion || 0) === 14) {
     // Move Day 1 to 01/08/2026 and generate only the latest roadmap data.
+    return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 15) {
+    // Add the 29–31/07 preparation phase without starting plan progress early.
     return applyConfirmedPersonalPlan(migrated);
   }
 

@@ -1097,9 +1097,9 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       {beforeCycle && (
         <section className="overflow-hidden rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-950 via-indigo-900 to-violet-800 p-5 text-white shadow-xl shadow-indigo-100 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Ngày chuẩn bị · chưa tính tiến độ</p>
-            <h2 className="mt-2 font-display text-xl font-black">Chu kỳ bắt đầu ngày {formatDisplayDate(state.startDate)}</h2>
-            <p className="mt-2 max-w-2xl text-xs leading-relaxed text-indigo-100">Hôm nay app không giao routine, không tính thiếu việc và không làm giảm consistency. Day 1 sẽ tự mở đúng ngày bắt đầu.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">29–31/07 · Giai đoạn chuẩn bị</p>
+            <h2 className="mt-2 font-display text-xl font-black">Chốt việc và kế hoạch trước Day 1</h2>
+            <p className="mt-2 max-w-2xl text-xs leading-relaxed text-indigo-100">Hôm nay app chỉ giao việc chuẩn bị: chốt task, thứ tự và lịch. Các việc này không tính vào tiến độ hay consistency; chu kỳ chính chạy từ {formatDisplayDate(state.startDate)} đến {formatDisplayDate(state.endDate)}.</p>
           </div>
           <span className="mt-4 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-xs font-black text-white sm:mt-0 sm:w-auto"><Calendar className="h-4 w-4" /> Tự động bắt đầu {formatDisplayDate(state.startDate)}</span>
         </section>
@@ -1114,7 +1114,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
         onChangeState={onChangeState}
       />}
 
-      <GoalRoadmapBlock state={state} onChangeState={onChangeState} />
+      <GoalRoadmapBlock state={state} today={todayStr} onChangeState={onChangeState} />
 
       {dueOutcomes.length > 0 && <section className="flex flex-col gap-3 rounded-[22px] border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white"><CalendarClock className="h-4 w-4" /></span><div><p className="text-xs font-black text-violet-950">{dueOutcomes.length} kết quả cần kiểm tra hôm nay</p><p className="mt-1 text-xs text-violet-700">{dueOutcomes.slice(0, 2).map(item => item.activity).join(' · ')}{dueOutcomes.length > 2 ? ` · +${dueOutcomes.length - 2} việc` : ''}</p></div></div><button onClick={onOpenProgress} className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white">Cập nhật kết quả</button></section>}
 

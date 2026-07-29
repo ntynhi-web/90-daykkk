@@ -6,6 +6,7 @@ import { formatDisplayDate } from "../utils";
 
 interface GoalRoadmapBlockProps {
   state: AppState;
+  today: string;
   onChangeState: (state: AppState) => void;
 }
 
@@ -20,8 +21,9 @@ const getOrderedGoals = (goals: Goal[]) =>
       return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
     });
 
-export default function GoalRoadmapBlock({ state, onChangeState }: GoalRoadmapBlockProps) {
+export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRoadmapBlockProps) {
   const goals = getOrderedGoals(state.goals);
+  const isBeforeCycle = today < state.startDate;
 
   const completeCurrentStep = (goal: Goal) => {
     const current = goal.milestones.find(milestone => !milestone.achieved);
@@ -140,9 +142,10 @@ export default function GoalRoadmapBlock({ state, onChangeState }: GoalRoadmapBl
                   <button
                     type="button"
                     onClick={() => completeCurrentStep(goal)}
-                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-indigo-700"
+                    disabled={isBeforeCycle}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                   >
-                    <Flag className="h-4 w-4" /> Hoàn tất “{current.title}”
+                    <Flag className="h-4 w-4" /> {isBeforeCycle ? `Mở từ ${formatDisplayDate(state.startDate)}` : `Hoàn tất “${current.title}”`}
                   </button>
                 ) : (
                   <div className="mt-5 rounded-2xl bg-emerald-100 px-4 py-3 text-center text-sm font-black text-emerald-800">
