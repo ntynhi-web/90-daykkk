@@ -74,6 +74,8 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         {goals.map(goal => {
           const colors = COLOR_MAP[goal.accentColor || "indigo"] || COLOR_MAP.indigo;
+          const isDailyFoundation = goal.id === "G4";
+          const dailyRoutines = state.routines.filter(routine => routine.goalId === goal.id && routine.active !== false);
           const current = goal.milestones.find(milestone => !milestone.achieved) || null;
           const completedCount = goal.milestones.filter(milestone => milestone.achieved).length;
 
@@ -85,7 +87,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-display text-lg font-black text-slate-950">{goal.name}</h3>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${colors.bg} ${colors.text}`}>
-                      {completedCount}/{goal.milestones.length} bước
+                      {isDailyFoundation ? "Nền hằng ngày" : `${completedCount}/${goal.milestones.length} bước`}
                     </span>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">{goal.description}</p>
@@ -93,6 +95,40 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
               </div>
 
               <div className="p-5">
+                {isDailyFoundation ? (
+                  <>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {dailyRoutines.map(routine => {
+                        const completedToday = (state.routineLogs || []).some(log =>
+                          log.routineId === routine.id && log.date === today && log.status === "completed"
+                        );
+                        return (
+                          <div key={routine.id} className={`min-w-[220px] flex-1 rounded-2xl border p-4 ${
+                            completedToday ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-white"
+                          }`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                                completedToday ? "bg-emerald-600 text-white" : "bg-rose-100 text-rose-600"
+                              }`}>
+                                {completedToday ? <Check className="h-4 w-4" /> : <Circle className="h-3.5 w-3.5" />}
+                              </span>
+                              <span className="rounded-full bg-rose-50 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-rose-700">
+                                Luôn mở
+                              </span>
+                            </div>
+                            <p className="mt-3 text-sm font-black text-slate-950">{routine.name}</p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{routine.minimumDay}</p>
+                            <p className="mt-2 text-[10px] font-bold text-rose-700">{routine.frequency}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
+                      Các hành động Health & Beauty luôn mở song song. Bạn check theo ngày trong phần routine, không cần chờ hoàn thành một mốc cân nặng.
+                    </p>
+                  </>
+                ) : (
+                  <>
                 <ol className="flex gap-3 overflow-x-auto pb-2">
                   {goal.milestones.map(milestone => {
                     const isCurrent = milestone.id === current?.id;
@@ -146,6 +182,8 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                   <div className="mt-5 rounded-2xl bg-emerald-100 px-4 py-3 text-center text-sm font-black text-emerald-800">
                     Hành trình đã hoàn thành
                   </div>
+                )}
+                  </>
                 )}
               </div>
             </article>
