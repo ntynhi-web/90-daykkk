@@ -54,6 +54,12 @@ export default function DailyGoalProgress({ state, today }: DailyGoalProgressPro
   };
   const cards = [
     {
+      id: "G4", name: "Health & Beauty", icon: HeartPulse,
+      percent: healthRoutines.length ? Math.round(healthCompleted / healthRoutines.length * 100) : 100,
+      detail: `${healthCompleted}/${healthRoutines.length} routine`,
+      note: "Ưu tiên nền sức khỏe hằng ngày"
+    },
+    {
       id: "G3", name: "Freelancer", icon: BriefcaseBusiness,
       percent: Math.min(100, Math.round((
         Math.min(100, actualMinutes("G3") / targets.G3 * 100) +
@@ -73,21 +79,15 @@ export default function DailyGoalProgress({ state, today }: DailyGoalProgressPro
       percent: Math.min(100, Math.round(actualMinutes("G2") / targets.G2 * 100)),
       detail: `${actualMinutes("G2")}/${targets.G2} phút`,
       note: weekday === 6 ? "30 phút B2B + 2 giờ Affiliate MS" : "Tiến process B2B"
-    },
-    {
-      id: "G4", name: "Health & Beauty", icon: HeartPulse,
-      percent: healthRoutines.length ? Math.round(healthCompleted / healthRoutines.length * 100) : 100,
-      detail: `${healthCompleted}/${healthRoutines.length} routine`,
-      note: "Ưu tiên nền sức khỏe hằng ngày"
     }
   ];
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-950 p-5 text-white shadow-xl md:p-7">
+    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950 p-4 text-white shadow-lg md:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">02 · Tiến độ hôm nay</p>
-          <h2 className="mt-2 font-display text-2xl font-black">Mục tiêu nào đã xong?</h2>
+          <h2 className="mt-1 font-display text-xl font-black">Mục tiêu nào đã xong?</h2>
           <p className="mt-1 text-xs text-slate-400">Theo dõi theo thời gian, doanh thu và routine thực tế trong ngày.</p>
         </div>
         <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black text-slate-200">
@@ -95,29 +95,29 @@ export default function DailyGoalProgress({ state, today }: DailyGoalProgressPro
         </span>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => {
           const status = statusFor(card.percent);
           const Icon = card.icon;
           return (
-            <article key={card.id} className="rounded-[22px] border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
+            <article key={card.id} className="rounded-[18px] border border-white/10 bg-white/[0.07] p-3 backdrop-blur">
               <div className="flex items-center justify-between gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-cyan-300"><Icon className="h-5 w-5" /></span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-cyan-300"><Icon className="h-4 w-4" /></span>
                 <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${status.classes}`}>
                   {status.label}
                 </span>
               </div>
-              <div className="mt-5 flex items-end justify-between gap-2">
+              <div className="mt-3 flex items-end justify-between gap-2">
                 <div>
                   <p className="text-sm font-black">{card.name}</p>
                   <p className="mt-1 text-[10px] text-slate-400">{card.detail}</p>
                 </div>
-                <strong className="font-display text-3xl font-black text-cyan-300">{card.percent}%</strong>
+                <strong className="font-display text-2xl font-black text-cyan-300">{card.percent}%</strong>
               </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-400 transition-all" style={{ width: `${card.percent}%` }} />
               </div>
-              <p className="mt-3 text-[10px] leading-relaxed text-slate-400">{card.note}</p>
+              <p className="mt-2 text-[9px] leading-relaxed text-slate-400">{card.note}</p>
             </article>
           );
         })}

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { AppState, WeeklyReview, Experiment } from "../types";
 import { getSeededAppState, getDefaultAppState, exportStateToJSON, convertToCSV, triggerFileDownload, formatDisplayDate } from "../utils";
+import PlanHub from "./PlanHub";
 
 interface ReviewViewProps {
   state: AppState;
@@ -215,6 +216,7 @@ export default function ReviewView({ state, onChangeState }: ReviewViewProps) {
 
   return (
     <div id="review-view" className="space-y-6">
+      <PlanHub state={state} onChangeState={onChangeState} />
       
       {/* Title Header */}
       <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
