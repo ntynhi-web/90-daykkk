@@ -218,7 +218,7 @@ export default function App() {
             }`}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            <span>Đánh giá</span>
+            <span>Plan Hub</span>
           </button>
         </nav>
 
@@ -292,13 +292,13 @@ export default function App() {
                 {activeTab === 'journeys' && "Các Hành Trình Mục Tiêu"}
                 {activeTab === 'calendar' && "Lịch Biểu & Phân Bổ Thời Gian"}
                 {activeTab === 'progress' && "Kết Quả Theo Mục Tiêu"}
-                {activeTab === 'settings' && "Đánh Giá & Điều Chỉnh"}
+                {activeTab === 'settings' && "Plan Hub & Đánh giá"}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 {activeTab === 'journeys' && `Hành trình ${stats.totalDays} ngày của bạn với lộ trình cột mốc chi tiết.`}
                 {activeTab === 'calendar' && "Quản lý và tối ưu hóa thời gian, tránh xung đột lịch biểu."}
                 {activeTab === 'progress' && "Sự phân bổ hoạt động, phễu lead, thể trạng và chỉ số trading."}
-                {activeTab === 'settings' && "Đánh giá tuần, chạy thử nghiệm thói quen và sao lưu dữ liệu."}
+                {activeTab === 'settings' && "Chỉnh mục tiêu, process, routine, lịch; nhập hoặc nhân bản template."}
               </p>
             </div>
           )}
@@ -399,7 +399,7 @@ export default function App() {
         <button onClick={() => setActiveTab('calendar')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'calendar' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><Calendar className="h-5 w-5" /><span>Lịch</span></button>
 
         <div className="relative flex-1">
-          {mobileMoreOpen && <div className="absolute bottom-14 right-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"><button onClick={() => { setActiveTab('progress'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><BarChart3 className="h-4 w-4" />Kết quả</button><button onClick={() => { setActiveTab('settings'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Settings className="h-4 w-4" />Đánh giá & Cài đặt</button></div>}
+          {mobileMoreOpen && <div className="absolute bottom-14 right-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"><button onClick={() => { setActiveTab('progress'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><BarChart3 className="h-4 w-4" />Kết quả</button><button onClick={() => { setActiveTab('settings'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Settings className="h-4 w-4" />Plan Hub</button></div>}
           <button onClick={() => setMobileMoreOpen(value => !value)} className={`flex min-h-[48px] w-full flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'progress' || activeTab === 'settings' ? 'bg-indigo-50/70 text-indigo-600' : 'text-slate-500'}`}><MoreHorizontal className="h-5 w-5" /><span>Thêm</span></button>
         </div>
       </nav>

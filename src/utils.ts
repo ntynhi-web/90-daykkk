@@ -411,6 +411,7 @@ const getConfirmedRoutines = (): Routine[] => [
   { id: "routine_b2b_affiliate_ms", goalId: "G2", name: "B2B · Affiliate domain MS", frequency: "Thứ 7 · 2 giờ", minimumDay: "Hoàn thành block Affiliate MS 120 phút", target: "Tạo tiến triển đo được cho domain MS", evidence: "URL, nội dung hoặc thay đổi đã public", status: "pending", scheduleDays: [6], durationMinutes: 120, active: true },
   { id: "routine_english", goalId: "G3", name: "Freelancer · English-first", frequency: "Lồng vào công việc, không phải checklist riêng", minimumDay: "Ưu tiên một tài liệu hoặc trao đổi bằng tiếng Anh", target: "Dùng tiếng Anh trong công việc thật", evidence: "Tài liệu hoặc trao đổi", status: "pending", active: false },
   { id: "routine_running_park", goalId: "G4", name: "Health · Chạy bộ công viên", frequency: "Mỗi sáng · 05:45–06:30", minimumDay: "Vận động tối thiểu 30 phút", target: "Chạy bộ công viên 45 phút", evidence: "Phút, quãng đường hoặc bước", status: "pending", scheduleDays: [0,1,2,3,4,5,6], startTime: "05:45", endTime: "06:30", durationMinutes: 45, substitutionGroup: "movement", active: true },
+  { id: "routine_water_1500", goalId: "G4", name: "Health · Uống 1,5 lít nước", frequency: "Mỗi ngày", minimumDay: "Uống đủ 1,5 lít nước", target: "1.500 ml/ngày", evidence: "Tổng lượng nước đã uống", status: "pending", scheduleDays: [0,1,2,3,4,5,6], durationMinutes: 0, active: true },
   { id: "routine_health_foundation", goalId: "G4", name: "Health · Nền sức khỏe", frequency: "Hàng ngày", minimumDay: "Chọn 1: ăn tốt hơn, uống đủ nước hoặc ngủ trước 23:00", target: "Ăn điều độ, đủ nước và ngủ phục hồi", evidence: "Một ghi chú ngắn", status: "pending", active: true },
   { id: "routine_beauty_foundation", goalId: "G4", name: "Beauty · Skincare buổi tối", frequency: "Mỗi ngày · 22:30–22:45", minimumDay: "Skincare đủ 15 phút", target: "Làm sạch, dưỡng ẩm và chăm sóc theo routine", evidence: "Check-in gọn", status: "pending", scheduleDays: [0,1,2,3,4,5,6], startTime: "22:30", endTime: "22:45", durationMinutes: 15, active: true }
 ];
@@ -610,7 +611,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 18, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 19, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G3", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G3", goals, routines,
     dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
@@ -765,6 +766,11 @@ export function migrateAppState(rawState: any): AppState {
 
   if ((migrated.personalScheduleSeedVersion || 0) === 17) {
     // Install the confirmed daily processes and percentage-based daily dashboard.
+    return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 18) {
+    // Prioritize Health & Beauty and add the editable/cloneable plan hub.
     return applyConfirmedPersonalPlan(migrated);
   }
 

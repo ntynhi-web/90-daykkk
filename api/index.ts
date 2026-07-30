@@ -80,6 +80,31 @@ app.get("/api/ai-status", (req, res) => {
   res.json({ configured: !!process.env.GEMINI_API_KEY });
 });
 
+app.post("/api/plan-import", async (req, res) => {
+  const { content, currentPlan } = req.body || {};
+  if (!content?.trim()) return res.status(400).json({ message: "File không có nội dung." });
+  if (!aiClient) return res.status(400).json({ message: "AI chưa được cấu hình." });
+  try {
+    const response = await generateWithRetry({
+      model: "gemini-3.5-flash",
+      contents: [{ text: `Bạn đang nhập kế hoạch vào 90-Day Life OS. Hãy đọc nội dung mới, sắp đúng vào goals, milestones/process, routines và scheduleItems. Giữ nguyên các field/id/type bắt buộc của kế hoạch hiện tại; chỉ sửa hoặc thêm nội dung thật sự được nêu. Không đưa check-in, lịch sử hay dữ liệu cá nhân vào kết quả. Trả về duy nhất JSON object có shape {plan:{startDate,endDate,goals,routines,scheduleItems}}.
+
+KẾ HOẠCH HIỆN TẠI:
+${JSON.stringify(currentPlan)}
+
+NỘI DUNG FILE:
+${content}` }],
+      config: { responseMimeType: "application/json" }
+    });
+    const parsed = JSON.parse((response.text || "").replace(/^```json\s*|\s*```$/g, ""));
+    if (!parsed?.plan?.goals || !parsed?.plan?.routines) throw new Error("AI response missing plan");
+    res.json(parsed);
+  } catch (error) {
+    console.error("Plan import failed:", error);
+    res.status(500).json({ message: "AI chưa thể sắp xếp file này. Hãy thử JSON hoặc file ngắn hơn." });
+  }
+});
+
 // POST /api/classify endpoint
 app.post("/api/classify", async (req, res) => {
   const { transcript, currentDate, currentCycle = {}, goals = [], routines = [], chores = [] } = req.body;

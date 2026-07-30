@@ -10,7 +10,7 @@ interface GoalRoadmapBlockProps {
   onChangeState: (state: AppState) => void;
 }
 
-const GOAL_ORDER = ["G3", "G1", "G2", "G4"];
+const GOAL_ORDER = ["G4", "G3", "G1", "G2"];
 
 const getOrderedGoals = (goals: Goal[]) =>
   [...goals]
