@@ -10,6 +10,7 @@ import { calculateEndDate, getCycleStats, saveCheckInToState, formatDisplayDate,
 import GoalIcon from "./GoalIcon";
 import FocusOverview from "./FocusOverview";
 import GoalRoadmapBlock from "./GoalRoadmapBlock";
+import DailyGoalProgress from "./DailyGoalProgress";
 import LifeOperations from "./LifeOperations";
 import { expandRecurringSchedule, expandRoutine, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
 
@@ -1115,6 +1116,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
         </div>
       </section>
 
+      <DailyGoalProgress state={state} today={todayStr} />
+
       {beforeCycle && (
         <section className="overflow-hidden rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-950 via-indigo-900 to-violet-800 p-5 text-white shadow-xl shadow-indigo-100 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div>
@@ -1145,7 +1148,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       <section id="section-quick-input" className={`relative overflow-hidden rounded-[24px] border shadow-sm ${captureExpanded ? "space-y-5 border-slate-800 bg-slate-950 p-5 md:p-7" : "border-indigo-100 bg-white p-4"}`}>
         <div className="relative flex items-start justify-between gap-4">
           <div>
-          <p className={`mb-2 text-xs font-black uppercase tracking-[0.16em] ${captureExpanded ? 'text-indigo-300' : 'text-indigo-600'}`}>03 · Ghi nhận hoặc điều chỉnh</p>
+          <p className={`mb-2 text-xs font-black uppercase tracking-[0.16em] ${captureExpanded ? 'text-indigo-300' : 'text-indigo-600'}`}>04 · Ghi nhận hoặc điều chỉnh</p>
           <h2 className={`font-display font-extrabold tracking-tight flex items-center gap-3 ${captureExpanded ? "text-xl text-white md:text-2xl" : "text-lg text-slate-950"}`}>
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-white border border-indigo-400 shadow-lg shadow-indigo-950"><MessageSquareText className="h-5 w-5" /></span>
             Bạn đã tiến được gì hôm nay?
