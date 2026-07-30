@@ -60,7 +60,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
     <section id="section-goal-roadmaps" className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-7">
       <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">02 · Lộ trình theo mục tiêu</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">03 · Lộ trình theo mục tiêu</p>
           <h2 className="mt-2 font-display text-2xl font-black text-slate-950">Làm xong bước này rồi mới sang bước tiếp theo</h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
             Đây là bản đồ các việc chính, không phải danh sách việc phải làm hết hôm nay. Mỗi hạng mục chỉ có một chặng đang mở.
