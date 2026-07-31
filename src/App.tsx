@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search, Cloud, LogOut, LoaderCircle, Mic, MoreHorizontal } from "lucide-react";
 import { AppState } from "./types";
 import { getDefaultAppState, getCycleStats, formatDateStr, migrateAppState } from "./utils";
 import TodayView from "./components/TodayView";
-import GoalsView from "./components/GoalsView";
-import ProgressView from "./components/ProgressView";
-import ReviewView from "./components/ReviewView";
-import CalendarView from "./components/CalendarView";
 import AuthScreen from "./components/AuthScreen";
 import OnboardingFlow from "./components/OnboardingFlow";
 import { User, firebaseConfigured, loadUserState, observeAuth, saveUserState, signOutCurrentUser } from "./firebase";
+
+const GoalsView = lazy(() => import("./components/GoalsView"));
+const ProgressView = lazy(() => import("./components/ProgressView"));
+const ReviewView = lazy(() => import("./components/ReviewView"));
+const CalendarView = lazy(() => import("./components/CalendarView"));
 
 const LOCAL_STORAGE_KEY = "90day_life_os_state_v1";
 
@@ -33,6 +34,9 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [cloudReady, setCloudReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(
+    () => typeof Notification === "undefined" ? "unsupported" : Notification.permission
+  );
   const syncTimerRef = useRef<number | null>(null);
 
   useEffect(() => observeAuth(user => {
@@ -105,6 +109,50 @@ export default function App() {
       if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
     };
   }, [state, authUser?.uid, cloudReady]);
+
+  useEffect(() => {
+    if (notificationPermission !== "granted") return;
+    const checkSchedule = () => {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(new Date());
+      const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value || "";
+      const date = `${value("year")}-${value("month")}-${value("day")}`;
+      const time = `${value("hour")}:${value("minute")}`;
+      (state.scheduleItems || [])
+        .filter(item => item.date === date && item.startTime === time && !item.completed)
+        .forEach(item => {
+          const reminderKey = `90day_reminder_${item.id}_${date}_${time}`;
+          if (sessionStorage.getItem(reminderKey)) return;
+          sessionStorage.setItem(reminderKey, "sent");
+          new Notification("Đến giờ thực hiện", { body: item.title, tag: reminderKey });
+        });
+    };
+    checkSchedule();
+    const timer = window.setInterval(checkSchedule, 30_000);
+    return () => window.clearInterval(timer);
+  }, [notificationPermission, state.scheduleItems]);
+
+  const requestNotifications = async () => {
+    if (typeof Notification === "undefined") {
+      setNotificationPermission("unsupported");
+      window.alert("Trình duyệt này không hỗ trợ thông báo.");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === "denied") window.alert("Thông báo đang bị chặn. Bạn có thể bật lại trong cài đặt trình duyệt.");
+    } catch {
+      window.alert("Không thể bật thông báo trên trình duyệt này.");
+    }
+  };
 
   const handleUpdateState = (newState: AppState) => {
     setState(newState);
@@ -304,7 +352,7 @@ export default function App() {
           )}
 
           {activeTab === 'today' ? (
-            <div className="flex items-center gap-2"><div className="mr-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5"><span className={`h-2 w-2 rounded-full ${syncStatus === 'error' ? 'bg-rose-500' : syncStatus === 'saving' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} /><div className="hidden xl:block"><p className="max-w-32 truncate text-[10px] font-black text-slate-700">{authUser.displayName || authUser.email}</p><p className="text-[9px] text-slate-400">{syncStatus === 'saving' ? 'Đang đồng bộ' : syncStatus === 'error' ? 'Lưu cục bộ' : 'Đã đồng bộ'}</p></div>{authUser.photoURL && <img src={authUser.photoURL} alt="" className="h-7 w-7 rounded-lg" />}<button onClick={() => signOutCurrentUser()} aria-label="Đăng xuất" className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><LogOut className="h-3.5 w-3.5" /></button></div><button aria-label="Tìm kiếm" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Search className="h-4 w-4" /></button><button aria-label="Thông báo" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Bell className="h-4 w-4" /></button><button
+            <div className="flex items-center gap-2"><div className="mr-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5"><span className={`h-2 w-2 rounded-full ${syncStatus === 'error' ? 'bg-rose-500' : syncStatus === 'saving' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} /><div className="hidden xl:block"><p className="max-w-32 truncate text-[10px] font-black text-slate-700">{authUser.displayName || authUser.email}</p><p className="text-[9px] text-slate-400">{syncStatus === 'saving' ? 'Đang đồng bộ' : syncStatus === 'error' ? 'Lưu cục bộ' : 'Đã đồng bộ'}</p></div>{authUser.photoURL && <img src={authUser.photoURL} alt="" className="h-7 w-7 rounded-lg" />}<button onClick={() => signOutCurrentUser()} aria-label="Đăng xuất" className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><LogOut className="h-3.5 w-3.5" /></button></div><button aria-label="Tìm kiếm" className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 flex items-center justify-center"><Search className="h-4 w-4" /></button><button onClick={requestNotifications} aria-label="Bật thông báo lịch" title={notificationPermission === "granted" ? "Nhắc lịch đang bật khi app mở" : "Bật nhắc lịch"} className={`h-10 w-10 rounded-xl border flex items-center justify-center ${notificationPermission === "granted" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-slate-200 bg-white text-slate-500"}`}><Bell className="h-4 w-4" /></button><button
               onClick={() => {
                 setActiveTab('journeys');
                 setAutoOpenCreateModal(true);
@@ -327,6 +375,7 @@ export default function App() {
         {/* WORKSPACE AREA */}
         <main className="flex-1 px-4 md:px-8 py-6 md:py-8 pb-24 md:pb-10">
           <div className="max-w-7xl mx-auto transition-all duration-150">
+            <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center"><LoaderCircle className="h-7 w-7 animate-spin text-indigo-600" /></div>}>
             {activeTab === 'today' && (
               <TodayView 
                 state={state} 
@@ -364,6 +413,7 @@ export default function App() {
                 onChangeState={handleUpdateState} 
               />
             )}
+            </Suspense>
           </div>
         </main>
       </div>

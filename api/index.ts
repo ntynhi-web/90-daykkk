@@ -83,6 +83,8 @@ app.get("/api/ai-status", (req, res) => {
 app.post("/api/plan-import", async (req, res) => {
   const { content, currentPlan } = req.body || {};
   if (!content?.trim()) return res.status(400).json({ message: "File không có nội dung." });
+  if (typeof content !== "string" || content.length > 100_000) return res.status(413).json({ message: "File vượt quá giới hạn 100.000 ký tự." });
+  if (!currentPlan || !Array.isArray(currentPlan.goals) || !Array.isArray(currentPlan.routines)) return res.status(400).json({ message: "Kế hoạch hiện tại không hợp lệ." });
   if (!aiClient) return res.status(400).json({ message: "AI chưa được cấu hình." });
   try {
     const response = await generateWithRetry({
