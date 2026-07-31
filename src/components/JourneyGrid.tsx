@@ -11,8 +11,14 @@ interface JourneyGridProps {
 }
 
 export default function JourneyGrid({ goals, onViewDetails, onEdit, onArchive }: JourneyGridProps) {
+  const layoutClass = goals.length === 1
+    ? "grid-cols-1"
+    : goals.length === 2
+      ? "grid-cols-1 md:grid-cols-2"
+      : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
+
   return (
-    <div id="journey-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+    <div id="journey-grid" className={`grid ${layoutClass} gap-4 pt-2`}>
       {goals.map((goal, idx) => (
         <motion.div
           key={goal.id}

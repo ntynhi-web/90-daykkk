@@ -35,7 +35,7 @@ export default function JourneyCard({ goal, onViewDetails, onEdit, onArchive }: 
     <div 
       id={`journey-card-${goal.id}`}
       onClick={() => onViewDetails(goal.id)}
-      className="bg-white border border-slate-200/80 rounded-[20px] p-6 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative group overflow-hidden"
+      className="bg-white border border-slate-200/80 rounded-[20px] p-5 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex h-full flex-col justify-between relative group overflow-hidden"
     >
       {/* Top Section */}
       <div className="space-y-4">

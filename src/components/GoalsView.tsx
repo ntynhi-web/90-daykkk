@@ -115,10 +115,12 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
 
   const visibleGoals = state.goals.filter(g => g.status !== "archived");
   const activeGoals = visibleGoals.filter(g => g.status === "active");
-  const focusGoal = activeGoals.find(g => g.id === state.weeklyFocusGoalId) || activeGoals[0];
+  const foundationGoal = activeGoals.find(g => g.id === "G4");
+  const workGoals = activeGoals.filter(g => g.id !== foundationGoal?.id);
+  const focusGoal = workGoals.find(g => g.id === state.weeklyFocusGoalId) || workGoals[0];
   const selectedSupportIds = state.weeklySupportGoalIds || [];
-  const supportGoals = activeGoals.filter(g => selectedSupportIds.includes(g.id) && g.id !== focusGoal?.id).slice(0, 2);
-  const laterGoals = visibleGoals.filter(g => g.id !== focusGoal?.id && !supportGoals.some(item => item.id === g.id));
+  const supportGoals = activeGoals.filter(g => selectedSupportIds.includes(g.id) && g.id !== focusGoal?.id && g.id !== foundationGoal?.id).slice(0, 2);
+  const laterGoals = visibleGoals.filter(g => g.id !== focusGoal?.id && g.id !== foundationGoal?.id && !supportGoals.some(item => item.id === g.id));
 
   const selectWeeklyFocus = (goalId: string) => {
     onChangeState({
@@ -185,13 +187,13 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
             <label className="space-y-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mục tiêu chính tuần này</span>
               <select value={focusGoal?.id || ''} onChange={event => selectWeeklyFocus(event.target.value)} className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-xs font-bold text-indigo-900 outline-none">
-                {activeGoals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
+                {workGoals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
               </select>
             </label>
             <div className="space-y-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mục tiêu duy trì · tối đa 2</span>
               <div className="flex flex-wrap gap-2">
-                {activeGoals.filter(goal => goal.id !== focusGoal?.id).map(goal => {
+                {activeGoals.filter(goal => goal.id !== focusGoal?.id && goal.id !== foundationGoal?.id).map(goal => {
                   const active = selectedSupportIds.includes(goal.id);
                   return <button key={goal.id} type="button" onClick={() => toggleWeeklySupport(goal.id)} className={`rounded-xl border px-3 py-2 text-[10px] font-bold ${active ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500'}`}>{active ? '✓ ' : '+ '}{goal.name}</button>;
                 })}
@@ -212,6 +214,20 @@ export default function GoalsView({ state, onChangeState, autoOpenCreateModal, o
         />
       ) : (
         <div className="space-y-8">
+          {foundationGoal && (
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="life-kicker text-rose-600">Nền hằng ngày</p>
+                  <h2 className="mt-1 font-display text-xl font-extrabold text-slate-950">Health & Beauty luôn ở trên</h2>
+                  <p className="mt-1 text-xs text-slate-500">Theo dõi sức khỏe mỗi ngày, không đưa vào nhóm chờ và không cạnh tranh với mục tiêu công việc.</p>
+                </div>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700">Ưu tiên nền tảng</span>
+              </div>
+              <JourneyGrid goals={[foundationGoal]} onViewDetails={setSelectedGoalId} onEdit={handleOpenEditGoal} onArchive={handleArchiveGoal} />
+            </section>
+          )}
+
           {focusGoal && (
             <section className="space-y-3">
               <div className="flex items-end justify-between gap-4">
