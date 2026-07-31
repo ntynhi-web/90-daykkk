@@ -25,6 +25,37 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
   const goals = getOrderedGoals(state.goals);
   const completingRef = useRef(new Set<string>());
 
+  const toggleDailyRoutine = (routineId: string, goalId: string, completed: boolean, evidence: string) => {
+    const lockKey = `routine:${routineId}`;
+    if (completingRef.current.has(lockKey)) return;
+    completingRef.current.add(lockKey);
+    const now = Date.now();
+    const existingLogs = state.routineLogs || [];
+    const nextLogs = completed
+      ? existingLogs.filter(log => !(log.routineId === routineId && log.date === today))
+      : [{
+          id: `routine_log_${routineId}_${today}`,
+          routineId,
+          goalId,
+          date: today,
+          status: "completed" as const,
+          source: "manual" as const,
+          evidence,
+          activityId: null,
+          createdTimestamp: now,
+          updatedTimestamp: now
+        }, ...existingLogs.filter(log => !(log.routineId === routineId && log.date === today))];
+
+    onChangeState({
+      ...state,
+      routineLogs: nextLogs,
+      routines: state.routines.map(routine => routine.id === routineId
+        ? { ...routine, status: completed ? "pending" as const : "completed" as const }
+        : routine)
+    });
+    window.setTimeout(() => completingRef.current.delete(lockKey), 500);
+  };
+
   const completeCurrentStep = (goal: Goal) => {
     if (completingRef.current.has(goal.id)) return;
     const current = goal.milestones.find(milestone => !milestone.achieved);
@@ -110,13 +141,18 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                             completedToday ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-white"
                           }`}>
                             <div className="flex items-center justify-between gap-2">
-                              <span className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                              <button
+                                type="button"
+                                onClick={() => toggleDailyRoutine(routine.id, routine.goalId, completedToday, routine.target || routine.minimumDay)}
+                                aria-pressed={completedToday}
+                                aria-label={completedToday ? `Bỏ hoàn tất ${routine.name}` : `Hoàn tất ${routine.name}`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 ${
                                 completedToday ? "bg-emerald-600 text-white" : "bg-rose-100 text-rose-600"
                               }`}>
                                 {completedToday ? <Check className="h-4 w-4" /> : <Circle className="h-3.5 w-3.5" />}
-                              </span>
-                              <span className="rounded-full bg-rose-50 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-rose-700">
-                                Luôn mở
+                              </button>
+                              <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wide ${completedToday ? "bg-emerald-100 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                                {completedToday ? "Đã hoàn tất" : "Bấm để hoàn tất"}
                               </span>
                             </div>
                             <p className="mt-3 text-sm font-black text-slate-950">{routine.name}</p>
@@ -127,7 +163,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                       })}
                     </div>
                     <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
-                      Các hành động Health & Beauty luôn mở song song. Bạn check theo ngày trong phần routine, không cần chờ hoàn thành một mốc cân nặng.
+                      Các hành động Health & Beauty luôn mở song song. Tick trực tiếp vòng tròn để hoàn tất trong ngày; bấm lại để bỏ hoàn tất.
                     </p>
                   </>
                 ) : (
