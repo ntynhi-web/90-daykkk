@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronDown, Circle, Clock3, Minus, Plus, Sparkles, X } from "lucide-react";
 import { AppState, Routine, RoutineLog } from "../types";
 import GoalIcon from "./GoalIcon";
@@ -19,6 +19,7 @@ const routineTone = (status?: RoutineLog['status']) => {
 export default function DailyRoutineCheckin({ state, today, onChangeState }: DailyRoutineCheckinProps) {
   const [expanded, setExpanded] = useState(false);
   const [showPlanner, setShowPlanner] = useState(false);
+  const savingRef = useRef(false);
   const [draft, setDraft] = useState({
     name: "", goalId: state.goals.find(goal => goal.status === "active")?.id || "",
     startDate: today, startTime: "07:00", endTime: "07:30",
@@ -104,7 +105,11 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
   };
 
   const saveRoutinePlan = () => {
-    if (!draft.name.trim() || !draft.goalId || !draft.startTime || !draft.endTime) return;
+    if (savingRef.current) return;
+    const intervalDays = Number(draft.intervalDays);
+    const invalidInterval = draft.recurrence === "interval" && (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 90);
+    if (!draft.name.trim() || draft.name.trim().length > 160 || !draft.goalId || !draft.startTime || !draft.endTime || draft.endTime <= draft.startTime || invalidInterval) return;
+    savingRef.current = true;
     const routine: Routine = {
       id: `routine_${Date.now()}`,
       goalId: draft.goalId,
@@ -117,7 +122,7 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
       recurrence: draft.recurrence,
       recurrenceStartDate: draft.startDate,
       scheduleDays: draft.recurrence === 'weekly_days' ? draft.scheduleDays : undefined,
-      intervalDays: draft.recurrence === 'interval' ? Math.max(1, draft.intervalDays) : undefined,
+      intervalDays: draft.recurrence === 'interval' ? intervalDays : undefined,
       startTime: draft.startTime, endTime: draft.endTime,
       calendarEnabled: true,
       timeOfDay: Number(draft.startTime.slice(0, 2)) < 12 ? 'morning' : Number(draft.startTime.slice(0, 2)) < 18 ? 'afternoon' : 'evening'
@@ -131,6 +136,7 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
     setShowPlanner(false);
     setExpanded(true);
     setDraft(value => ({ ...value, name: '' }));
+    window.setTimeout(() => { savingRef.current = false; }, 500);
   };
 
   return (
@@ -164,13 +170,13 @@ export default function DailyRoutineCheckin({ state, today, onChangeState }: Dai
             <button onClick={() => setShowPlanner(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white"><X className="h-4 w-4" /></button>
           </div>
           <div className="grid gap-3 md:grid-cols-4">
-            <label className="md:col-span-2 text-[10px] font-bold text-slate-600">Tên hành động<input value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Yoga, gọi 10 khách hàng..." className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-indigo-400" /></label>
+            <label className="md:col-span-2 text-[10px] font-bold text-slate-600">Tên hành động<input maxLength={160} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Yoga, gọi 10 khách hàng..." className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 outline-none focus:border-indigo-400" /></label>
             <label className="text-[10px] font-bold text-slate-600">Thuộc mục tiêu<select value={draft.goalId} onChange={event => setDraft({ ...draft, goalId: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs">{activeGoals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
             <label className="text-[10px] font-bold text-slate-600">Bắt đầu từ<input type="date" min={state.startDate} max={state.endDate} value={draft.startDate} onChange={event => setDraft({ ...draft, startDate: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" /></label>
             <label className="text-[10px] font-bold text-slate-600">Giờ bắt đầu<input type="time" value={draft.startTime} onChange={event => setDraft({ ...draft, startTime: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" /></label>
             <label className="text-[10px] font-bold text-slate-600">Hoàn tất lúc<input type="time" value={draft.endTime} onChange={event => setDraft({ ...draft, endTime: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" /></label>
             <label className="text-[10px] font-bold text-slate-600">Lặp lại<select value={draft.recurrence} onChange={event => setDraft({ ...draft, recurrence: event.target.value as typeof draft.recurrence })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs"><option value="daily">Mỗi ngày / 7 ngày mỗi tuần</option><option value="weekly_days">Theo các thứ cố định</option><option value="interval">Cách nhau N ngày</option></select></label>
-            {draft.recurrence === 'interval' && <label className="text-[10px] font-bold text-slate-600">Số ngày cách nhau<input type="number" min="1" max="90" value={draft.intervalDays} onChange={event => setDraft({ ...draft, intervalDays: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" /></label>}
+            {draft.recurrence === 'interval' && <label className="text-[10px] font-bold text-slate-600">Số ngày cách nhau<input type="number" min="1" max="90" step="1" value={draft.intervalDays} onChange={event => setDraft({ ...draft, intervalDays: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs" /></label>}
           </div>
           {draft.recurrence === 'weekly_days' && <div className="mt-3 flex flex-wrap gap-2">{['CN','T2','T3','T4','T5','T6','T7'].map((label, day) => <button key={label} onClick={() => setDraft({ ...draft, scheduleDays: draft.scheduleDays.includes(day) ? draft.scheduleDays.filter(item => item !== day) : [...draft.scheduleDays, day] })} className={`rounded-lg px-3 py-2 text-[10px] font-black ${draft.scheduleDays.includes(day) ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-white text-slate-500'}`}>{label}</button>)}</div>}
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-white p-3">

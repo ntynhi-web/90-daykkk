@@ -81,7 +81,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
 
   const addChore = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || title.trim().length > 160) return;
     const nextChore: Chore = {
       id: `chore_${Date.now()}`,
       title: title.trim(),
@@ -120,7 +120,7 @@ export default function LifeMaintenance({ state, today, onChangeState }: LifeMai
 
       {expanded && showAdd && (
         <form onSubmit={addChore} className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-4 md:grid-cols-[1fr_150px_140px_145px_auto] md:px-6">
-          <input value={title} onChange={event => setTitle(event.target.value)} autoFocus placeholder="Ví dụ: mua thức ăn cho mèo" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" />
+          <input maxLength={160} value={title} onChange={event => setTitle(event.target.value)} autoFocus placeholder="Ví dụ: mua thức ăn cho mèo" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" />
           <label className="relative">
             <select value={category} onChange={event => setCategory(event.target.value as ChoreCategory)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-8 text-xs font-semibold outline-none">
               {Object.entries(categories).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
