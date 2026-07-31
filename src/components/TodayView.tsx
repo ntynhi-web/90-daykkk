@@ -593,7 +593,11 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
       insight: "",
       nextAction: "",
       confidence: act.confidence,
-      classificationReason: act.evidence
+      classificationReason: act.evidence,
+      source: "text" as const,
+      originalTranscript: transcript,
+      createdTimestamp: Date.now(),
+      updatedTimestamp: Date.now()
     }));
     updatedState.activities = [...newActivities, ...updatedState.activities];
 
@@ -1115,6 +1119,23 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           {todaySchedule.length === 0 && <p className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Hôm nay chưa có lịch.</p>}
         </div>
       </section>
+
+      {attentionCount > 0 && (
+        <section className="flex flex-col gap-3 rounded-[20px] border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+            <div>
+              <p className="text-sm font-black text-amber-950">{attentionCount} mục cần xem xét hôm nay</p>
+              <p className="mt-1 text-xs text-amber-800">
+                {overdueTasks.length} task quá hạn · {overdueMilestones.length} bước trễ · {unfinishedPastSchedule.length} lịch bỏ lỡ · {overdueChores.length} việc duy trì
+              </p>
+            </div>
+          </div>
+          <button onClick={() => document.getElementById("section-quick-input")?.scrollIntoView({ behavior: "smooth" })} className="rounded-xl bg-amber-700 px-4 py-2.5 text-xs font-black text-white">
+            Xử lý ngay
+          </button>
+        </section>
+      )}
 
       <DailyGoalProgress state={state} today={todayStr} />
 
