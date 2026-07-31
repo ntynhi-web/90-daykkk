@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Check, Circle, Flag, LockKeyhole } from "lucide-react";
 import { AppState, Goal } from "../types";
 import GoalIcon, { COLOR_MAP } from "./GoalIcon";
@@ -23,10 +23,13 @@ const getOrderedGoals = (goals: Goal[]) =>
 
 export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRoadmapBlockProps) {
   const goals = getOrderedGoals(state.goals);
+  const completingRef = useRef(new Set<string>());
 
   const completeCurrentStep = (goal: Goal) => {
+    if (completingRef.current.has(goal.id)) return;
     const current = goal.milestones.find(milestone => !milestone.achieved);
     if (!current) return;
+    completingRef.current.add(goal.id);
 
     const completedAt = new Date().toISOString();
     const milestones = goal.milestones.map(milestone =>
@@ -53,6 +56,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
         status: next ? item.status : "completed"
       } : item)
     });
+    window.setTimeout(() => completingRef.current.delete(goal.id), 500);
   };
 
   return (

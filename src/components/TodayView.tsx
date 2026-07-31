@@ -13,6 +13,7 @@ import GoalRoadmapBlock from "./GoalRoadmapBlock";
 import DailyGoalProgress from "./DailyGoalProgress";
 import LifeOperations from "./LifeOperations";
 import { expandRecurringSchedule, expandRoutine, mergeScheduleItems, ScheduleRecurrence } from "../recurrence";
+import { fetchWithTimeout, MAX_TEXT_LENGTH } from "../planTemplate";
 
 interface TodayViewProps {
   state: AppState;
@@ -97,6 +98,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   const [coachLens, setCoachLens] = useState<'auto' | 'fund_backtest' | 'b2b_marketing' | 'career' | 'health_beauty'>('auto');
   const [captureExpanded, setCaptureExpanded] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const submitLocksRef = useRef(new Set<string>());
 
   // Interactive Confirmation State
   const [editableCheckIn, setEditableCheckIn] = useState<{
@@ -288,7 +290,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     setIsRefining(true);
     setRefineError(null);
     try {
-      const response = await fetch("/api/refine-transcript", {
+      const response = await fetchWithTimeout("/api/refine-transcript", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript })
@@ -409,7 +411,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     const activeRoutines = (state.routines || []);
 
     try {
-      const response = await fetch("/api/classify", {
+      const response = await fetchWithTimeout("/api/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -518,7 +520,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     setCoachError(null);
     setCoachAdvice(null);
     try {
-      const response = await fetch("/api/coach", {
+      const response = await fetchWithTimeout("/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: transcript, state, preferredLens: coachLens })
@@ -880,7 +882,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
 
   const saveDailyJournal = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!journalDraft.work.trim()) return;
+    if (!journalDraft.work.trim() || submitLocksRef.current.has("journal")) return;
+    submitLocksRef.current.add("journal");
     const timestamp = Date.now();
     const entry: ActivityEntry = {
       id: `journal_${timestamp}`, date: todayStr, goalId: journalDraft.goalId || null, source: 'manual',
@@ -893,11 +896,13 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     onChangeState({ ...state, activities: [entry, ...state.activities] });
     setJournalDraft(value => ({ ...value, work: '', result: '', lesson: '' }));
     setSaveNotice('Đã lưu nhật ký hôm nay vào Kết quả.');
+    window.setTimeout(() => submitLocksRef.current.delete("journal"), 500);
   };
 
   const saveUnexpectedTask = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!unexpectedDraft.title.trim()) return;
+    if (!unexpectedDraft.title.trim() || submitLocksRef.current.has("unexpected")) return;
+    submitLocksRef.current.add("unexpected");
     const timestamp = Date.now();
     const task: PriorityTask = {
       id: `unexpected_${timestamp}`, title: unexpectedDraft.title.trim(), priority: unexpectedDraft.priority,
@@ -913,6 +918,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     onChangeState({ ...state, priorityTasks: [task, ...(state.priorityTasks || [])], scheduleItems: [...(state.scheduleItems || []), ...schedule] });
     setUnexpectedDraft(value => ({ ...value, title: '', startTime: '', endTime: '' }));
     setSaveNotice(schedule.length ? 'Đã thêm việc phát sinh vào ưu tiên và lịch hôm nay.' : 'Đã thêm việc phát sinh vào ưu tiên hôm nay.');
+    window.setTimeout(() => submitLocksRef.current.delete("unexpected"), 500);
   };
 
   const moveTaskPriority = (taskId: string, targetPriority: 'important_urgent' | 'important' | 'urgent' | 'later') => {
@@ -1198,6 +1204,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
               rows={3}
               placeholder="Nhập nội dung nhật ký thô tại đây hoặc nhấn nút Microphone để nói..."
               value={transcript}
+              maxLength={MAX_TEXT_LENGTH}
               onChange={e => setTranscript(e.target.value)}
               className="w-full text-sm border border-slate-200 focus:border-indigo-400 rounded-2xl px-4 py-4 bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all font-medium leading-relaxed resize-none"
             />
@@ -1403,8 +1410,8 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           </div>
           <div className="mt-4 grid gap-3">
             <select aria-label="Mục tiêu của nhật ký" value={journalDraft.goalId} onChange={event => setJournalDraft({ ...journalDraft, goalId: event.target.value })} className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700">{state.goals.filter(goal => goal.status === 'active').map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select>
-            <textarea value={journalDraft.work} onChange={event => setJournalDraft({ ...journalDraft, work: event.target.value })} placeholder="Công việc đã thực hiện…" className="min-h-20 rounded-xl border border-sky-200 bg-white px-3 py-3 text-xs outline-none focus:border-sky-500" />
-            <div className="grid gap-3 sm:grid-cols-2"><input value={journalDraft.result} onChange={event => setJournalDraft({ ...journalDraft, result: event.target.value })} placeholder="Kết quả/đầu ra" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /><input value={journalDraft.lesson} onChange={event => setJournalDraft({ ...journalDraft, lesson: event.target.value })} placeholder="Vấn đề hoặc bài học" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /></div>
+            <textarea maxLength={MAX_TEXT_LENGTH} value={journalDraft.work} onChange={event => setJournalDraft({ ...journalDraft, work: event.target.value })} placeholder="Công việc đã thực hiện…" className="min-h-20 rounded-xl border border-sky-200 bg-white px-3 py-3 text-xs outline-none focus:border-sky-500" />
+            <div className="grid gap-3 sm:grid-cols-2"><input maxLength={1000} value={journalDraft.result} onChange={event => setJournalDraft({ ...journalDraft, result: event.target.value })} placeholder="Kết quả/đầu ra" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /><input maxLength={1000} value={journalDraft.lesson} onChange={event => setJournalDraft({ ...journalDraft, lesson: event.target.value })} placeholder="Vấn đề hoặc bài học" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /></div>
             <button disabled={!journalDraft.work.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-xs font-black text-white disabled:opacity-40"><Save className="h-4 w-4" /> Lưu nhật ký</button>
           </div>
         </form>
@@ -1415,7 +1422,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
             <Zap className="h-5 w-5 text-amber-600" />
           </div>
           <div className="mt-4 grid gap-3">
-            <input value={unexpectedDraft.title} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, title: event.target.value })} placeholder="Ví dụ: xử lý giấy tờ phát sinh…" className="rounded-xl border border-amber-200 bg-white px-3 py-3 text-xs outline-none focus:border-amber-500" />
+            <input maxLength={160} value={unexpectedDraft.title} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, title: event.target.value })} placeholder="Ví dụ: xử lý giấy tờ phát sinh…" className="rounded-xl border border-amber-200 bg-white px-3 py-3 text-xs outline-none focus:border-amber-500" />
             <div className="grid gap-3 sm:grid-cols-2"><select aria-label="Mức ưu tiên" value={unexpectedDraft.priority} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, priority: event.target.value as PriorityTask['priority'] })} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold"><option value="important_urgent">Quan trọng & khẩn cấp</option><option value="urgent">Khẩn cấp</option><option value="important">Quan trọng</option><option value="later">Có thể để sau</option></select><select aria-label="Mục tiêu liên quan" value={unexpectedDraft.goalId} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, goalId: event.target.value })} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs"><option value="">Không thuộc mục tiêu</option>{state.goals.filter(goal => goal.status === 'active').map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></div>
             <div className="grid grid-cols-2 gap-3"><label className="text-[10px] font-bold text-slate-500">Bắt đầu<input type="time" value={unexpectedDraft.startTime} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, startTime: event.target.value })} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs" /></label><label className="text-[10px] font-bold text-slate-500">Kết thúc<input type="time" value={unexpectedDraft.endTime} onChange={event => setUnexpectedDraft({ ...unexpectedDraft, endTime: event.target.value })} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs" /></label></div>
             <button disabled={!unexpectedDraft.title.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-xs font-black text-white disabled:opacity-40"><Plus className="h-4 w-4" /> Thêm việc phát sinh</button>
