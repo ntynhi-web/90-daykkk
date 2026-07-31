@@ -57,18 +57,21 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
 
   const topActivityGoal = state.goals
     .map(goal => ({ goal, count: state.activities.filter(activity => activity.goalId === goal.id).length }))
-    .sort((a, b) => b.count - a.count)[0];
+    .sort((a, b) => b.count - a.count)
+    .find(item => item.count > 0);
+  const attributedActivityCount = state.activities.filter(activity => state.goals.some(goal => goal.id === activity.goalId)).length;
+  const unassignedActivityCount = state.activities.length - attributedActivityCount;
   const outcomeCount = state.activities.filter(activity => Object.keys(activity.outcome || {}).length > 0).length;
   const pendingOutcomes = state.activities.filter(activity => activity.outcomeStatus === 'pending').sort((a, b) => (a.outcomeReviewDate || '').localeCompare(b.outcomeReviewDate || ''));
   const allMilestones = activeGoals.flatMap(goal => goal.milestones);
   const completedMilestones = allMilestones.filter(milestone => milestone.achieved).length;
   const mindshareTotal = state.activities.filter(a => [fundGoal?.id, b2bGoal?.id, healthGoal?.id].includes(a.goalId)).length;
-  const mindsharePercent = (goalId?: string, fallback = 0) => mindshareTotal > 0
+  const mindsharePercent = (goalId?: string) => mindshareTotal > 0
     ? Math.round((state.activities.filter(a => a.goalId === goalId).length / mindshareTotal) * 100)
-    : fallback;
-  const fundMindshare = mindsharePercent(fundGoal?.id, 34);
-  const b2bMindshare = mindsharePercent(b2bGoal?.id, 33);
-  const healthMindshare = mindsharePercent(healthGoal?.id, 33);
+    : 0;
+  const fundMindshare = mindsharePercent(fundGoal?.id);
+  const b2bMindshare = mindsharePercent(b2bGoal?.id);
+  const healthMindshare = mindsharePercent(healthGoal?.id);
 
   // Calculate real routine consistency from dated logs (never generated/demo history).
   const last15Days = [...Array(15)].map((_, i) => new Intl.DateTimeFormat("en-CA", {
@@ -101,14 +104,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
     if (!routine.scheduleDays?.length) return true;
     return routine.scheduleDays.includes(new Date(`${date}T12:00:00`).getDay());
   };
-  const canonicalRoutineIds = new Set([
-    'routine_fund_daily', 'routine_fund_weekly', 'routine_b2b_career', 'routine_english',
-    'routine_yoga', 'routine_walk', 'routine_healthy_eating', 'routine_skincare_am',
-    'routine_skincare_pm', 'routine_haircare', 'routine_sleep'
-  ]);
-  const activeRoutines = state.routines.filter(routine =>
-    routine.active !== false && ((state.personalScheduleSeedVersion || 0) < 8 || canonicalRoutineIds.has(routine.id))
-  );
+  const activeRoutines = state.routines.filter(routine => routine.active !== false);
   const routineOpportunities = activeRoutines.flatMap(routine => eligibleRoutineDays
     .filter(date => routineIsDue(routine, date))
     .filter(date => !routineLogs.some(log => log.routineId === routine.id && log.date === date && log.status === 'skipped'))
@@ -352,7 +348,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
         </div>
 
         {/* Tab Controls */}
-        <div className="flex bg-[#f1f5f9] p-1 rounded-xl border border-slate-200 shrink-0">
+        <div className="flex max-w-full overflow-x-auto bg-[#f1f5f9] p-1 rounded-xl border border-slate-200 shrink-0">
           {(['overview', 'pipelines', 'health', 'trading'] as const).map(tab => (
             <button
               key={tab}
@@ -383,19 +379,19 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
           >
             <section className="grid gap-3 md:grid-cols-3">
               <div className="rounded-[22px] border border-indigo-100 bg-indigo-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Execution</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">1 · Đã thực hiện</span>
                 <p className="mt-2 text-2xl font-black text-slate-950">{state.activities.length} bằng chứng</p>
-                <p className="mt-1 text-xs text-slate-600">Tập trung nhiều nhất: <strong>{topActivityGoal?.goal.name || "chưa có dữ liệu"}</strong>.</p>
+                <p className="mt-1 text-xs text-slate-600">{topActivityGoal ? <>Tập trung nhiều nhất: <strong>{topActivityGoal.goal.name}</strong>.</> : unassignedActivityCount > 0 ? `${unassignedActivityCount} bằng chứng chưa gắn với mục tiêu.` : "Chưa có dữ liệu thực hiện."}</p>
               </div>
               <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Outcome</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">2 · Kết quả</span>
                 <p className="mt-2 text-2xl font-black text-slate-950">{outcomeCount} kết quả</p>
                 <p className="mt-1 text-xs text-slate-600">B2B: {state.b2bLeads.length} lead · {b2bStatusCounts.paying} khách trả phí.</p>
               </div>
               <div className="rounded-[22px] border border-amber-100 bg-amber-50/70 p-5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Milestone</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">3 · Cột mốc</span>
                 <p className="mt-2 text-2xl font-black text-slate-950">{completedMilestones}/{allMilestones.length} cột mốc</p>
-                <p className="mt-1 text-xs text-slate-600">Nhịp routine 15 ngày: {routinesRatio}%. {routinesRatio >= 70 ? "Đang bền vững." : "Nên thu nhỏ mức tối thiểu."}</p>
+                <p className="mt-1 text-xs text-slate-600">{totalRoutineOpportunities > 0 ? <>Nhịp routine 15 ngày: {routinesRatio}%. {routinesRatio >= 70 ? "Đang bền vững." : "Tiếp tục ghi nhận để thấy xu hướng."}</> : "Chưa đủ ngày routine để tính nhịp ổn định."}</p>
               </div>
             </section>
 
@@ -413,7 +409,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 </div>
 
                 {/* SVG/CSS Bar Chart for Activity vs Outcome */}
-                <div className="pt-6 space-y-4">
+                {attributedActivityCount === 0 ? <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center"><p className="text-sm font-black text-slate-700">Chưa có hoạt động gắn với mục tiêu</p><p className="mt-1 text-xs text-slate-500">Khi check-in, hãy chọn Fund, Freelancer, B2B hoặc Health & Beauty để biểu đồ bắt đầu phản ánh đúng nỗ lực.</p></div> : <div className="pt-6 space-y-4">
                   {state.goals.map(g => {
                     const actCount = state.activities.filter(a => a.goalId === g.id).length;
                     const otcCount = state.activities.filter(a => a.goalId === g.id && Object.keys(a.outcome).length > 0).length;
@@ -441,7 +437,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </div>
 
               {/* Card 2: Sự phân bổ tâm trí theo mục tiêu (col-span-4) */}
@@ -452,7 +448,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                 </div>
 
                 {/* Nice CSS-based donut/stat circle representation */}
-                <div className="py-6 flex flex-col items-center justify-center space-y-4">
+                {mindshareTotal === 0 ? <div className="my-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center"><PieChart className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-2 text-sm font-black text-slate-700">Chưa có dữ liệu phân bổ</p><p className="mt-1 text-xs text-slate-500">App sẽ không tự chia phần trăm khi chưa có hoạt động thật.</p></div> : <div className="py-6 flex flex-col items-center justify-center space-y-4">
                   <div className="relative w-28 h-28 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                       <path className="text-slate-100" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -478,10 +474,11 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       <span className="font-bold">{healthMindshare}%</span>
                     </div>
                   </div>
-                </div>
+                </div>}
               </div>
 
               {/* Card 3: Cân nặng & Thể chất (col-span-5) */}
+              {weightRecords.length > 0 && (
               <div className="md:col-span-5 bg-white border border-slate-200/80 rounded-[24px] p-6 space-y-4">
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">CÂN NẶNG & THỂ CHẤT</h4>
@@ -501,8 +498,10 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Card 4: Hiệu suất Phễu Outreach (col-span-7) */}
+              {state.b2bLeads.length > 0 && (
               <div className="md:col-span-7 bg-white border border-slate-200/80 rounded-[24px] p-6 flex flex-col justify-between">
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">HIỆU SUẤT PHỄU OUTREACH</h4>
@@ -510,12 +509,7 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                   <p className="text-xs text-slate-500">Tỷ lệ chuyển đổi từ Outreach của các đối tác tiềm năng.</p>
                 </div>
 
-                {state.b2bLeads.length === 0 ? (
-                  <div className="my-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                    <p className="text-sm font-black text-slate-700">Chưa có dữ liệu outreach</p>
-                    <p className="mt-1 text-xs text-slate-500">Thêm lead hoặc ghi nhận hoạt động tiếp cận đầu tiên để bắt đầu đo phễu.</p>
-                  </div>
-                ) : <div className="py-4 space-y-2.5">
+                <div className="py-4 space-y-2.5">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-slate-700">Tổng số leads đã tiếp cận:</span>
                     <span className="font-bold text-slate-900 font-mono">{state.b2bLeads.length} leads</span>
@@ -536,12 +530,13 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
                       <span className="font-bold text-emerald-800">{b2bStatusCounts.paying}</span>
                     </div>
                   </div>
-                </div>}
+                </div>
 
                 <div className="text-[10px] text-slate-400 italic text-center pt-2 border-t border-slate-100">
                   Dữ liệu được tự động cập nhật từ các hoạt động ghi nhận check-in hàng ngày.
                 </div>
               </div>
+              )}
 
               {/* Card 5: Routine Consistency Contribution Grid (col-span-12) */}
               <div className="md:col-span-12">
