@@ -341,9 +341,12 @@ export default function ProgressView({ state, onChangeState }: ProgressViewProps
       {/* Title Header with Accent */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="font-display font-extrabold text-3xl text-[#0b0f19] tracking-tight">Kết Quả 90 Ngày</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="font-display font-extrabold text-3xl text-[#0b0f19] tracking-tight">Kết quả chu kỳ</h2>
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">Hạn chót · {formatDisplayDate(state.endDate)}</span>
+          </div>
           <p className="text-sm text-slate-500 max-w-xl">
-            Phân tích định tính và định lượng từ nhật ký check-in của bạn.
+            Theo dõi tiến độ và kết quả thực tế đến ngày {formatDisplayDate(state.endDate)}.
           </p>
         </div>
 
