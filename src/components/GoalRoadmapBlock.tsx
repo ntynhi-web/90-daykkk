@@ -142,15 +142,21 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                               ? "border-indigo-300 bg-white shadow-md ring-2 ring-indigo-100"
                               : "border-transparent bg-transparent"
                         }`}>
-                          <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                          <button
+                            type="button"
+                            disabled={!isCurrent}
+                            onClick={() => completeCurrentStep(goal)}
+                            aria-label={isCurrent ? `Hoàn tất ${milestone.title}` : isCompleted ? `${milestone.title} đã hoàn thành` : `${milestone.title} chưa mở`}
+                            title={isCurrent ? "Bấm để đánh dấu hoàn thành" : isCompleted ? "Đã hoàn thành" : "Hoàn thành bước trước để mở"}
+                            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition ${
                             isCompleted
                               ? "bg-emerald-600 text-white"
                               : isCurrent
-                                ? "bg-indigo-600 text-white"
+                                ? "cursor-pointer bg-indigo-600 text-white hover:scale-110 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
                                 : "bg-slate-200 text-slate-500"
                           }`}>
                             {isCompleted ? <Check className="h-4 w-4" /> : isCurrent ? <Circle className="h-3.5 w-3.5 fill-current" /> : <LockKeyhole className="h-3.5 w-3.5" />}
-                          </span>
+                          </button>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className={`text-sm font-black ${isCompleted ? "text-emerald-900 line-through decoration-emerald-300" : isCurrent ? "text-slate-950" : "text-slate-500"}`}>
