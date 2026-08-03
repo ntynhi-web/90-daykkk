@@ -291,8 +291,8 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
             {/* Day View */}
             {viewMode === 'day' ? (
               <div className="divide-y divide-slate-100">
-                {Array.from({ length: 15 }, (_, i) => {
-                  const hour = i + 8; // 8 AM to 10 PM
+                {Array.from({ length: 18 }, (_, i) => {
+                  const hour = i + 5; // 5 AM to 10 PM
                   const hourStr = `${hour.toString().padStart(2, '0')}:00`;
                   const matchingEvents = itemsForSelected.filter(item => {
                     const startH = parseInt(item.startTime.split(':')[0]);
@@ -389,9 +389,9 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                   </div>
 
                   {/* Fixed time grid. Events are positioned independently so long blocks do not stretch an hour row. */}
-                  <div className="relative h-[825px]">
-                    {Array.from({ length: 15 }, (_, i) => {
-                      const hour = i + 8;
+                  <div className="relative h-[990px]">
+                    {Array.from({ length: 18 }, (_, i) => {
+                      const hour = i + 5;
                       const hourStr = `${hour.toString().padStart(2, '0')}:00`;
                       return (
                         <div key={hour} className="grid h-[55px] grid-cols-8 border-b border-slate-100">
@@ -424,10 +424,10 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                           const [eh, em] = event.endTime.split(':').map(Number);
                           const startMinutes = sh * 60 + sm;
                           const endMinutes = eh * 60 + em;
-                          const visibleStart = Math.max(8 * 60, startMinutes);
+                          const visibleStart = Math.max(5 * 60, startMinutes);
                           const visibleEnd = Math.min(23 * 60, endMinutes);
                           if (visibleEnd <= visibleStart) return null;
-                          const top = ((visibleStart - 8 * 60) / 60) * 55;
+                          const top = ((visibleStart - 5 * 60) / 60) * 55;
                           const height = Math.max(24, ((visibleEnd - visibleStart) / 60) * 55 - 4);
                           return (
                             <div
