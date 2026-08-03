@@ -87,6 +87,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     const day = new Date(`${today}T12:00:00`).getDay();
     return !routine.scheduleDays?.length || routine.scheduleDays.includes(day);
   });
+  const healthRoutines = activeRoutines.filter(routine => getAspect(routine.goalId, routine.name).key === "health");
   const todayChores = (state.chores || []).filter(chore => {
     if (chore.frequency === "one_time") return !chore.completed && (!chore.dueDate || chore.dueDate <= today);
     return chore.lastCompletedDate !== today && (chore.frequency === "daily" || !chore.dueDate || chore.dueDate <= today);
@@ -104,11 +105,24 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700", border: "border-pink-200" },
     { key: "chores", label: "Chores", tone: "bg-cyan-100 text-cyan-700", border: "border-cyan-200" }
   ];
+  const canonicalSubItems: Record<string, string[]> = {
+    health: ["Tập thể dục", "Uống 1,5 lít nước", "Ăn healthy · hạn chế ngọt/béo", "Skincare & vệ sinh cá nhân"],
+    fund: ["Học video", "Viết checklist", "Xem demo", "Backtest", "Trading journal", "Đánh giá demo", "Điều kiện mua quỹ"],
+    b2b: ["Checklist sửa website", "Chỉnh website", "Viết SEO bằng AI", "Chi đọc lại", "Đăng bài", "Làm portfolio", "Học AI Automation"],
+    relationship: ["Chưa chốt mục con"],
+    chores: ["Chăm mèo", "Dọn nhà", "Bếp & nấu ăn", "Giặt và sắp xếp quần áo", "Việc gia đình phát sinh"]
+  };
+  const routineDisplayName: Record<string, string> = {
+    routine_running_park: "Tập thể dục",
+    routine_water_1500: "Uống 1,5 lít nước",
+    routine_health_foundation: "Ăn healthy · hạn chế ngọt/béo",
+    routine_beauty_foundation: "Skincare & vệ sinh cá nhân"
+  };
   const activities = (state.activities || []).filter(item => item.date === today)
     .sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
   const completedMain = mainItems.filter(item => item.completed).length;
-  const completedRoutine = activeRoutines.filter(routine => logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed")).length;
-  const totalChecks = mainItems.length + activeRoutines.length;
+  const completedRoutine = healthRoutines.filter(routine => logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed")).length;
+  const totalChecks = mainItems.length + healthRoutines.length;
   const completion = totalChecks ? Math.round(((completedMain + completedRoutine) / totalChecks) * 100) : 0;
 
   const toggleMain = (item: typeof mainItems[number]) => {
@@ -184,16 +198,17 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
           <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${group.tone}`}>{group.label}</span><span className="text-[9px] font-black text-slate-400">TUẦN NÀY</span></div>
           <div className="mt-4 grid grid-cols-7 gap-1">{weekDays.map(day => {
             const groupSchedules = day.schedules.filter(item => getAspect(item.goalId || item.journeyId, item.title).key === group.key);
-            const routinePlanned = group.key === "health" ? (state.routines || []).filter(routine => routine.active !== false && (!routine.scheduleDays?.length || routine.scheduleDays.includes(new Date(`${day.date}T12:00:00`).getDay()))).length : 0;
-            const routineDone = group.key === "health" ? logs.filter(log => log.date === day.date && log.status !== "missed").length : 0;
+            const routinePlanned = group.key === "health" ? (state.routines || []).filter(routine => routine.active !== false && getAspect(routine.goalId, routine.name).key === "health" && (!routine.scheduleDays?.length || routine.scheduleDays.includes(new Date(`${day.date}T12:00:00`).getDay()))).length : 0;
+            const routineDone = group.key === "health" ? logs.filter(log => log.date === day.date && log.status !== "missed" && getAspect(log.goalId).key === "health").length : 0;
             const planned = groupSchedules.length + routinePlanned;
             const done = groupSchedules.filter(item => item.completed).length + routineDone;
             const percent = planned ? Math.min(100, Math.round(done / planned * 100)) : 0;
             return <div key={day.date} className={`rounded-lg p-1 text-center ${day.date === today ? "bg-indigo-100 ring-1 ring-indigo-300" : day.isSunday ? "bg-amber-50" : "bg-slate-50"}`}><p className="text-[8px] font-black text-slate-500">{day.day}</p><span className={`mx-auto mt-1 block h-2 w-2 rounded-full ${day.isSunday ? "bg-amber-400" : percent === 100 ? "bg-emerald-500" : percent > 0 ? "bg-indigo-400" : "bg-slate-200"}`} /></div>;
           })}</div>
+          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5"><p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Mục con chuẩn</p><div className="mt-2 space-y-1">{canonicalSubItems[group.key].map((item, index) => <p key={item} className={`text-[10px] leading-snug ${index === 0 && group.key !== "relationship" ? "font-black text-slate-800" : "font-medium text-slate-500"}`}>{index + 1}. {item}</p>)}</div></div>
           <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">Hôm nay</p>
           <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">
-            {group.key === "health" && activeRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{done && <Check className="h-3 w-3" />}</span><span className="text-xs font-bold">{routine.name}</span></button>})}
+            {group.key === "health" && healthRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{done && <Check className="h-3 w-3" />}</span><span className="text-xs font-bold">{routineDisplayName[routine.id] || routine.name}</span></button>})}
             {group.key === "chores" && todayChores.map(chore => <button key={chore.id} onClick={() => toggleChore(chore.id)} className="flex w-full items-start gap-2 rounded-xl bg-slate-50 p-2.5 text-left"><span className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-slate-200" /><span className="text-xs font-bold">{chore.title}</span></button>)}
             {scheduled.map(item => <button key={item.id} onClick={() => toggleMain(item)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${item.completed ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${item.completed ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{item.completed && <Check className="h-3 w-3" />}</span><span><b className={`block text-xs ${item.completed ? "line-through text-emerald-700" : "text-slate-800"}`}>{item.title}</b>{item.startTime && <small className="font-mono text-[9px] text-slate-400">{item.startTime}–{item.endTime}</small>}</span></button>)}
             {scheduled.length === 0 && group.key !== "health" && group.key !== "chores" && <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-[10px] text-slate-400">Chưa có việc hôm nay.</p>}
