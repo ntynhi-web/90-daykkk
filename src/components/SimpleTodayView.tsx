@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
-import { BarChart3, CalendarDays, Check, ClipboardCheck, Droplets, Plus, RotateCcw, Scale, Timer } from "lucide-react";
-import { ActivityEntry, AppState } from "../types";
+import { BarChart3, CalendarDays, Check, ClipboardCheck, Droplets, Pencil, Plus, RotateCcw, Scale, Timer, Trash2, X } from "lucide-react";
+import { ActivityEntry, AppState, ScheduleItem } from "../types";
 import { isScheduleValidForDate } from "../utils";
 
 interface SimpleTodayViewProps {
@@ -46,11 +46,16 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   const [saving, setSaving] = useState(false);
   const [quickDraft, setQuickDraft] = useState({ weight: "", exercise: "", water: "" });
   const [quickNotice, setQuickNotice] = useState("");
+  const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [scheduleNotice, setScheduleNotice] = useState("");
+  const [scheduleDraft, setScheduleDraft] = useState({ title: "", startTime: "", endTime: "", area: "life" as LifeAreaKey });
   const submitLock = useRef(false);
   const quickLock = useRef(false);
 
   const activeGoals = (state.goals || []).filter(goal => goal.status === "active");
   const resolveArea = (goalId?: string | null, title = "", savedArea = ""): LifeAreaKey => {
+    if (savedArea.startsWith("lifeArea:")) savedArea = savedArea.slice("lifeArea:".length);
     if (savedArea in LIFE_AREAS) return savedArea as LifeAreaKey;
     const goal = activeGoals.find(item => item.id === goalId) || state.goals.find(item => item.id === goalId);
     const source = `${goal?.name || ""} ${title}`;
@@ -91,7 +96,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
     const activities = (state.activities || []).filter(item => item.date === date);
     const routineLogs = (state.routineLogs || []).filter(item => item.date === date && item.status !== "missed" && item.status !== "skipped");
     const scheduleMinutes = (key: LifeAreaKey, pattern?: RegExp) => schedules
-      .filter(item => resolveArea(item.goalId || item.journeyId, item.title) === key && (!pattern || pattern.test(item.title)))
+      .filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === key && (!pattern || pattern.test(item.title)))
       .reduce((sum, item) => sum + (item.estimatedMinutes || minutesBetween(item.startTime, item.endTime)), 0);
     const activityMinutes = (key: LifeAreaKey) => activities
       .filter(item => resolveArea(item.goalId, item.activity, String(item.output?.lifeArea || "")) === key)
@@ -103,7 +108,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
     const fundMinutes = Math.max(scheduleMinutes("fund"), activityMinutes("fund"));
     const b2bMinutes = Math.max(scheduleMinutes("b2b"), activityMinutes("b2b"));
     const skincareDone = routineDone("routine_beauty_foundation") || schedules.some(item => /skincare/i.test(item.title));
-    const choreScheduleDone = schedules.filter(item => resolveArea(item.goalId || item.journeyId, item.title) === "chores").length;
+    const choreScheduleDone = schedules.filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === "chores").length;
     const choreDone = (state.chores || []).filter(chore => chore.lastCompletedDate === date).length + choreScheduleDone;
     const chorePlanned = Math.max(1, (state.chores || []).filter(chore => chore.frequency === "daily" || isChoreDue(chore, date)).length);
     return { weight: record?.weight ?? null, exerciseMinutes, waterMl, skincareDone, fundMinutes, b2bMinutes, choreDone, chorePlanned };
@@ -123,6 +128,61 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   ];
 
   const completedToday = todaySchedule.filter(item => item.completed).length;
+  const todayActivities = useMemo(() => (state.activities || [])
+    .filter(item => item.date === today)
+    .sort((a, b) => (b.startTime || "").localeCompare(a.startTime || "") || b.createdTimestamp - a.createdTimestamp), [state.activities, today]);
+
+  const openScheduleEditor = (item?: ScheduleItem) => {
+    setEditingScheduleId(item?.id || null);
+    setScheduleDraft({
+      title: item?.title || "",
+      startTime: item?.startTime || "",
+      endTime: item?.endTime || "",
+      area: item ? resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") : "life"
+    });
+    setScheduleNotice("");
+    setScheduleEditorOpen(true);
+  };
+
+  const saveScheduleItem = () => {
+    const title = scheduleDraft.title.trim();
+    if (!title) return setScheduleNotice("Tên công việc không được để trống.");
+    if (title.length > 200) return setScheduleNotice("Tên công việc tối đa 200 ký tự.");
+    if (!/^\d{2}:\d{2}$/.test(scheduleDraft.startTime) || !/^\d{2}:\d{2}$/.test(scheduleDraft.endTime)) return setScheduleNotice("Hãy nhập đủ giờ bắt đầu và kết thúc.");
+    if (scheduleDraft.endTime <= scheduleDraft.startTime) return setScheduleNotice("Giờ kết thúc phải sau giờ bắt đầu.");
+    const linkedGoal = activeGoals.find(goal => resolveArea(goal.id) === scheduleDraft.area);
+    const current = editingScheduleId ? (state.scheduleItems || []).find(item => item.id === editingScheduleId) : null;
+    const item: ScheduleItem = {
+      ...(current || {}),
+      id: current?.id || `schedule-manual-${Date.now()}`,
+      title,
+      date: today,
+      startTime: scheduleDraft.startTime,
+      endTime: scheduleDraft.endTime,
+      estimatedMinutes: minutesBetween(scheduleDraft.startTime, scheduleDraft.endTime),
+      goalId: linkedGoal?.id || null,
+      journeyId: linkedGoal?.id || null,
+      type: current?.type || "personal",
+      completed: current?.completed || false,
+      notes: `lifeArea:${scheduleDraft.area}`
+    };
+    const items = editingScheduleId
+      ? (state.scheduleItems || []).map(existing => existing.id === editingScheduleId ? item : existing)
+      : [...(state.scheduleItems || []), item];
+    onChangeState({ ...state, scheduleItems: items });
+    setScheduleEditorOpen(false);
+    setEditingScheduleId(null);
+    setScheduleNotice("");
+  };
+
+  const deleteScheduleItem = (item: ScheduleItem) => {
+    if (!window.confirm(`Xóa “${item.title}” khỏi lịch hôm nay?`)) return;
+    onChangeState({
+      ...state,
+      scheduleItems: (state.scheduleItems || []).filter(existing => existing.id !== item.id),
+      priorityTasks: (state.priorityTasks || []).filter(task => task.id !== item.taskId)
+    });
+  };
   const saveQuickMetric = (metric: "weight" | "exercise" | "water" | "skincare") => {
     if (quickLock.current) return;
     const value = metric === "skincare" ? 1 : Number(quickDraft[metric]);
@@ -241,8 +301,9 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
 
   return <div className="mx-auto max-w-6xl space-y-5">
     <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-indigo-600">Trang 1 · việc cần làm</p><h2 className="mt-1 text-2xl font-black">Lịch trình hôm nay</h2><p className="mt-1 text-sm capitalize text-slate-500">{formatDay(today)}</p></div><span className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white">{completedToday}/{todaySchedule.length} đã xong</span></div>
-      {todaySchedule.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-slate-300 p-8 text-center"><CalendarDays className="mx-auto h-6 w-6 text-slate-400" /><p className="mt-2 text-sm font-bold text-slate-700">Hôm nay chưa có lịch</p><p className="mt-1 text-xs text-slate-500">Thêm việc phát sinh trong Calendar hoặc nhập kế hoạch tại Plan Hub.</p></div> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[680px] border-separate border-spacing-y-2"><thead><tr className="text-left text-[10px] font-black uppercase tracking-wide text-slate-400"><th className="px-3">Giờ</th><th className="px-3">Việc cần làm</th><th className="px-3">Nhóm</th><th className="px-3 text-right">Trạng thái</th></tr></thead><tbody>{todaySchedule.map(item => { const key = resolveArea(item.goalId || item.journeyId, item.title); const meta = LIFE_AREAS[key]; return <tr key={item.id} className={item.completed ? "bg-emerald-50" : "bg-slate-50"}><td className="rounded-l-xl px-3 py-3 font-mono text-xs font-black text-slate-600">{item.startTime || "—"}–{item.endTime || "—"}</td><td className={`px-3 py-3 text-sm font-bold ${item.completed ? "text-emerald-700 line-through" : "text-slate-900"}`}>{item.title}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black ${meta.tone}`}>{meta.label}</span></td><td className="rounded-r-xl px-3 py-3 text-right"><button onClick={() => toggleSchedule(item.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black ${item.completed ? "bg-emerald-500 text-white" : "border border-slate-300 bg-white text-slate-600"}`}>{item.completed && <Check className="h-3 w-3" />}{item.completed ? "Đã xong" : "Đánh dấu xong"}</button></td></tr>; })}</tbody></table></div>}
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-indigo-600">Trang 1 · việc cần làm</p><h2 className="mt-1 text-2xl font-black">Lịch trình hôm nay</h2><p className="mt-1 text-sm capitalize text-slate-500">{formatDay(today)}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => openScheduleEditor()} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700"><Plus className="h-4 w-4" />Thêm việc</button><span className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white">{completedToday}/{todaySchedule.length} đã xong</span></div></div>
+      {scheduleEditorOpen && <div className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4"><div className="flex items-center justify-between gap-3"><p className="text-sm font-black text-slate-950">{editingScheduleId ? "Sửa công việc" : "Thêm công việc hôm nay"}</p><button type="button" onClick={() => setScheduleEditorOpen(false)} aria-label="Đóng trình sửa lịch" className="rounded-lg p-1.5 text-slate-500 hover:bg-white"><X className="h-4 w-4" /></button></div><div className="mt-3 grid gap-2 md:grid-cols-[1fr_110px_110px_150px_auto]"><input maxLength={200} value={scheduleDraft.title} onChange={event => setScheduleDraft(current => ({ ...current, title: event.target.value }))} placeholder="Tên công việc" className="rounded-xl border bg-white px-3 py-2.5 text-sm" /><input aria-label="Giờ bắt đầu" type="time" value={scheduleDraft.startTime} onChange={event => setScheduleDraft(current => ({ ...current, startTime: event.target.value }))} className="rounded-xl border bg-white px-3 py-2.5 text-sm" /><input aria-label="Giờ kết thúc" type="time" value={scheduleDraft.endTime} onChange={event => setScheduleDraft(current => ({ ...current, endTime: event.target.value }))} className="rounded-xl border bg-white px-3 py-2.5 text-sm" /><select aria-label="Nhóm công việc" value={scheduleDraft.area} onChange={event => setScheduleDraft(current => ({ ...current, area: event.target.value as LifeAreaKey }))} className="rounded-xl border bg-white px-3 py-2.5 text-sm font-bold">{Object.entries(LIFE_AREAS).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select><button type="button" onClick={saveScheduleItem} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white">Lưu lịch</button></div>{scheduleNotice && <p role="alert" className="mt-2 text-xs font-bold text-rose-600">{scheduleNotice}</p>}</div>}
+      {todaySchedule.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-slate-300 p-8 text-center"><CalendarDays className="mx-auto h-6 w-6 text-slate-400" /><p className="mt-2 text-sm font-bold text-slate-700">Hôm nay chưa có lịch</p><button type="button" onClick={() => openScheduleEditor()} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white">Thêm việc đầu tiên</button></div> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[820px] border-separate border-spacing-y-2"><thead><tr className="text-left text-[10px] font-black uppercase tracking-wide text-slate-400"><th className="px-3">Giờ</th><th className="px-3">Việc cần làm</th><th className="px-3">Nhóm</th><th className="px-3 text-right">Thao tác</th></tr></thead><tbody>{todaySchedule.map(item => { const key = resolveArea(item.goalId || item.journeyId, item.title, item.notes || ""); const meta = LIFE_AREAS[key]; return <tr key={item.id} className={item.completed ? "bg-emerald-50" : "bg-slate-50"}><td className="rounded-l-xl px-3 py-3 font-mono text-xs font-black text-slate-600">{item.startTime || "—"}–{item.endTime || "—"}</td><td className={`px-3 py-3 text-sm font-bold ${item.completed ? "text-emerald-700 line-through" : "text-slate-900"}`}>{item.title}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black ${meta.tone}`}>{meta.label}</span></td><td className="rounded-r-xl px-3 py-3"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => openScheduleEditor(item)} aria-label={`Sửa ${item.title}`} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => deleteScheduleItem(item)} aria-label={`Xóa ${item.title}`} className="rounded-lg border border-rose-200 bg-white p-2 text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button><button onClick={() => toggleSchedule(item.id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black ${item.completed ? "bg-emerald-500 text-white" : "border border-slate-300 bg-white text-slate-600"}`}>{item.completed && <Check className="h-3 w-3" />}{item.completed ? "Đã xong" : "Đánh dấu xong"}</button></div></td></tr>; })}</tbody></table></div>}
     </section>
 
     <section className="rounded-[24px] border-2 border-indigo-200 bg-indigo-50/40 p-5">
@@ -250,6 +311,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       <div className="mt-4 grid gap-2 md:grid-cols-[100px_1fr_170px_110px]"><input aria-label="Giờ thực hiện" type="time" value={time} onChange={event => setTime(event.target.value)} className="rounded-xl border bg-white px-3 py-3 text-sm" /><input aria-label="Việc đã thực hiện" maxLength={300} value={activity} onChange={event => setActivity(event.target.value)} placeholder="Bạn vừa làm gì?" className="rounded-xl border bg-white px-3 py-3 text-sm" /><select aria-label="Nhóm cuộc sống" value={area} onChange={event => setArea(event.target.value as LifeAreaKey)} className="rounded-xl border bg-white px-3 py-3 text-sm font-bold">{Object.entries(LIFE_AREAS).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select><label className="relative"><Timer className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input aria-label="Số phút thực tế" inputMode="numeric" value={duration} onChange={event => setDuration(event.target.value)} placeholder="Số phút" className="w-full rounded-xl border bg-white py-3 pl-9 pr-3 text-sm" /></label></div>
       <div className="mt-2 grid gap-2 md:grid-cols-[1fr_140px_140px_auto]"><input maxLength={200} value={nextAction} onChange={event => setNextAction(event.target.value)} placeholder="Hành động tiếp theo" className="rounded-xl border bg-white px-3 py-3 text-sm" /><label className="relative"><Scale className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input aria-label="Cân nặng" inputMode="decimal" value={weight} onChange={event => setWeight(event.target.value)} placeholder="Cân nặng" className="w-full rounded-xl border bg-white py-3 pl-9 pr-3 text-sm" /></label><label className="relative"><Droplets className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input aria-label="Lượng nước ml" inputMode="numeric" value={water} onChange={event => setWater(event.target.value)} placeholder="Nước (ml)" className="w-full rounded-xl border bg-white py-3 pl-9 pr-3 text-sm" /></label><button disabled={saving} onClick={saveActivity} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50">{saving ? "Đang lưu…" : "Ghi nhận"}</button></div>
       {notice && <p className={`mt-3 text-xs font-bold ${notice.startsWith("Đã") ? "text-emerald-700" : "text-rose-600"}`}>{notice}</p>}
+      <div className="mt-5 border-t border-indigo-100 pt-4"><div className="flex items-center justify-between gap-3"><h4 className="text-sm font-black text-slate-950">Đã ghi hôm nay</h4><span className="text-xs font-bold text-slate-400">{todayActivities.length} ghi nhận</span></div>{todayActivities.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-xs text-slate-500">Chưa có thông tin thực tế nào được ghi hôm nay.</p> : <div className="mt-3 space-y-2">{todayActivities.slice(0, 8).map(item => { const key = resolveArea(item.goalId, item.activity, String(item.output?.lifeArea || "")); return <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><span className="font-mono text-xs font-black text-slate-500">{item.startTime || "--:--"}</span><span className={`rounded-full px-2 py-1 text-[9px] font-black ${LIFE_AREAS[key].tone}`}>{LIFE_AREAS[key].label}</span><p className="min-w-[180px] flex-1 text-sm font-bold text-slate-800">{item.activity}</p>{Number(item.output?.durationMinutes) > 0 && <span className="text-xs font-bold text-slate-500">{item.output.durationMinutes} phút</span>}{Number(item.output?.waterMl) > 0 && <span className="text-xs font-bold text-blue-600">{item.output.waterMl} ml</span>}{Number(item.output?.weightKg) > 0 && <span className="text-xs font-bold text-rose-600">{item.output.weightKg} kg</span>}</div>; })}</div>}</div>
     </section>
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
