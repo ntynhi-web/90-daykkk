@@ -20,6 +20,9 @@ const hcmTime = () => new Intl.DateTimeFormat("en-GB", {
 
 export default function SimpleTodayView({ state, onChangeState, onOpenProgress, onOpenReview }: SimpleTodayViewProps) {
   const today = hcmDate();
+  const todayLabel = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh", weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
+  }).format(new Date());
   const [quickText, setQuickText] = useState("");
   const [quickTime, setQuickTime] = useState(hcmTime());
   const [weight, setWeight] = useState("");
@@ -234,8 +237,35 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
       </div>
     </section>
 
+    <section className="rounded-[24px] border-2 border-indigo-200 bg-white p-4 shadow-md md:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Mở app là làm ngay</p><h3 className="text-xl font-black text-slate-950">Bảng của hôm nay</h3><p className="mt-1 text-xs font-semibold capitalize text-slate-500">{todayLabel}</p></div>
+        <div className="flex items-center gap-2"><span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700">Đã xong {completedMain + completedRoutine + completedChoresToday}/{totalChecks}</span><span className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-black text-white">{completion}%</span></div>
+      </div>
+      <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 xl:grid xl:grid-cols-5 xl:overflow-visible">{focusGroups.map(group => {
+        const scheduled = groupedMain[group.key]?.items || [];
+        const groupGoal = state.goals.find(goal =>
+          (group.key === "fund" && goal.category === "fund_backtest") ||
+          (group.key === "b2b" && (goal.category === "business" || goal.category === "marketing"))
+        );
+        const currentMilestone = groupGoal?.milestones.find(item => !item.achieved);
+        const hasTodayItems = scheduled.length > 0 || (group.key === "health" && healthRoutines.length > 0) || (group.key === "chores" && todayChores.length > 0);
+        return <article key={group.key} className={`min-w-[250px] snap-start rounded-2xl border p-3 ${group.border} xl:min-w-0`}>
+          <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${group.tone}`}>{group.label}</span><span className="text-[9px] font-black text-slate-400">HÔM NAY</span></div>
+          <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+            {group.key === "health" && healthRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200 bg-white"}`}>{done && <Check className="h-3 w-3" />}</span><span className={`text-xs font-bold ${done ? "text-emerald-700 line-through" : "text-slate-800"}`}>{routineDisplayName[routine.id] || routine.name}</span></button>})}
+            {group.key === "chores" && todayChores.map(chore => <button key={chore.id} onClick={() => toggleChore(chore.id)} className="flex w-full items-start gap-2 rounded-xl bg-slate-50 p-2.5 text-left"><span className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-slate-200 bg-white" /><span className="text-xs font-bold text-slate-800">{chore.title}</span></button>)}
+            {scheduled.map(item => <button key={item.id} onClick={() => toggleMain(item)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${item.completed ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${item.completed ? "bg-emerald-500 text-white" : "border-2 border-slate-200 bg-white"}`}>{item.completed && <Check className="h-3 w-3" />}</span><span><b className={`block text-xs ${item.completed ? "line-through text-emerald-700" : "text-slate-800"}`}>{item.title}</b>{item.startTime && <small className="font-mono text-[9px] text-slate-400">{item.startTime}–{item.endTime}</small>}</span></button>)}
+            {!hasTodayItems && currentMilestone && groupGoal && <button type="button" onClick={() => toggleMilestone(groupGoal.id, currentMilestone.id)} className="flex w-full items-start gap-2 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/60 p-2.5 text-left"><span className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-indigo-300 bg-white" /><span><b className="block text-xs text-slate-800">{currentMilestone.title}</b><small className="text-[9px] font-semibold text-indigo-600">Bước đang mở · tick khi xong</small></span></button>}
+            {!hasTodayItems && !currentMilestone && <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-[10px] text-slate-400">Chưa có việc hôm nay.</p>}
+          </div>
+          {group.key === "relationship" && !hasTodayItems && <p className="mt-2 text-[10px] font-semibold text-pink-600">Có thể ghi một việc với Ba mẹ, Lover, Rainy & Lacky hoặc Other.</p>}
+        </article>;
+      })}</div>
+    </section>
+
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-indigo-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Việc hằng ngày × timeline tuần</p><h3 className="text-xl font-black">5 khía cạnh chính</h3></div></div><div className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Nhịp T2–T7: {sixDayAverage}%</div></div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-indigo-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Nhìn rộng hơn</p><h3 className="text-xl font-black">Timeline tuần & lộ trình</h3></div></div><div className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Nhịp T2–T7: {sixDayAverage}%</div></div>
       <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-5 xl:overflow-visible">{focusGroups.map(group => {
         const scheduled = groupedMain[group.key]?.items || [];
         const groupGoal = state.goals.find(goal =>
@@ -261,14 +291,6 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
               <span className={`text-[10px] leading-snug ${linkedMilestone.achieved ? "font-bold line-through" : linkedMilestone.status === "active" ? "font-black text-slate-800" : "font-medium"}`}>{index + 1}. {item}</span>
             </button>;
           })}</div></div>
-          <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">Hôm nay</p>
-          <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">
-            {group.key === "health" && healthRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{done && <Check className="h-3 w-3" />}</span><span className="text-xs font-bold">{routineDisplayName[routine.id] || routine.name}</span></button>})}
-            {group.key === "chores" && todayChores.map(chore => <button key={chore.id} onClick={() => toggleChore(chore.id)} className="flex w-full items-start gap-2 rounded-xl bg-slate-50 p-2.5 text-left"><span className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-slate-200" /><span className="text-xs font-bold">{chore.title}</span></button>)}
-            {scheduled.map(item => <button key={item.id} onClick={() => toggleMain(item)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${item.completed ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${item.completed ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{item.completed && <Check className="h-3 w-3" />}</span><span><b className={`block text-xs ${item.completed ? "line-through text-emerald-700" : "text-slate-800"}`}>{item.title}</b>{item.startTime && <small className="font-mono text-[9px] text-slate-400">{item.startTime}–{item.endTime}</small>}</span></button>)}
-            {scheduled.length === 0 && group.key !== "health" && group.key !== "chores" && <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-[10px] text-slate-400">Chưa có việc hôm nay.</p>}
-          </div>
-          {group.key === "relationship" && scheduled.length === 0 && <p className="mt-3 text-[10px] text-pink-600">Gợi ý: một hành động kết nối nhỏ.</p>}
         </article>;
       })}</div>
       {isSunday && <button onClick={onOpenReview} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-slate-950"><RotateCcw className="h-4 w-4" />Review 6 ngày vừa qua</button>}
