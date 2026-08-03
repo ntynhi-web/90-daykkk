@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { Sparkles, BarChart3, Compass, Calendar, Clock, Settings, Plus, Database, Bell, Search, Cloud, LogOut, LoaderCircle, Mic, MoreHorizontal } from "lucide-react";
 import { AppState } from "./types";
 import { getDefaultAppState, getCycleStats, formatDateStr, migrateAppState } from "./utils";
-import TodayView from "./components/TodayView";
+import SimpleTodayView from "./components/SimpleTodayView";
 import AuthScreen from "./components/AuthScreen";
 import OnboardingFlow from "./components/OnboardingFlow";
 import { User, firebaseConfigured, loadUserState, observeAuth, saveUserState, signOutCurrentUser } from "./firebase";
@@ -227,13 +227,13 @@ export default function App() {
             }`}
           >
             <Compass className="w-4 h-4 shrink-0" />
-            <span>Các Hành trình</span>
+            <span>Kế hoạch</span>
           </button>
 
           <button
             id="nav-calendar"
             onClick={() => setActiveTab('calendar')}
-            className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`hidden w-full items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'calendar'
                 ? "bg-indigo-50 text-indigo-600 shadow-3xs"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -253,13 +253,13 @@ export default function App() {
             }`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
-            <span>Kết quả</span>
+            <span>Tiến độ</span>
           </button>
 
           <button
             id="nav-settings"
             onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`hidden w-full items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'settings'
                 ? "bg-indigo-50 text-indigo-600 shadow-3xs"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -337,15 +337,15 @@ export default function App() {
           ) : (
             <div>
               <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                {activeTab === 'journeys' && "Các Hành Trình Mục Tiêu"}
+                {activeTab === 'journeys' && "Kế hoạch"}
                 {activeTab === 'calendar' && "Lịch Biểu & Phân Bổ Thời Gian"}
-                {activeTab === 'progress' && "Kết Quả Theo Mục Tiêu"}
+                {activeTab === 'progress' && "Tiến độ"}
                 {activeTab === 'settings' && "Plan Hub & Đánh giá"}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                {activeTab === 'journeys' && `Hành trình ${stats.totalDays} ngày của bạn với lộ trình cột mốc chi tiết.`}
+                {activeTab === 'journeys' && "Một mục tiêu chính, tối đa hai mục tiêu duy trì và các bước tiếp theo."}
                 {activeTab === 'calendar' && "Quản lý và tối ưu hóa thời gian, tránh xung đột lịch biểu."}
-                {activeTab === 'progress' && "Sự phân bổ hoạt động, phễu lead, thể trạng và chỉ số trading."}
+                {activeTab === 'progress' && "Xem hành động, sức khỏe và tiến bộ thực tế theo ngày."}
                 {activeTab === 'settings' && "Chỉnh mục tiêu, process, routine, lịch; nhập hoặc nhân bản template."}
               </p>
             </div>
@@ -377,7 +377,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto transition-all duration-150">
             <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center"><LoaderCircle className="h-7 w-7 animate-spin text-indigo-600" /></div>}>
             {activeTab === 'today' && (
-              <TodayView 
+              <SimpleTodayView 
                 state={state} 
                 onChangeState={handleUpdateState} 
                 onOpenProgress={() => setActiveTab('progress')}
@@ -441,17 +441,10 @@ export default function App() {
           }`}
         >
           <Compass className="w-5 h-5 shrink-0" />
-          <span>Lộ trình</span>
+          <span>Kế hoạch</span>
         </button>
 
-        <button onClick={openVoiceCheckin} className="-mt-5 flex min-h-[60px] flex-1 flex-col items-center justify-center gap-1 text-[10px] font-black text-indigo-700"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200"><Mic className="h-5 w-5" /></span><span>Check-in</span></button>
-
-        <button onClick={() => setActiveTab('calendar')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'calendar' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><Calendar className="h-5 w-5" /><span>Lịch</span></button>
-
-        <div className="relative flex-1">
-          {mobileMoreOpen && <div className="absolute bottom-14 right-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"><button onClick={() => { setActiveTab('progress'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><BarChart3 className="h-4 w-4" />Kết quả</button><button onClick={() => { setActiveTab('settings'); setMobileMoreOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Settings className="h-4 w-4" />Plan Hub</button></div>}
-          <button onClick={() => setMobileMoreOpen(value => !value)} className={`flex min-h-[48px] w-full flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'progress' || activeTab === 'settings' ? 'bg-indigo-50/70 text-indigo-600' : 'text-slate-500'}`}><MoreHorizontal className="h-5 w-5" /><span>Thêm</span></button>
-        </div>
+        <button onClick={() => setActiveTab('progress')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'progress' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><BarChart3 className="h-5 w-5" /><span>Tiến độ</span></button>
       </nav>
 
     </div>
