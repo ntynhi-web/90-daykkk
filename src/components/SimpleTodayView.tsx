@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { BarChart3, CalendarDays, Check, ChevronRight, HeartPulse, Home, Plus, RotateCcw, Scale } from "lucide-react";
+import { BarChart3, CalendarDays, Check, Home, Plus, RotateCcw, Scale } from "lucide-react";
 import { AppState, ActivityEntry, RoutineLog } from "../types";
 import { isScheduleValidForDate } from "../utils";
 
@@ -24,7 +24,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
   const [quickTime, setQuickTime] = useState(hcmTime());
   const [weight, setWeight] = useState("");
   const [quickNext, setQuickNext] = useState("");
-  const [quickGoal, setQuickGoal] = useState("area:life");
+  const [quickGoal, setQuickGoal] = useState("area:health");
   const [captureError, setCaptureError] = useState("");
 
   const todaySchedule = useMemo(() => (state.scheduleItems || [])
@@ -50,6 +50,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
       fund: { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" },
       job: { key: "job", label: "Job & Thu nhập", tone: "bg-emerald-100 text-emerald-700" },
       b2b: { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" },
+      relationship: { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700" },
       money: { key: "money", label: "Tiền", tone: "bg-amber-100 text-amber-700" },
       life: { key: "life", label: "Đời sống", tone: "bg-slate-100 text-slate-600" }
     } as const;
@@ -57,6 +58,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     if (goal?.category === "health" || /sức khỏe|health|yoga|chạy bộ|skincare/i.test(source)) return { key: "health", label: "Sức khỏe", tone: "bg-rose-100 text-rose-700" };
     if (goal?.category === "fund_backtest" || /fund|trading|backtest|demo/i.test(source)) return { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" };
     if (goal?.category === "business" || goal?.category === "marketing" || /b2b|seo|website|content/i.test(source)) return { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" };
+    if (/relationship|người yêu|gia đình|kết nối|hẹn hò|date night/i.test(source)) return { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700" };
     if (goal?.category === "finance" || /tài chính|finance|tiền|thanh toán|ngân sách/i.test(source)) return { key: "money", label: "Tiền", tone: "bg-amber-100 text-amber-700" };
     if (goal?.category === "career" || /job|freelance|outlier|upwork|linkedin|thu nhập/i.test(source)) return { key: "job", label: "Job & Thu nhập", tone: "bg-emerald-100 text-emerald-700" };
     if (goal?.category === "home" || /dọn|nhà|mèo|rainy|đi chợ/i.test(source)) return { key: "chores", label: "Chores & Nhà", tone: "bg-cyan-100 text-cyan-700" };
@@ -95,13 +97,13 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     groups[aspect.key].items.push(item);
     return groups;
   }, {});
-  const basicGroups = [
-    { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" },
-    { key: "job", label: "Job & Thu nhập", tone: "bg-emerald-100 text-emerald-700" },
-    { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" },
-    { key: "money", label: "Tiền", tone: "bg-amber-100 text-amber-700" }
+  const focusGroups = [
+    { key: "health", label: "Sức khỏe", tone: "bg-rose-100 text-rose-700", border: "border-rose-200" },
+    { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700", border: "border-violet-200" },
+    { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700", border: "border-blue-200" },
+    { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700", border: "border-pink-200" },
+    { key: "chores", label: "Chores", tone: "bg-cyan-100 text-cyan-700", border: "border-cyan-200" }
   ];
-  const dynamicGroups = Object.entries(groupedMain).filter(([key]) => !["health", "chores", ...basicGroups.map(group => group.key)].includes(key));
   const activities = (state.activities || []).filter(item => item.date === today)
     .sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
   const completedMain = mainItems.filter(item => item.completed).length;
@@ -175,27 +177,36 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     </section>
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Theo khía cạnh</p><h3 className="mt-1 text-xl font-black">Việc cần làm & việc tiếp theo</h3></div><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">{completedMain}/{mainItems.length} lịch xong</span></div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      <article className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4">
-        <div className="flex items-center gap-3"><span className="rounded-xl bg-rose-100 p-2 text-rose-600"><HeartPulse className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-rose-600">Nền tảng</p><h3 className="text-lg font-black">Sức khỏe hôm nay</h3></div></div>
-        <div className="mt-4 space-y-2">{activeRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${done ? "border-rose-200 bg-white" : "border-white bg-white/70"}`}><span className={`flex h-6 w-6 items-center justify-center rounded-lg ${done ? "bg-rose-500 text-white" : "border-2 border-rose-200"}`}>{done && <Check className="h-3.5 w-3.5" />}</span><span className="text-sm font-bold text-slate-800">{routine.name}</span></button>})}{activeRoutines.length === 0 && <p className="text-xs text-slate-400">Chưa có routine hôm nay.</p>}</div>
-      </article>
-      <article className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4"><div><span className="rounded-full bg-cyan-100 px-2 py-1 text-[9px] font-black text-cyan-700">CHORES & NHÀ</span><h3 className="mt-3 text-lg font-black">Việc nhà, mèo & sinh hoạt</h3></div><div className="mt-4 space-y-2">{todayChores.map(chore => <button key={chore.id} onClick={() => toggleChore(chore.id)} className="flex w-full items-center gap-3 rounded-xl bg-white p-3 text-left"><span className="h-5 w-5 rounded-md border-2 border-cyan-200" /><span className="text-sm font-bold">{chore.title}</span></button>)}{todayChores.length === 0 && <p className="text-xs text-slate-400">Không có chore đến hạn.</p>}</div></article>
-      {basicGroups.map(group => { const items = groupedMain[group.key]?.items || []; return <article key={group.key} className="rounded-2xl border border-slate-200 p-4"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${group.tone}`}>{group.label.toUpperCase()}</span><p className="mt-3 text-xs font-black uppercase tracking-wide text-slate-400">Việc tiếp theo</p>{items.length ? <div className="mt-2 space-y-2">{items.map(item => <button key={item.id} onClick={() => toggleMain(item)} className={`flex w-full items-start gap-2 rounded-xl p-3 text-left ${item.completed ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${item.completed ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{item.completed && <Check className="h-3 w-3" />}</span><span><b className={`block text-sm ${item.completed ? "line-through text-emerald-700" : "text-slate-800"}`}>{item.title}</b>{item.startTime && <small className="font-mono text-slate-400">{item.startTime}–{item.endTime}</small>}</span></button>)}</div> : <p className="mt-2 text-xs text-slate-400">Chưa có việc được xếp vào hôm nay.</p>}</article>})}
-      {dynamicGroups.map(([key, group]) => <article key={key} className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${group.tone}`}>{group.label.toUpperCase()}</span><p className="mt-3 text-xs font-black uppercase tracking-wide text-slate-400">Nhóm được tạo tự động</p><div className="mt-2 space-y-2">{group.items.map(item => <button key={item.id} onClick={() => toggleMain(item)} className="flex w-full items-center gap-2 rounded-xl bg-white p-3 text-left"><span className="h-5 w-5 rounded-md border-2 border-amber-200" /><span className="text-sm font-bold">{item.title}</span></button>)}</div></article>)}
-      </div>
-    </section>
-
-    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-indigo-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Toàn tuần</p><h3 className="text-lg font-black">Timeline lịch trình</h3></div></div><div className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Nhịp T2–T7: {sixDayAverage}%</div></div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{weekDays.map(day => <article key={day.date} className={`rounded-2xl border p-3 ${day.date === today ? "border-indigo-400 bg-indigo-50" : day.isSunday ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"}`}><div className="flex items-center justify-between"><span className="text-xs font-black">{day.day}</span><span className="font-mono text-[9px] text-slate-400">{day.date.slice(8,10)}/{day.date.slice(5,7)}</span></div>{day.isSunday ? <><p className="mt-4 text-xs font-black text-amber-800">Review tuần</p><button onClick={onOpenReview} className="mt-3 flex items-center gap-1 text-[10px] font-black text-amber-700">Mở review <ChevronRight className="h-3 w-3" /></button></> : <><p className="mt-3 text-xl font-black">{day.percent}%</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-indigo-500" style={{ width: `${day.percent}%` }} /></div><p className="mt-2 text-[9px] text-slate-500">{day.done}/{day.planned} việc</p><div className="mt-2 space-y-1">{day.schedules.slice(0,2).map(item => <p key={item.id} className="truncate text-[9px] font-bold text-slate-600">• {item.title}</p>)}</div></>}</article>)}</div>
-      {isSunday && <button onClick={onOpenReview} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-slate-950"><RotateCcw className="h-4 w-4" />Hôm nay chỉ review 6 ngày vừa qua</button>}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-indigo-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Việc hằng ngày × timeline tuần</p><h3 className="text-xl font-black">5 khía cạnh chính</h3></div></div><div className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Nhịp T2–T7: {sixDayAverage}%</div></div>
+      <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-5 xl:overflow-visible">{focusGroups.map(group => {
+        const scheduled = groupedMain[group.key]?.items || [];
+        return <article key={group.key} className={`min-w-[260px] snap-start rounded-2xl border bg-white p-4 ${group.border} xl:min-w-0`}>
+          <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${group.tone}`}>{group.label}</span><span className="text-[9px] font-black text-slate-400">TUẦN NÀY</span></div>
+          <div className="mt-4 grid grid-cols-7 gap-1">{weekDays.map(day => {
+            const groupSchedules = day.schedules.filter(item => getAspect(item.goalId || item.journeyId, item.title).key === group.key);
+            const routinePlanned = group.key === "health" ? (state.routines || []).filter(routine => routine.active !== false && (!routine.scheduleDays?.length || routine.scheduleDays.includes(new Date(`${day.date}T12:00:00`).getDay()))).length : 0;
+            const routineDone = group.key === "health" ? logs.filter(log => log.date === day.date && log.status !== "missed").length : 0;
+            const planned = groupSchedules.length + routinePlanned;
+            const done = groupSchedules.filter(item => item.completed).length + routineDone;
+            const percent = planned ? Math.min(100, Math.round(done / planned * 100)) : 0;
+            return <div key={day.date} className={`rounded-lg p-1 text-center ${day.date === today ? "bg-indigo-100 ring-1 ring-indigo-300" : day.isSunday ? "bg-amber-50" : "bg-slate-50"}`}><p className="text-[8px] font-black text-slate-500">{day.day}</p><span className={`mx-auto mt-1 block h-2 w-2 rounded-full ${day.isSunday ? "bg-amber-400" : percent === 100 ? "bg-emerald-500" : percent > 0 ? "bg-indigo-400" : "bg-slate-200"}`} /></div>;
+          })}</div>
+          <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">Hôm nay</p>
+          <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">
+            {group.key === "health" && activeRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{done && <Check className="h-3 w-3" />}</span><span className="text-xs font-bold">{routine.name}</span></button>})}
+            {group.key === "chores" && todayChores.map(chore => <button key={chore.id} onClick={() => toggleChore(chore.id)} className="flex w-full items-start gap-2 rounded-xl bg-slate-50 p-2.5 text-left"><span className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 border-slate-200" /><span className="text-xs font-bold">{chore.title}</span></button>)}
+            {scheduled.map(item => <button key={item.id} onClick={() => toggleMain(item)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${item.completed ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${item.completed ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{item.completed && <Check className="h-3 w-3" />}</span><span><b className={`block text-xs ${item.completed ? "line-through text-emerald-700" : "text-slate-800"}`}>{item.title}</b>{item.startTime && <small className="font-mono text-[9px] text-slate-400">{item.startTime}–{item.endTime}</small>}</span></button>)}
+            {scheduled.length === 0 && group.key !== "health" && group.key !== "chores" && <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-[10px] text-slate-400">Chưa có việc hôm nay.</p>}
+          </div>
+          {group.key === "relationship" && scheduled.length === 0 && <p className="mt-3 text-[10px] text-pink-600">Gợi ý: một hành động kết nối nhỏ.</p>}
+        </article>;
+      })}</div>
+      {isSunday && <button onClick={onOpenReview} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-slate-950"><RotateCcw className="h-4 w-4" />Review 6 ngày vừa qua</button>}
     </section>
 
     <section id="section-quick-input" className="rounded-[24px] border-2 border-indigo-200 bg-indigo-50/50 p-5">
       <div className="flex items-center gap-3"><span className="rounded-xl bg-indigo-600 p-2 text-white"><Plus className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">10 giây</p><h3 className="text-lg font-black">Ghi việc vừa làm</h3></div></div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-[100px_1fr_190px]"><input aria-label="Giờ thực hiện" type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" /><input aria-label="Việc đã thực hiện" value={quickText} maxLength={300} onChange={e => setQuickText(e.target.value)} placeholder="Đã thực hiện việc gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><select aria-label="Khía cạnh cuộc sống" value={quickGoal} onChange={e => setQuickGoal(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-800"><option value="area:life">Đời sống</option><option value="area:health">Sức khỏe</option><option value="area:chores">Chores & Nhà</option><option value="area:fund">Fund</option><option value="area:job">Job & Thu nhập</option><option value="area:b2b">B2B</option><option value="area:money">Tiền</option>{activeGoals.length > 0 && <optgroup label="Mục tiêu đang hoạt động">{activeGoals.map(goal => <option key={goal.id} value={`goal:${goal.id}`}>{goal.name}</option>)}</optgroup>}</select></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-[100px_1fr_190px]"><input aria-label="Giờ thực hiện" type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" /><input aria-label="Việc đã thực hiện" value={quickText} maxLength={300} onChange={e => setQuickText(e.target.value)} placeholder="Đã thực hiện việc gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><select aria-label="Khía cạnh cuộc sống" value={quickGoal} onChange={e => setQuickGoal(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-800"><option value="area:health">Sức khỏe</option><option value="area:fund">Fund</option><option value="area:b2b">B2B</option><option value="area:relationship">Relationship</option><option value="area:chores">Chores</option>{activeGoals.length > 0 && <optgroup label="Mục tiêu đang hoạt động">{activeGoals.map(goal => <option key={goal.id} value={`goal:${goal.id}`}>{goal.name}</option>)}</optgroup>}</select></div>
       <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px_auto]"><input value={quickNext} maxLength={200} onChange={e => setQuickNext(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveActivity(); }} placeholder="Hành động tiếp theo là gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><label className="relative"><Scale className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} placeholder="Cân nặng" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-sm" /></label><button onClick={saveActivity} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white">Ghi nhận</button></div>{captureError && <p className="mt-2 text-xs font-bold text-rose-600">{captureError}</p>}
     </section>
 
