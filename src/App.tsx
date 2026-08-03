@@ -38,6 +38,8 @@ export default function App() {
     () => typeof Notification === "undefined" ? "unsupported" : Notification.permission
   );
   const syncTimerRef = useRef<number | null>(null);
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const syncRevisionRef = useRef(0);
 
   useEffect(() => observeAuth(user => {
     setAuthUser(user);
@@ -96,14 +98,19 @@ export default function App() {
     if (!authUser || !cloudReady || !firebaseConfigured) return;
     if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
     setSyncStatus('saving');
-    syncTimerRef.current = window.setTimeout(async () => {
-      try {
-        await saveUserState(authUser.uid, state);
-        setSyncStatus('saved');
-      } catch (error) {
+    const revision = ++syncRevisionRef.current;
+    const uid = authUser.uid;
+    const stateSnapshot = state;
+    syncTimerRef.current = window.setTimeout(() => {
+      syncQueueRef.current = syncQueueRef.current
+        .catch(() => undefined)
+        .then(() => saveUserState(uid, stateSnapshot));
+      syncQueueRef.current.then(() => {
+        if (revision === syncRevisionRef.current) setSyncStatus('saved');
+      }).catch(error => {
         console.error("Failed to sync personal cloud state:", error);
-        setSyncStatus('error');
-      }
+        if (revision === syncRevisionRef.current) setSyncStatus('error');
+      });
     }, 800);
     return () => {
       if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
