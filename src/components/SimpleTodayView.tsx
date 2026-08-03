@@ -94,22 +94,25 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   const progressForDate = (date: string) => {
     const schedules = (state.scheduleItems || []).filter(item => item.date === date && item.completed && isScheduleValidForDate(item));
     const activities = (state.activities || []).filter(item => item.date === date);
+    const weeklyActivities = activities.filter(item => item.source === "manual" && item.originalTranscript === `weekly-manual-${date}`);
+    const metricActivities = weeklyActivities.length ? weeklyActivities : activities;
     const routineLogs = (state.routineLogs || []).filter(item => item.date === date && item.status !== "missed" && item.status !== "skipped");
     const scheduleMinutes = (key: LifeAreaKey, pattern?: RegExp) => schedules
       .filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === key && (!pattern || pattern.test(item.title)))
       .reduce((sum, item) => sum + (item.estimatedMinutes || minutesBetween(item.startTime, item.endTime)), 0);
-    const activityMinutes = (key: LifeAreaKey) => activities
+    const activityMinutes = (key: LifeAreaKey) => metricActivities
       .filter(item => resolveArea(item.goalId, item.activity, String(item.output?.lifeArea || "")) === key)
       .reduce((sum, item) => sum + (Number(item.output?.durationMinutes) || 0), 0);
     const routineDone = (id: string) => routineLogs.some(log => log.routineId === id);
     const record = state.healthRecords?.[date];
-    const waterMl = activities.reduce((sum, item) => sum + (Number(item.output?.waterMl) || 0), 0) || (routineDone("routine_water_1500") ? 1500 : 0);
+    const waterMl = metricActivities.reduce((sum, item) => sum + (Number(item.output?.waterMl) || 0), 0) || (routineDone("routine_water_1500") ? 1500 : 0);
     const exerciseMinutes = Math.max(scheduleMinutes("health", /chạy|yoga|thể dục|exercise/i), activityMinutes("health"), routineDone("routine_running_park") ? 45 : 0);
     const fundMinutes = Math.max(scheduleMinutes("fund"), activityMinutes("fund"));
     const b2bMinutes = Math.max(scheduleMinutes("b2b"), activityMinutes("b2b"));
-    const skincareDone = routineDone("routine_beauty_foundation") || schedules.some(item => /skincare/i.test(item.title));
+    const skincareDone = routineDone("routine_beauty_foundation");
     const choreScheduleDone = schedules.filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === "chores").length;
-    const choreDone = (state.chores || []).filter(chore => chore.lastCompletedDate === date).length + choreScheduleDone;
+    const manualChoreDone = metricActivities.reduce((sum, item) => sum + (Number(item.output?.choreCount) || 0), 0);
+    const choreDone = weeklyActivities.length ? manualChoreDone : (state.chores || []).filter(chore => chore.lastCompletedDate === date).length + choreScheduleDone + manualChoreDone;
     const chorePlanned = Math.max(1, (state.chores || []).filter(chore => chore.frequency === "daily" || isChoreDue(chore, date)).length);
     return { weight: record?.weight ?? null, exerciseMinutes, waterMl, skincareDone, fundMinutes, b2bMinutes, choreDone, chorePlanned };
   };
@@ -250,11 +253,50 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
     const current = todaySchedule.find(item => item.id === id);
     if (!current) return;
     const completed = !current.completed;
+    const skincareRoutineId = "routine_beauty_foundation";
+    const existingLogs = state.routineLogs || [];
+    const routineLogs = /skincare/i.test(current.title)
+      ? completed
+        ? [{ id: `schedule-${skincareRoutineId}-${today}`, routineId: skincareRoutineId, goalId: "G4", date: today, status: "completed" as const, source: "manual" as const, evidence: "Hoàn tất từ lịch hôm nay", activityId: null, createdTimestamp: Date.now(), updatedTimestamp: Date.now() }, ...existingLogs.filter(log => !(log.routineId === skincareRoutineId && log.date === today))]
+        : existingLogs.filter(log => !(log.routineId === skincareRoutineId && log.date === today))
+      : existingLogs;
     onChangeState({
       ...state,
       scheduleItems: (state.scheduleItems || []).map(item => item.id === id ? { ...item, completed } : item),
-      priorityTasks: (state.priorityTasks || []).map(task => task.id === current.taskId ? { ...task, completed, status: completed ? "completed" : "ready", completedAt: completed ? new Date().toISOString() : null } : task)
+      priorityTasks: (state.priorityTasks || []).map(task => task.id === current.taskId ? { ...task, completed, status: completed ? "completed" : "ready", completedAt: completed ? new Date().toISOString() : null } : task),
+      routineLogs
     });
+  };
+
+  const updateWeeklyDay = (date: string, values: { weight: string; exercise: string; water: string; skincare: boolean; fund: string; b2b: string; chores: string }) => {
+    const parsed = {
+      weight: values.weight.trim() ? Number(values.weight) : null,
+      exercise: values.exercise.trim() ? Number(values.exercise) : 0,
+      water: values.water.trim() ? Number(values.water) : 0,
+      fund: values.fund.trim() ? Number(values.fund) : 0,
+      b2b: values.b2b.trim() ? Number(values.b2b) : 0,
+      chores: values.chores.trim() ? Number(values.chores) : 0
+    };
+    if (parsed.weight !== null && (!Number.isFinite(parsed.weight) || parsed.weight < 25 || parsed.weight > 300)) return "Cân nặng cần nằm trong khoảng 25–300 kg.";
+    if ([parsed.exercise, parsed.fund, parsed.b2b].some(value => !Number.isFinite(value) || value < 0 || value > 720)) return "Số phút cần nằm trong khoảng 0–720.";
+    if (!Number.isFinite(parsed.water) || parsed.water < 0 || parsed.water > 5000) return "Lượng nước cần nằm trong khoảng 0–5.000 ml.";
+    if (!Number.isInteger(parsed.chores) || parsed.chores < 0 || parsed.chores > 50) return "Số chores cần là số nguyên từ 0–50.";
+    const now = Date.now();
+    const marker = `weekly-manual-${date}`;
+    const keptActivities = (state.activities || []).filter(item => !(item.source === "manual" && item.originalTranscript === marker));
+    const newActivities: ActivityEntry[] = [];
+    const add = (activityName: string, lifeArea: LifeAreaKey, output: Record<string, number>) => newActivities.push({ id: `${marker}-${activityName}-${now}`, date, goalId: lifeArea === "health" ? "G4" : lifeArea === "fund" ? "G1" : lifeArea === "b2b" ? "G3" : null, source: "manual", originalTranscript: marker, activity: activityName, output: { lifeArea, ...output }, outcome: {}, outcomeStatus: "not_applicable", insight: null, nextAction: null, confidence: 1, createdTimestamp: now, updatedTimestamp: now, startTime: "23:59" });
+    if (parsed.exercise) add("Tổng thể dục trong ngày", "health", { durationMinutes: parsed.exercise });
+    if (parsed.water) add("Tổng lượng nước trong ngày", "health", { waterMl: parsed.water });
+    if (parsed.fund) add("Tổng thời gian Fund trong ngày", "fund", { durationMinutes: parsed.fund });
+    if (parsed.b2b) add("Tổng thời gian B2B trong ngày", "b2b", { durationMinutes: parsed.b2b });
+    if (parsed.chores) add("Tổng chores hoàn tất trong ngày", "chores", { choreCount: parsed.chores });
+    const routineId = "routine_beauty_foundation";
+    const keptLogs = (state.routineLogs || []).filter(log => !(log.routineId === routineId && log.date === date));
+    const routineLogs = values.skincare ? [{ id: `${marker}-skincare`, routineId, goalId: "G4", date, status: "completed" as const, source: "manual" as const, evidence: "Cập nhật từ bảng tuần", activityId: null, createdTimestamp: now, updatedTimestamp: now }, ...keptLogs] : keptLogs;
+    const healthRecords = parsed.weight === null ? state.healthRecords : { ...state.healthRecords, [date]: { ...(state.healthRecords[date] || { date, sleepHours: null, energy: null, steps: null, strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false, notes: "" }), weight: parsed.weight } };
+    onChangeState({ ...state, activities: [...newActivities, ...keptActivities], routineLogs, healthRecords });
+    return "";
   };
 
   const saveActivity = () => {
@@ -296,7 +338,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       <p className="mt-2 max-w-2xl text-sm text-slate-300">Xem lại dữ liệu từ thứ Hai đến thứ Bảy, chốt điều cần giữ, giảm hoặc đổi trong tuần tiếp theo.</p>
       <button onClick={onOpenReview} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950"><RotateCcw className="h-4 w-4" />Mở Review tuần</button>
     </section>
-    <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} />
+    <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} onUpdateDay={updateWeeklyDay} />
   </div>;
 
   return <div className="mx-auto max-w-6xl space-y-5">
@@ -324,11 +366,20 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       {quickNotice && <p role="status" className={`mt-3 text-xs font-bold ${quickNotice.startsWith("Đã") ? "text-emerald-700" : "text-rose-600"}`}>{quickNotice}</p>}
     </section>
 
-    <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} />
+    <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} onUpdateDay={updateWeeklyDay} />
   </div>;
 }
 
-function WeeklyProgress({ weekDays, getProgress }: { weekDays: { date: string; label: string }[]; getProgress: (date: string) => any }) {
+function WeeklyProgress({ weekDays, getProgress, onUpdateDay }: { weekDays: { date: string; label: string }[]; getProgress: (date: string) => any; onUpdateDay: (date: string, values: { weight: string; exercise: string; water: string; skincare: boolean; fund: string; b2b: string; chores: string }) => string }) {
+  const [editDate, setEditDate] = useState(weekDays[0]?.date || "");
+  const [draft, setDraft] = useState({ weight: "", exercise: "", water: "", skincare: false, fund: "", b2b: "", chores: "" });
+  const [message, setMessage] = useState("");
+  const loadDate = (date: string) => {
+    const progress = getProgress(date);
+    setEditDate(date);
+    setDraft({ weight: progress.weight === null ? "" : String(progress.weight), exercise: String(progress.exerciseMinutes || ""), water: String(progress.waterMl || ""), skincare: progress.skincareDone, fund: String(progress.fundMinutes || ""), b2b: String(progress.b2bMinutes || ""), chores: String(progress.choreDone || "") });
+    setMessage("");
+  };
   const rows = [
     { label: "Cân nặng", render: (p: any) => p.weight === null ? "—" : `${p.weight}kg` },
     { label: "Thể dục", render: (p: any) => `${p.exerciseMinutes}p` },
@@ -338,5 +389,5 @@ function WeeklyProgress({ weekDays, getProgress }: { weekDays: { date: string; l
     { label: "B2B", render: (p: any) => `${p.b2bMinutes}p` },
     { label: "Chores", render: (p: any) => `${p.choreDone}/${p.chorePlanned}` }
   ];
-  return <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-violet-600" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-violet-600">Thứ Hai–Thứ Bảy</p><h3 className="text-xl font-black">Tiến độ tuần theo từng mục nhỏ</h3></div></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[660px] text-sm"><thead><tr className="border-b text-left text-[10px] font-black uppercase tracking-wide text-slate-400"><th className="px-3 py-2">Hạng mục</th>{weekDays.map(day => <th key={day.date} className="px-3 py-2 text-center">{day.label}<span className="block font-mono font-medium normal-case">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</span></th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.label} className="border-b border-slate-100 last:border-0"><td className="px-3 py-3 font-black text-slate-800">{row.label}</td>{weekDays.map(day => <td key={day.date} className="px-3 py-3 text-center font-mono text-xs font-bold text-slate-600">{row.render(getProgress(day.date))}</td>)}</tr>)}</tbody></table></div></section>;
+  return <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-violet-600" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-violet-600">Thứ Hai–Thứ Bảy</p><h3 className="text-xl font-black">Tiến độ tuần theo từng mục nhỏ</h3></div></div><select value={editDate} onChange={event => loadDate(event.target.value)} className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">{weekDays.map(day => <option key={day.date} value={day.date}>Cập nhật {day.label} · {day.date.slice(8, 10)}/{day.date.slice(5, 7)}</option>)}</select></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[660px] text-sm"><thead><tr className="border-b text-left text-[10px] font-black uppercase tracking-wide text-slate-400"><th className="px-3 py-2">Hạng mục</th>{weekDays.map(day => <th key={day.date} className="px-3 py-2 text-center"><button type="button" onClick={() => loadDate(day.date)} className={`rounded-lg px-2 py-1 ${editDate === day.date ? "bg-violet-100 text-violet-700" : ""}`}>{day.label}<span className="block font-mono font-medium normal-case">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</span></button></th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.label} className="border-b border-slate-100 last:border-0"><td className="px-3 py-3 font-black text-slate-800">{row.label}</td>{weekDays.map(day => <td key={day.date} className="px-3 py-3 text-center font-mono text-xs font-bold text-slate-600">{row.render(getProgress(day.date))}</td>)}</tr>)}</tbody></table></div><div className="mt-5 rounded-2xl border border-violet-200 bg-violet-50/50 p-4"><p className="text-xs font-black uppercase tracking-wide text-violet-700">Cập nhật {editDate.slice(8, 10)}/{editDate.slice(5, 7)}</p><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{([['weight','Cân nặng (kg)'],['exercise','Thể dục (phút)'],['water','Nước (ml)'],['fund','Fund (phút)'],['b2b','B2B (phút)'],['chores','Chores đã xong']] as const).map(([key,label]) => <label key={key} className="space-y-1"><span className="text-[10px] font-black text-slate-500">{label}</span><input inputMode="decimal" value={draft[key]} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} className="w-full rounded-xl border bg-white px-3 py-2 text-sm" /></label>)}<label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2"><input type="checkbox" checked={draft.skincare} onChange={event => setDraft(current => ({ ...current, skincare: event.target.checked }))} /><span className="text-xs font-black text-slate-700">Skincare hoàn tất</span></label><button type="button" onClick={() => { const error = onUpdateDay(editDate, draft); setMessage(error || "Đã cập nhật ngày trong bảng tuần."); }} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white">Lưu ngày này</button></div>{message && <p className={`mt-3 text-xs font-bold ${message.startsWith("Đã") ? "text-emerald-700" : "text-rose-600"}`}>{message}</p>}</div></section>;
 }
