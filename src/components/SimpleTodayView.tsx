@@ -24,7 +24,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
   const [quickTime, setQuickTime] = useState(hcmTime());
   const [weight, setWeight] = useState("");
   const [quickNext, setQuickNext] = useState("");
-  const [quickGoal, setQuickGoal] = useState("");
+  const [quickGoal, setQuickGoal] = useState("area:life");
   const [captureError, setCaptureError] = useState("");
 
   const todaySchedule = useMemo(() => (state.scheduleItems || [])
@@ -41,9 +41,19 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
 
   const logs = state.routineLogs || [];
   const activeGoals = (state.goals || []).filter(goal => goal.status === "active");
-  const getAspect = (goalId?: string | null, title = "") => {
+  const getAspect = (goalId?: string | null, title = "", savedArea = "") => {
     const goal = activeGoals.find(item => item.id === goalId);
     const source = `${goal?.name || ""} ${title}`;
+    const fixed = {
+      health: { key: "health", label: "Sức khỏe", tone: "bg-rose-100 text-rose-700" },
+      chores: { key: "chores", label: "Chores & Nhà", tone: "bg-cyan-100 text-cyan-700" },
+      fund: { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" },
+      job: { key: "job", label: "Job & Thu nhập", tone: "bg-emerald-100 text-emerald-700" },
+      b2b: { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" },
+      money: { key: "money", label: "Tiền", tone: "bg-amber-100 text-amber-700" },
+      life: { key: "life", label: "Đời sống", tone: "bg-slate-100 text-slate-600" }
+    } as const;
+    if (savedArea && fixed[savedArea as keyof typeof fixed]) return fixed[savedArea as keyof typeof fixed];
     if (goal?.category === "health" || /sức khỏe|health|yoga|chạy bộ|skincare/i.test(source)) return { key: "health", label: "Sức khỏe", tone: "bg-rose-100 text-rose-700" };
     if (goal?.category === "fund_backtest" || /fund|trading|backtest|demo/i.test(source)) return { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" };
     if (goal?.category === "business" || goal?.category === "marketing" || /b2b|seo|website|content/i.test(source)) return { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" };
@@ -75,7 +85,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     const day = new Date(`${today}T12:00:00`).getDay();
     return !routine.scheduleDays?.length || routine.scheduleDays.includes(day);
   });
-  const todayChores = (state.chores || []).filter(chore => !chore.completed && (chore.frequency === "daily" || !chore.dueDate || chore.dueDate <= today));
+  const todayChores = (state.chores || []).filter(chore => {
+    if (chore.frequency === "one_time") return !chore.completed && (!chore.dueDate || chore.dueDate <= today);
+    return chore.lastCompletedDate !== today && (chore.frequency === "daily" || !chore.dueDate || chore.dueDate <= today);
+  });
   const groupedMain = mainItems.reduce<Record<string, { label: string; tone: string; items: typeof mainItems }>>((groups, item) => {
     const aspect = getAspect(item.goalId, item.title);
     if (!groups[aspect.key]) groups[aspect.key] = { label: aspect.label, tone: aspect.tone, items: [] };
@@ -120,7 +133,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     onChangeState({ ...state, routineLogs: nextLogs });
   };
 
-  const toggleChore = (choreId: string) => onChangeState({ ...state, chores: (state.chores || []).map(chore => chore.id === choreId ? { ...chore, completed: true, lastCompletedDate: today } : chore) });
+  const toggleChore = (choreId: string) => onChangeState({ ...state, chores: (state.chores || []).map(chore => chore.id === choreId ? { ...chore, completed: chore.frequency === "one_time", lastCompletedDate: today } : chore) });
 
   const saveActivity = () => {
     const text = quickText.trim();
@@ -129,9 +142,16 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     if (text.length > 300) return setCaptureError("Nội dung tối đa 300 ký tự.");
     if (parsedWeight !== null && (!Number.isFinite(parsedWeight) || parsedWeight < 25 || parsedWeight > 300)) return setCaptureError("Cân nặng cần nằm trong khoảng 25–300 kg.");
     const now = Date.now();
+    const selectedIsGoal = quickGoal.startsWith("goal:");
+    const selectedArea = quickGoal.startsWith("area:") ? quickGoal.slice(5) : "";
+    const explicitGoalId = selectedIsGoal ? quickGoal.slice(5) : null;
+    const matchedGoal = explicitGoalId
+      ? activeGoals.find(goal => goal.id === explicitGoalId)
+      : activeGoals.find(goal => getAspect(goal.id).key === selectedArea);
+    const linkedGoalId = matchedGoal?.id || null;
     const entry: ActivityEntry = {
-      id: `manual-${now}`, date: today, goalId: quickGoal || null, source: "manual",
-      activity: text || `Cân lúc ${quickTime}`, output: parsedWeight === null ? {} : { weightKg: parsedWeight },
+      id: `manual-${now}`, date: today, goalId: linkedGoalId, source: "manual",
+      activity: text || `Cân lúc ${quickTime}`, output: { ...(parsedWeight === null ? {} : { weightKg: parsedWeight }), lifeArea: selectedArea || getAspect(linkedGoalId).key },
       outcome: {}, outcomeStatus: "not_applicable", insight: null, nextAction: quickNext.trim() || null,
       confidence: 1, createdTimestamp: now, updatedTimestamp: now, startTime: quickTime
     };
@@ -139,7 +159,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
       ...state.healthRecords,
       [today]: { ...(state.healthRecords[today] || { date: today, sleepHours: null, energy: null, steps: null, strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false, notes: "" }), weight: parsedWeight }
     };
-    onChangeState({ ...state, activities: [entry, ...(state.activities || [])], healthRecords: nextHealth });
+    const nextGoals = quickNext.trim() && linkedGoalId
+      ? state.goals.map(goal => goal.id === linkedGoalId ? { ...goal, nextAction: quickNext.trim() } : goal)
+      : state.goals;
+    onChangeState({ ...state, goals: nextGoals, activities: [entry, ...(state.activities || [])], healthRecords: nextHealth });
     setQuickText(""); setQuickNext(""); setWeight(""); setCaptureError("");
   };
 
@@ -172,13 +195,13 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
 
     <section id="section-quick-input" className="rounded-[24px] border-2 border-indigo-200 bg-indigo-50/50 p-5">
       <div className="flex items-center gap-3"><span className="rounded-xl bg-indigo-600 p-2 text-white"><Plus className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">10 giây</p><h3 className="text-lg font-black">Ghi việc vừa làm</h3></div></div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-[100px_1fr_160px]"><input type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" /><input value={quickText} maxLength={300} onChange={e => setQuickText(e.target.value)} placeholder="Đã thực hiện việc gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><select value={quickGoal} onChange={e => setQuickGoal(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold"><option value="">Đời sống</option>{activeGoals.map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-[100px_1fr_190px]"><input aria-label="Giờ thực hiện" type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" /><input aria-label="Việc đã thực hiện" value={quickText} maxLength={300} onChange={e => setQuickText(e.target.value)} placeholder="Đã thực hiện việc gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><select aria-label="Khía cạnh cuộc sống" value={quickGoal} onChange={e => setQuickGoal(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-800"><option value="area:life">Đời sống</option><option value="area:health">Sức khỏe</option><option value="area:chores">Chores & Nhà</option><option value="area:fund">Fund</option><option value="area:job">Job & Thu nhập</option><option value="area:b2b">B2B</option><option value="area:money">Tiền</option>{activeGoals.length > 0 && <optgroup label="Mục tiêu đang hoạt động">{activeGoals.map(goal => <option key={goal.id} value={`goal:${goal.id}`}>{goal.name}</option>)}</optgroup>}</select></div>
       <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px_auto]"><input value={quickNext} maxLength={200} onChange={e => setQuickNext(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveActivity(); }} placeholder="Hành động tiếp theo là gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><label className="relative"><Scale className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} placeholder="Cân nặng" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-sm" /></label><button onClick={saveActivity} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white">Ghi nhận</button></div>{captureError && <p className="mt-2 text-xs font-bold text-rose-600">{captureError}</p>}
     </section>
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5">
       <div className="flex items-center justify-between"><div className="flex items-center gap-3"><Home className="h-5 w-5 text-emerald-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-600">Cuộc sống thật</p><h3 className="text-lg font-black">Đã sống & đã làm</h3></div></div><button onClick={onOpenProgress} className="text-xs font-black text-indigo-600">Xem biểu đồ →</button></div>
-      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">{activities.map(item => { const aspect = getAspect(item.goalId); return <article key={item.id} className="min-w-60 rounded-2xl bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="font-mono text-xs font-black text-emerald-700">{item.startTime || "--:--"}</span><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${aspect.tone}`}>{aspect.label}</span></div><p className="mt-2 text-sm font-black">{item.activity}</p>{item.nextAction && <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-600"><b>Tiếp theo:</b> {item.nextAction}</p>}{typeof item.output?.weightKg === "number" && <p className="mt-2 text-xs font-black text-rose-600">{item.output.weightKg} kg</p>}</article>})}{activities.length === 0 && <p className="w-full rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">Chưa ghi nhận gì. Mỗi việc nhỏ đều được tính.</p>}</div>
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">{activities.map(item => { const aspect = getAspect(item.goalId, item.activity, String(item.output?.lifeArea || "")); return <article key={item.id} className="min-w-60 rounded-2xl bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="font-mono text-xs font-black text-emerald-700">{item.startTime || "--:--"}</span><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${aspect.tone}`}>{aspect.label}</span></div><p className="mt-2 text-sm font-black">{item.activity}</p>{item.nextAction && <p className="mt-3 border-t border-slate-200 pt-2 text-xs text-slate-600"><b>Tiếp theo:</b> {item.nextAction}</p>}{typeof item.output?.weightKg === "number" && <p className="mt-2 text-xs font-black text-rose-600">{item.output.weightKg} kg</p>}</article>})}{activities.length === 0 && <p className="w-full rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">Chưa ghi nhận gì. Mỗi việc nhỏ đều được tính.</p>}</div>
     </section>
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><BarChart3 className="h-5 w-5 text-violet-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-600">Tiến bộ & bước kế</p><h3 className="text-lg font-black">Các khía cạnh cuộc sống</h3></div></div><button onClick={onOpenProgress} className="text-xs font-black text-indigo-600">Chi tiết →</button></div><div className="mt-4 grid gap-3 md:grid-cols-3">{activeGoals.slice(0,3).map(goal => { const aspect = getAspect(goal.id); return <article key={goal.id} className="rounded-2xl border border-slate-200 p-4"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${aspect.tone}`}>{aspect.label}</span><div className="mt-3 flex items-end justify-between"><p className="text-sm font-black text-slate-900">{goal.name}</p><b className="text-lg">{goal.currentProgress || 0}%</b></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-violet-500" style={{ width: `${Math.min(100, goal.currentProgress || 0)}%` }} /></div><p className="mt-3 text-xs text-slate-600"><b>Tiếp theo:</b> {goal.nextAction || goal.currentMilestone || "Chưa chốt"}</p></article>})}</div></section>
