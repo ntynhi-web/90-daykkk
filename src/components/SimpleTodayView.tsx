@@ -44,7 +44,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   const [water, setWater] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [quickDraft, setQuickDraft] = useState({ weight: "", exercise: "", water: "" });
+  const [quickNotice, setQuickNotice] = useState("");
   const submitLock = useRef(false);
+  const quickLock = useRef(false);
 
   const activeGoals = (state.goals || []).filter(goal => goal.status === "active");
   const resolveArea = (goalId?: string | null, title = "", savedArea = ""): LifeAreaKey => {
@@ -120,6 +123,69 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   ];
 
   const completedToday = todaySchedule.filter(item => item.completed).length;
+  const saveQuickMetric = (metric: "weight" | "exercise" | "water" | "skincare") => {
+    if (quickLock.current) return;
+    const value = metric === "skincare" ? 1 : Number(quickDraft[metric]);
+    if (metric === "weight" && (!Number.isFinite(value) || value < 25 || value > 300)) return setQuickNotice("Cân nặng cần nằm trong khoảng 25–300 kg.");
+    if (metric === "exercise" && (!Number.isFinite(value) || value < 0 || value > 720)) return setQuickNotice("Thời gian thể dục cần nằm trong khoảng 0–720 phút.");
+    if (metric === "water" && (!Number.isFinite(value) || value < 0 || value > 5000)) return setQuickNotice("Lượng nước cần nằm trong khoảng 0–5.000 ml.");
+    quickLock.current = true;
+    const now = Date.now();
+    if (metric === "weight") {
+      onChangeState({
+        ...state,
+        healthRecords: {
+          ...state.healthRecords,
+          [today]: {
+            ...(state.healthRecords[today] || { date: today, sleepHours: null, energy: null, steps: null, strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false, notes: "" }),
+            weight: value
+          }
+        }
+      });
+    } else if (metric === "skincare") {
+      const routineId = "routine_beauty_foundation";
+      const completed = todayProgress.skincareDone;
+      const filtered = (state.routineLogs || []).filter(log => !(log.routineId === routineId && log.date === today));
+      onChangeState({
+        ...state,
+        routineLogs: completed ? filtered : [{
+          id: `quick-${routineId}-${today}`,
+          routineId,
+          goalId: "G4",
+          date: today,
+          status: "completed",
+          source: "manual",
+          evidence: "Tick trực tiếp ở Tiến độ hôm nay",
+          activityId: null,
+          createdTimestamp: now,
+          updatedTimestamp: now
+        }, ...filtered]
+      });
+    } else {
+      const output = metric === "exercise" ? { lifeArea: "health", durationMinutes: value } : { lifeArea: "health", waterMl: value };
+      const entry: ActivityEntry = {
+        id: `quick-${metric}-${now}`,
+        date: today,
+        goalId: "G4",
+        source: "manual",
+        activity: metric === "exercise" ? `Thể dục ${value} phút` : `Uống ${value} ml nước`,
+        output,
+        outcome: {},
+        outcomeStatus: "not_applicable",
+        insight: null,
+        nextAction: null,
+        confidence: 1,
+        createdTimestamp: now,
+        updatedTimestamp: now,
+        startTime: hcmTime()
+      };
+      onChangeState({ ...state, activities: [entry, ...(state.activities || [])] });
+    }
+    setQuickDraft(current => ({ ...current, [metric]: "" }));
+    setQuickNotice(metric === "skincare" && todayProgress.skincareDone ? "Đã bỏ hoàn tất skincare." : "Đã cập nhật tiến độ hôm nay.");
+    window.setTimeout(() => { quickLock.current = false; }, 400);
+  };
+
   const toggleSchedule = (id: string) => {
     const current = todaySchedule.find(item => item.id === id);
     if (!current) return;
@@ -188,7 +254,12 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3"><ClipboardCheck className="h-5 w-5 text-emerald-600" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-emerald-600">Theo từng mục nhỏ</p><h3 className="text-xl font-black">Tiến độ hôm nay</h3></div></div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{dayMetrics.map(metric => <article key={metric.label} className="rounded-2xl bg-slate-50 p-4"><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-black text-slate-500">{metric.label}</p><p className="mt-1 text-sm font-black text-slate-900">{metric.value}</p></div><span className="text-xs font-black text-indigo-600">{Math.round(metric.percent)}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${metric.percent}%` }} /></div><p className="mt-2 text-[10px] font-semibold text-slate-400">{metric.detail}</p></article>)}</div>
+      <p className="mt-2 text-xs text-slate-500">Nhập hoặc tick ngay trên từng thẻ; dữ liệu sẽ cập nhật cả bảng tuần.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{dayMetrics.map(metric => {
+        const quickType = metric.label === "Cân nặng" ? "weight" : metric.label === "Thể dục" ? "exercise" : metric.label === "Nước" ? "water" : metric.label === "Skincare" ? "skincare" : null;
+        return <article key={metric.label} className="rounded-2xl bg-slate-50 p-4"><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-black text-slate-500">{metric.label}</p><p className="mt-1 text-sm font-black text-slate-900">{metric.value}</p></div><span className="text-xs font-black text-indigo-600">{Math.round(metric.percent)}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${metric.percent}%` }} /></div><p className="mt-2 text-[10px] font-semibold text-slate-400">{metric.detail}</p>{quickType && (quickType === "skincare" ? <button type="button" aria-pressed={todayProgress.skincareDone} onClick={() => saveQuickMetric("skincare")} className={`mt-3 w-full rounded-xl px-3 py-2.5 text-xs font-black ${todayProgress.skincareDone ? "bg-emerald-600 text-white" : "border border-slate-300 bg-white text-slate-700"}`}>{todayProgress.skincareDone ? "✓ Đã hoàn tất · bấm để bỏ" : "Đánh dấu hoàn tất"}</button> : <div className="mt-3 flex gap-2"><input aria-label={`Nhập ${metric.label}`} inputMode="decimal" value={quickDraft[quickType]} onChange={event => setQuickDraft(current => ({ ...current, [quickType]: event.target.value }))} placeholder={quickType === "weight" ? "kg" : quickType === "exercise" ? "phút" : "ml"} className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /><button type="button" onClick={() => saveQuickMetric(quickType)} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Lưu</button></div>)}</article>;
+      })}</div>
+      {quickNotice && <p role="status" className={`mt-3 text-xs font-bold ${quickNotice.startsWith("Đã") ? "text-emerald-700" : "text-rose-600"}`}>{quickNotice}</p>}
     </section>
 
     <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} />
