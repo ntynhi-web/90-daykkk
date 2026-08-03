@@ -381,6 +381,7 @@ export default function App() {
                 state={state} 
                 onChangeState={handleUpdateState} 
                 onOpenProgress={() => setActiveTab('progress')}
+                onOpenReview={() => setActiveTab('settings')}
               />
             )}
 
