@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { BarChart3, CalendarDays, Check, Home, Plus, RotateCcw, Scale } from "lucide-react";
 import { AppState, ActivityEntry, RoutineLog } from "../types";
 import { isScheduleValidForDate } from "../utils";
@@ -26,6 +26,8 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
   const [quickNext, setQuickNext] = useState("");
   const [quickGoal, setQuickGoal] = useState("area:health");
   const [captureError, setCaptureError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const submissionLockRef = useRef(false);
 
   const todaySchedule = useMemo(() => (state.scheduleItems || [])
     .filter(item => item.date === today && isScheduleValidForDate(item))
@@ -90,7 +92,13 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
   const healthRoutines = activeRoutines.filter(routine => getAspect(routine.goalId, routine.name).key === "health");
   const todayChores = (state.chores || []).filter(chore => {
     if (chore.frequency === "one_time") return !chore.completed && (!chore.dueDate || chore.dueDate <= today);
-    return chore.lastCompletedDate !== today && (chore.frequency === "daily" || !chore.dueDate || chore.dueDate <= today);
+    if (chore.frequency === "daily") return chore.lastCompletedDate !== today;
+    if (chore.dueDate && chore.dueDate > today) return false;
+    if (!chore.lastCompletedDate) return true;
+    const currentDay = new Date(`${today}T12:00:00`).getTime();
+    const lastDoneDay = new Date(`${chore.lastCompletedDate}T12:00:00`).getTime();
+    if (!Number.isFinite(lastDoneDay)) return true;
+    return currentDay - lastDoneDay >= 7 * 24 * 60 * 60 * 1000;
   });
   const groupedMain = mainItems.reduce<Record<string, { label: string; tone: string; items: typeof mainItems }>>((groups, item) => {
     const aspect = getAspect(item.goalId, item.title);
@@ -122,8 +130,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     .sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
   const completedMain = mainItems.filter(item => item.completed).length;
   const completedRoutine = healthRoutines.filter(routine => logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed")).length;
-  const totalChecks = mainItems.length + healthRoutines.length;
-  const completion = totalChecks ? Math.round(((completedMain + completedRoutine) / totalChecks) * 100) : 0;
+  const completedChoresToday = (state.chores || []).filter(chore => chore.lastCompletedDate === today).length;
+  const totalChoresToday = todayChores.length + completedChoresToday;
+  const totalChecks = mainItems.length + healthRoutines.length + totalChoresToday;
+  const completion = totalChecks ? Math.round(((completedMain + completedRoutine + completedChoresToday) / totalChecks) * 100) : 0;
 
   const toggleMain = (item: typeof mainItems[number]) => {
     const completed = !item.completed;
@@ -151,12 +161,42 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
 
   const toggleChore = (choreId: string) => onChangeState({ ...state, chores: (state.chores || []).map(chore => chore.id === choreId ? { ...chore, completed: chore.frequency === "one_time", lastCompletedDate: today } : chore) });
 
+  const toggleMilestone = (goalId: string, milestoneId: string) => {
+    const now = Date.now();
+    const nextGoals = state.goals.map(goal => {
+      if (goal.id !== goalId) return goal;
+      const toggled = goal.milestones.map(item => item.id === milestoneId
+        ? { ...item, achieved: !item.achieved, completedAt: !item.achieved ? new Date(now).toISOString() : null }
+        : item);
+      const firstOpenIndex = toggled.findIndex(item => !item.achieved);
+      const milestones = toggled.map((item, index) => ({
+        ...item,
+        status: item.achieved ? "completed" as const : index === firstOpenIndex ? "active" as const : "locked" as const
+      }));
+      const nextMilestone = milestones.find(item => !item.achieved);
+      const completedCount = milestones.filter(item => item.achieved).length;
+      return {
+        ...goal,
+        milestones,
+        currentProgress: milestones.length ? Math.round(completedCount / milestones.length * 100) : 0,
+        currentMilestone: nextMilestone?.title || "Đã hoàn tất lộ trình",
+        currentMilestoneId: nextMilestone?.id || null,
+        nextAction: nextMilestone ? `Tiếp tục: ${nextMilestone.title}` : "Review kết quả và chọn giai đoạn tiếp theo",
+        status: nextMilestone ? goal.status : "completed" as const
+      };
+    });
+    onChangeState({ ...state, goals: nextGoals });
+  };
+
   const saveActivity = () => {
+    if (submissionLockRef.current) return;
     const text = quickText.trim();
     const parsedWeight = weight.trim() ? Number(weight) : null;
     if (!text && parsedWeight === null) return setCaptureError("Hãy nhập một việc đã làm hoặc cân nặng.");
     if (text.length > 300) return setCaptureError("Nội dung tối đa 300 ký tự.");
     if (parsedWeight !== null && (!Number.isFinite(parsedWeight) || parsedWeight < 25 || parsedWeight > 300)) return setCaptureError("Cân nặng cần nằm trong khoảng 25–300 kg.");
+    submissionLockRef.current = true;
+    setIsSaving(true);
     const now = Date.now();
     const selectedIsGoal = quickGoal.startsWith("goal:");
     const selectedArea = quickGoal.startsWith("area:") ? quickGoal.slice(5) : "";
@@ -180,6 +220,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
       : state.goals;
     onChangeState({ ...state, goals: nextGoals, activities: [entry, ...(state.activities || [])], healthRecords: nextHealth });
     setQuickText(""); setQuickNext(""); setWeight(""); setCaptureError("");
+    window.setTimeout(() => {
+      submissionLockRef.current = false;
+      setIsSaving(false);
+    }, 500);
   };
 
   return <div className="mx-auto max-w-5xl space-y-5">
@@ -194,6 +238,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-indigo-600" /><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">Việc hằng ngày × timeline tuần</p><h3 className="text-xl font-black">5 khía cạnh chính</h3></div></div><div className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Nhịp T2–T7: {sixDayAverage}%</div></div>
       <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-5 xl:overflow-visible">{focusGroups.map(group => {
         const scheduled = groupedMain[group.key]?.items || [];
+        const groupGoal = state.goals.find(goal =>
+          (group.key === "fund" && goal.category === "fund_backtest") ||
+          (group.key === "b2b" && (goal.category === "business" || goal.category === "marketing"))
+        );
         return <article key={group.key} className={`min-w-[260px] snap-start rounded-2xl border bg-white p-4 ${group.border} xl:min-w-0`}>
           <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${group.tone}`}>{group.label}</span><span className="text-[9px] font-black text-slate-400">TUẦN NÀY</span></div>
           <div className="mt-4 grid grid-cols-7 gap-1">{weekDays.map(day => {
@@ -205,7 +253,14 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
             const percent = planned ? Math.min(100, Math.round(done / planned * 100)) : 0;
             return <div key={day.date} className={`rounded-lg p-1 text-center ${day.date === today ? "bg-indigo-100 ring-1 ring-indigo-300" : day.isSunday ? "bg-amber-50" : "bg-slate-50"}`}><p className="text-[8px] font-black text-slate-500">{day.day}</p><span className={`mx-auto mt-1 block h-2 w-2 rounded-full ${day.isSunday ? "bg-amber-400" : percent === 100 ? "bg-emerald-500" : percent > 0 ? "bg-indigo-400" : "bg-slate-200"}`} /></div>;
           })}</div>
-          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5"><p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Mục con chuẩn</p><div className="mt-2 space-y-1">{canonicalSubItems[group.key].map((item, index) => <p key={item} className={`text-[10px] leading-snug ${index === 0 && group.key !== "relationship" ? "font-black text-slate-800" : "font-medium text-slate-500"}`}>{index + 1}. {item}</p>)}</div></div>
+          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5"><p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Mục con chuẩn</p><div className="mt-2 space-y-1">{canonicalSubItems[group.key].map((item, index) => {
+            const linkedMilestone = (group.key === "fund" || group.key === "b2b") ? groupGoal?.milestones[index] : null;
+            if (!linkedMilestone) return <p key={item} className={`text-[10px] leading-snug ${index === 0 && group.key !== "relationship" ? "font-black text-slate-800" : "font-medium text-slate-500"}`}>{index + 1}. {item}</p>;
+            return <button key={linkedMilestone.id} type="button" onClick={() => toggleMilestone(groupGoal!.id, linkedMilestone.id)} className={`flex w-full items-start gap-1.5 rounded-lg px-1.5 py-1 text-left transition ${linkedMilestone.achieved ? "bg-emerald-50 text-emerald-700" : "hover:bg-white text-slate-600"}`}>
+              <span className={`mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded ${linkedMilestone.achieved ? "bg-emerald-500 text-white" : "border border-slate-300 bg-white"}`}>{linkedMilestone.achieved && <Check className="h-2.5 w-2.5" />}</span>
+              <span className={`text-[10px] leading-snug ${linkedMilestone.achieved ? "font-bold line-through" : linkedMilestone.status === "active" ? "font-black text-slate-800" : "font-medium"}`}>{index + 1}. {item}</span>
+            </button>;
+          })}</div></div>
           <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">Hôm nay</p>
           <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">
             {group.key === "health" && healthRoutines.map(routine => { const done = logs.some(log => log.routineId === routine.id && log.date === today && log.status !== "missed"); return <button key={routine.id} onClick={() => toggleRoutine(routine.id)} className={`flex w-full items-start gap-2 rounded-xl p-2.5 text-left ${done ? "bg-emerald-50" : "bg-slate-50"}`}><span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${done ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>{done && <Check className="h-3 w-3" />}</span><span className="text-xs font-bold">{routineDisplayName[routine.id] || routine.name}</span></button>})}
@@ -222,7 +277,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     <section id="section-quick-input" className="rounded-[24px] border-2 border-indigo-200 bg-indigo-50/50 p-5">
       <div className="flex items-center gap-3"><span className="rounded-xl bg-indigo-600 p-2 text-white"><Plus className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-indigo-600">10 giây</p><h3 className="text-lg font-black">Ghi việc vừa làm</h3></div></div>
       <div className="mt-4 grid gap-2 sm:grid-cols-[100px_1fr_190px]"><input aria-label="Giờ thực hiện" type="time" value={quickTime} onChange={e => setQuickTime(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" /><input aria-label="Việc đã thực hiện" value={quickText} maxLength={300} onChange={e => setQuickText(e.target.value)} placeholder="Đã thực hiện việc gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><select aria-label="Khía cạnh cuộc sống" value={quickGoal} onChange={e => setQuickGoal(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-800"><option value="area:health">Sức khỏe</option><option value="area:fund">Fund</option><option value="area:b2b">B2B</option><option value="area:relationship">Relationship</option><option value="area:chores">Chores</option>{activeGoals.length > 0 && <optgroup label="Mục tiêu đang hoạt động">{activeGoals.map(goal => <option key={goal.id} value={`goal:${goal.id}`}>{goal.name}</option>)}</optgroup>}</select></div>
-      <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px_auto]"><input value={quickNext} maxLength={200} onChange={e => setQuickNext(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveActivity(); }} placeholder="Hành động tiếp theo là gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><label className="relative"><Scale className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} placeholder="Cân nặng" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-sm" /></label><button onClick={saveActivity} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white">Ghi nhận</button></div>{captureError && <p className="mt-2 text-xs font-bold text-rose-600">{captureError}</p>}
+      <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px_auto]"><input value={quickNext} maxLength={200} onChange={e => setQuickNext(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveActivity(); }} placeholder="Hành động tiếp theo là gì?" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" /><label className="relative"><Scale className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" /><input inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} placeholder="Cân nặng" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-sm" /></label><button disabled={isSaving} onClick={saveActivity} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? "Đang lưu…" : "Ghi nhận"}</button></div>{captureError && <p className="mt-2 text-xs font-bold text-rose-600">{captureError}</p>}
     </section>
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5">
