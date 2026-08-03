@@ -58,7 +58,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     if (goal?.category === "health" || /sức khỏe|health|yoga|chạy bộ|skincare/i.test(source)) return { key: "health", label: "Sức khỏe", tone: "bg-rose-100 text-rose-700" };
     if (goal?.category === "fund_backtest" || /fund|trading|backtest|demo/i.test(source)) return { key: "fund", label: "Fund", tone: "bg-violet-100 text-violet-700" };
     if (goal?.category === "business" || goal?.category === "marketing" || /b2b|seo|website|content/i.test(source)) return { key: "b2b", label: "B2B", tone: "bg-blue-100 text-blue-700" };
-    if (/relationship|người yêu|gia đình|kết nối|hẹn hò|date night/i.test(source)) return { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700" };
+    if (/relationship|người yêu|lover|ba mẹ|mẹ|cha|bố|gia đình|rainy|ranny|lacky|kết nối|hẹn hò|date night/i.test(source)) return { key: "relationship", label: "Relationship", tone: "bg-pink-100 text-pink-700" };
     if (goal?.category === "finance" || /tài chính|finance|tiền|thanh toán|ngân sách/i.test(source)) return { key: "money", label: "Tiền", tone: "bg-amber-100 text-amber-700" };
     if (goal?.category === "career" || /job|freelance|outlier|upwork|linkedin|thu nhập/i.test(source)) return { key: "job", label: "Job & Thu nhập", tone: "bg-emerald-100 text-emerald-700" };
     if (goal?.category === "home" || /dọn|nhà|mèo|rainy|đi chợ/i.test(source)) return { key: "chores", label: "Chores & Nhà", tone: "bg-cyan-100 text-cyan-700" };
@@ -109,7 +109,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenProgress, 
     health: ["Tập thể dục", "Uống 1,5 lít nước", "Ăn healthy · hạn chế ngọt/béo", "Skincare & vệ sinh cá nhân"],
     fund: ["Học video", "Viết checklist", "Xem demo", "Backtest", "Trading journal", "Đánh giá demo", "Điều kiện mua quỹ"],
     b2b: ["Checklist sửa website", "Chỉnh website", "Viết SEO bằng AI", "Chi đọc lại", "Đăng bài", "Làm portfolio", "Học AI Automation"],
-    relationship: ["Chưa chốt mục con"],
+    relationship: ["Ba mẹ", "Lover", "Rainy & Lacky", "Other"],
     chores: ["Chăm mèo", "Dọn nhà", "Bếp & nấu ăn", "Giặt và sắp xếp quần áo", "Việc gia đình phát sinh"]
   };
   const routineDisplayName: Record<string, string> = {
