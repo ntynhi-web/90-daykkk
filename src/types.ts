@@ -16,6 +16,17 @@ export interface Milestone {
   celebrationMessage?: string;
 }
 
+export interface MilestoneProgressLog {
+  id: string;
+  goalId: string;
+  milestoneId: string;
+  date: string;
+  time?: string | null;
+  progress: number;
+  note: string;
+  createdTimestamp: number;
+}
+
 export type GoalCategory =
   | "business"
   | "marketing"
@@ -87,6 +98,9 @@ export interface ActivityEntry {
   confidence: number;
   createdTimestamp: number;
   updatedTimestamp: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  durationMinutes?: number | null;
 }
 
 export interface Routine {
@@ -385,6 +399,7 @@ export interface AppState {
   dailyModeDate?: string | null;
   goals: Goal[];
   activities: ActivityEntry[];
+  milestoneProgressLogs?: MilestoneProgressLog[];
   routines: Routine[];
   routineLogs?: RoutineLog[];
   lifeAnchors?: LifeAnchor[];
