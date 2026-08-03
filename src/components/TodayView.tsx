@@ -164,7 +164,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<'important_urgent' | 'important' | 'urgent' | 'later'>('important_urgent');
   const [newTaskJourneyId, setNewTaskJourneyId] = useState("");
-  const [journalDraft, setJournalDraft] = useState({ work: "", result: "", lesson: "", goalId: "G1" });
+  const [journalDraft, setJournalDraft] = useState({ work: "", result: "", lesson: "", goalId: "G1", startTime: "", endTime: "", weightKg: "" });
   const [unexpectedDraft, setUnexpectedDraft] = useState({ title: "", priority: "urgent" as PriorityTask['priority'], goalId: "", startTime: "", endTime: "" });
 
   // Speech recognition ref
@@ -885,16 +885,32 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
     if (!journalDraft.work.trim() || submitLocksRef.current.has("journal")) return;
     submitLocksRef.current.add("journal");
     const timestamp = Date.now();
+    const hasValidTimes = !!journalDraft.startTime && !!journalDraft.endTime && journalDraft.endTime > journalDraft.startTime;
+    const durationMinutes = hasValidTimes
+      ? (Number(journalDraft.endTime.slice(0, 2)) * 60 + Number(journalDraft.endTime.slice(3))) - (Number(journalDraft.startTime.slice(0, 2)) * 60 + Number(journalDraft.startTime.slice(3)))
+      : null;
+    const parsedWeight = journalDraft.weightKg.trim() ? Number(journalDraft.weightKg.replace(',', '.')) : null;
+    const validWeight = parsedWeight !== null && Number.isFinite(parsedWeight) && parsedWeight >= 30 && parsedWeight <= 300 ? parsedWeight : null;
     const entry: ActivityEntry = {
       id: `journal_${timestamp}`, date: todayStr, goalId: journalDraft.goalId || null, source: 'manual',
-      activity: journalDraft.work.trim(), output: {},
+      activity: journalDraft.work.trim(), output: validWeight ? { weightKg: validWeight } : {},
       outcome: journalDraft.result.trim() ? { result: journalDraft.result.trim() } : {},
       outcomeStatus: journalDraft.result.trim() ? 'measured' : 'not_applicable', outcomeReviewDate: null,
       insight: journalDraft.lesson.trim() || null, nextAction: null, confidence: 1,
-      createdTimestamp: timestamp, updatedTimestamp: timestamp
+      createdTimestamp: timestamp, updatedTimestamp: timestamp,
+      startTime: hasValidTimes ? journalDraft.startTime : null,
+      endTime: hasValidTimes ? journalDraft.endTime : null,
+      durationMinutes
     };
-    onChangeState({ ...state, activities: [entry, ...state.activities] });
-    setJournalDraft(value => ({ ...value, work: '', result: '', lesson: '' }));
+    const nextHealthRecords = validWeight ? {
+      ...state.healthRecords,
+      [todayStr]: {
+        ...(state.healthRecords[todayStr] || { date: todayStr, weight: null, sleepHours: null, energy: null, steps: null, strengthSession: false, eatOnPlan: false, skincare: false, styleAndAppearance: false, notes: '' }),
+        weight: validWeight
+      }
+    } : state.healthRecords;
+    onChangeState({ ...state, activities: [entry, ...state.activities], healthRecords: nextHealthRecords });
+    setJournalDraft(value => ({ ...value, work: '', result: '', lesson: '', startTime: '', endTime: '', weightKg: '' }));
     setSaveNotice('Đã lưu nhật ký hôm nay vào Kết quả.');
     window.setTimeout(() => submitLocksRef.current.delete("journal"), 500);
   };
@@ -1101,6 +1117,9 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
   const todayAvailability = (state.weeklyAvailability || []).find(day => day.dayOfWeek === new Date(`${todayStr}T12:00:00`).getDay());
   const suggestedMode = todayAvailability?.mode === 'office' ? 'busy' : todayAvailability?.mode === 'rest' ? 'recovery' : 'normal';
   const dailyMode = state.dailyModeDate === todayStr ? state.dailyMode || suggestedMode : suggestedMode;
+  const todayActivities = state.activities
+    .filter(activity => activity.date === todayStr)
+    .sort((a, b) => (a.startTime || new Date(a.createdTimestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })).localeCompare(b.startTime || new Date(b.createdTimestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })));
 
   return (
     <div id="today-dashboard-view" className="space-y-8">
@@ -1125,6 +1144,11 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           {todaySchedule.length === 0 && <p className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Hôm nay chưa có lịch.</p>}
         </div>
       </section>
+
+      {todayActivities.length > 0 && <section className="rounded-[24px] border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Đã sống & đã làm</p><h2 className="mt-1 text-lg font-black text-slate-950">Dòng thời gian hôm nay</h2></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-emerald-700">{todayActivities.length} ghi nhận</span></div>
+        <div className="mt-4 flex gap-3 overflow-x-auto pb-1">{todayActivities.map(activity => { const goal = state.goals.find(item => item.id === activity.goalId); const displayTime = activity.startTime || new Date(activity.createdTimestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }); return <article key={activity.id} className="min-w-[220px] rounded-2xl border border-emerald-100 bg-white p-4"><div className="flex items-center justify-between gap-2"><span className="font-mono text-xs font-black text-emerald-700">{displayTime}{activity.endTime ? `–${activity.endTime}` : ''}</span>{activity.durationMinutes ? <span className="text-[9px] font-bold text-slate-400">{activity.durationMinutes} phút</span> : null}</div><p className="mt-2 text-sm font-black text-slate-900">{activity.activity}</p><p className="mt-1 text-[10px] text-slate-500">{goal?.name || 'Cuộc sống hằng ngày'}</p>{typeof activity.output?.weightKg === 'number' && <p className="mt-2 text-xs font-black text-rose-600">{activity.output.weightKg} kg</p>}</article>; })}</div>
+      </section>}
 
       {attentionCount > 0 && (
         <section className="flex flex-col gap-3 rounded-[20px] border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1411,6 +1435,7 @@ export default function TodayView({ state, onChangeState, onOpenProgress }: Toda
           <div className="mt-4 grid gap-3">
             <select aria-label="Mục tiêu của nhật ký" value={journalDraft.goalId} onChange={event => setJournalDraft({ ...journalDraft, goalId: event.target.value })} className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700">{state.goals.filter(goal => goal.status === 'active').map(goal => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select>
             <textarea maxLength={MAX_TEXT_LENGTH} value={journalDraft.work} onChange={event => setJournalDraft({ ...journalDraft, work: event.target.value })} placeholder="Công việc đã thực hiện…" className="min-h-20 rounded-xl border border-sky-200 bg-white px-3 py-3 text-xs outline-none focus:border-sky-500" />
+            <div className="grid gap-3 sm:grid-cols-3"><label className="text-[10px] font-bold text-slate-500">Bắt đầu<input type="time" value={journalDraft.startTime} onChange={event => setJournalDraft({ ...journalDraft, startTime: event.target.value })} className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs" /></label><label className="text-[10px] font-bold text-slate-500">Kết thúc<input type="time" value={journalDraft.endTime} onChange={event => setJournalDraft({ ...journalDraft, endTime: event.target.value })} className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs" /></label><label className="text-[10px] font-bold text-slate-500">Cân nặng (nếu có)<input inputMode="decimal" value={journalDraft.weightKg} onChange={event => setJournalDraft({ ...journalDraft, weightKg: event.target.value })} placeholder="63,75" className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs" /></label></div>
             <div className="grid gap-3 sm:grid-cols-2"><input maxLength={1000} value={journalDraft.result} onChange={event => setJournalDraft({ ...journalDraft, result: event.target.value })} placeholder="Kết quả/đầu ra" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /><input maxLength={1000} value={journalDraft.lesson} onChange={event => setJournalDraft({ ...journalDraft, lesson: event.target.value })} placeholder="Vấn đề hoặc bài học" className="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-xs outline-none" /></div>
             <button disabled={!journalDraft.work.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-xs font-black text-white disabled:opacity-40"><Save className="h-4 w-4" /> Lưu nhật ký</button>
           </div>

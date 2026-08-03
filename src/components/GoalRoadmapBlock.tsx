@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { Check, Circle, Flag, LockKeyhole } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Check, Circle, Flag, LockKeyhole, TrendingUp, X } from "lucide-react";
 import { AppState, Goal } from "../types";
 import GoalIcon, { COLOR_MAP } from "./GoalIcon";
 import { formatDisplayDate } from "../utils";
@@ -24,6 +24,64 @@ const getOrderedGoals = (goals: Goal[]) =>
 export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRoadmapBlockProps) {
   const goals = getOrderedGoals(state.goals);
   const completingRef = useRef(new Set<string>());
+  const [progressEditorId, setProgressEditorId] = useState<string | null>(null);
+  const [progressDraft, setProgressDraft] = useState({ progress: 10, note: "" });
+
+  const milestoneLogs = state.milestoneProgressLogs || [];
+  const getMilestoneLogs = (milestoneId: string) => milestoneLogs
+    .filter(log => log.milestoneId === milestoneId)
+    .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+  const getMilestoneProgress = (milestone: Goal["milestones"][number]) => {
+    if (milestone.achieved) return 100;
+    return getMilestoneLogs(milestone.id)[0]?.progress || 0;
+  };
+
+  const openProgressEditor = (milestone: Goal["milestones"][number]) => {
+    setProgressDraft({ progress: getMilestoneProgress(milestone), note: "" });
+    setProgressEditorId(milestone.id);
+  };
+
+  const saveMilestoneProgress = (goal: Goal, milestoneId: string) => {
+    const progress = Math.max(0, Math.min(100, Math.round(Number(progressDraft.progress))));
+    if (!Number.isFinite(progress) || progressDraft.note.trim().length > 500 || completingRef.current.has(`progress:${milestoneId}`)) return;
+    completingRef.current.add(`progress:${milestoneId}`);
+    const now = Date.now();
+    const completedAt = progress === 100 ? new Date(now).toISOString() : null;
+    const updatedMilestones = goal.milestones.map(milestone => milestone.id === milestoneId
+      ? { ...milestone, currentValue: `${progress}%`, achieved: progress === 100, status: progress === 100 ? "completed" as const : "active" as const, completedAt }
+      : milestone);
+    const nextMilestone = updatedMilestones.find(milestone => !milestone.achieved && milestone.status !== "skipped") || null;
+    const allLogs = [{
+      id: `milestone_progress_${milestoneId}_${now}`,
+      goalId: goal.id,
+      milestoneId,
+      date: today,
+      time: new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(now)),
+      progress,
+      note: progressDraft.note.trim(),
+      createdTimestamp: now
+    }, ...milestoneLogs];
+    const weightedProgress = Math.round(updatedMilestones.reduce((sum, milestone) => {
+      if (milestone.achieved) return sum + 100;
+      return sum + (milestone.id === milestoneId ? progress : getMilestoneProgress(milestone));
+    }, 0) / Math.max(updatedMilestones.length, 1));
+
+    onChangeState({
+      ...state,
+      milestoneProgressLogs: allLogs,
+      goals: state.goals.map(item => item.id === goal.id ? {
+        ...item,
+        milestones: updatedMilestones.map(milestone => milestone.achieved || milestone.status === "skipped" ? milestone : { ...milestone, status: milestone.id === nextMilestone?.id ? "active" as const : "locked" as const }),
+        currentMilestoneId: nextMilestone?.id || null,
+        currentMilestone: nextMilestone?.title || "Đã hoàn thành",
+        currentProgress: weightedProgress,
+        status: nextMilestone ? "active" : "completed"
+      } : item)
+    });
+    setProgressEditorId(null);
+    setProgressDraft({ progress: 10, note: "" });
+    window.setTimeout(() => completingRef.current.delete(`progress:${milestoneId}`), 500);
+  };
 
   const toggleDailyRoutine = (routineId: string, goalId: string, completed: boolean, evidence: string) => {
     const lockKey = `routine:${routineId}`;
@@ -172,6 +230,8 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                   {goal.milestones.map(milestone => {
                     const isCurrent = milestone.id === current?.id;
                     const isCompleted = milestone.achieved;
+                    const progress = getMilestoneProgress(milestone);
+                    const progressLogs = getMilestoneLogs(milestone.id);
 
                     return (
                       <li key={milestone.id} className="flex min-w-[210px] flex-1 items-stretch">
@@ -207,7 +267,24 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                             <p className="mt-1 text-[11px] text-slate-500">
                               Kết quả: {milestone.targetValue} · hạn {formatDisplayDate(milestone.dueDate)}
                             </p>
+                            <div className="mt-3">
+                              <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold text-slate-500">
+                                <span>{progress}% tiến bộ</span>
+                                <span>{progressLogs.length} cập nhật</span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                                <div className={`h-full rounded-full transition-all ${isCompleted ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${progress}%` }} />
+                              </div>
+                              {progressLogs[0]?.note && <p className="mt-2 line-clamp-2 text-[10px] leading-relaxed text-slate-500">Gần nhất: {progressLogs[0].note}</p>}
+                              {(isCurrent || isCompleted) && <button type="button" onClick={() => openProgressEditor(milestone)} className="mt-2 flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-indigo-700 hover:bg-indigo-50"><TrendingUp className="h-3 w-3" /> Ghi tiến bộ</button>}
+                              {progressEditorId === milestone.id && <div className="mt-3 space-y-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+                                <div className="flex items-center justify-between"><span className="text-[10px] font-black text-indigo-900">Cập nhật cột mốc</span><button type="button" onClick={() => setProgressEditorId(null)} className="text-indigo-400"><X className="h-3.5 w-3.5" /></button></div>
+                                <label className="block text-[10px] font-bold text-slate-600">Tiến độ: {progressDraft.progress}%<input type="range" min="0" max="100" step="5" value={progressDraft.progress} onChange={event => setProgressDraft({ ...progressDraft, progress: Number(event.target.value) })} className="mt-1 w-full accent-indigo-600" /></label>
+                                <textarea maxLength={500} rows={2} value={progressDraft.note} onChange={event => setProgressDraft({ ...progressDraft, note: event.target.value })} placeholder="Hôm nay đã tiến được gì?" className="w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-[10px] outline-none focus:border-indigo-500" />
+                                <button type="button" onClick={() => saveMilestoneProgress(goal, milestone.id)} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white">Lưu tiến bộ</button>
+                              </div>}
                           </div>
+                        </div>
                         </div>
                       </li>
                     );
