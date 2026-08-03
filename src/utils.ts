@@ -941,6 +941,7 @@ export function migrateAppState(rawState: any): AppState {
 
   // Fallback for other arrays
   if (!migrated.activities) migrated.activities = [];
+  if (!Array.isArray(migrated.milestoneProgressLogs)) migrated.milestoneProgressLogs = [];
   if (!migrated.experiments) migrated.experiments = [];
   if (!migrated.weeklyReviews) migrated.weeklyReviews = [];
   if (!migrated.b2bLeads) migrated.b2bLeads = [];
