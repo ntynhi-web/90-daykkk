@@ -233,7 +233,7 @@ export default function App() {
           <button
             id="nav-calendar"
             onClick={() => setActiveTab('calendar')}
-            className={`hidden w-full items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'calendar'
                 ? "bg-indigo-50 text-indigo-600 shadow-3xs"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -446,6 +446,8 @@ export default function App() {
         </button>
 
         <button onClick={() => setActiveTab('progress')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'progress' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><BarChart3 className="h-5 w-5" /><span>Tiến độ</span></button>
+
+        <button onClick={() => setActiveTab('calendar')} className={`flex min-h-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[10px] font-bold ${activeTab === 'calendar' ? "bg-indigo-50/70 text-indigo-600" : "text-slate-500"}`}><Calendar className="h-5 w-5" /><span>Lịch</span></button>
       </nav>
 
     </div>
