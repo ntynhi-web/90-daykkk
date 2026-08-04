@@ -45,7 +45,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   const [water, setWater] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
-  const [quickDraft, setQuickDraft] = useState({ weight: "", exercise: "", water: "" });
+  const [quickDraft, setQuickDraft] = useState({ weight: "", exercise: "", water: "", fund: "", b2b: "", chores: "" });
   const [quickNotice, setQuickNotice] = useState("");
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
@@ -104,19 +104,25 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
     const scheduleMinutes = (key: LifeAreaKey, pattern?: RegExp) => schedules
       .filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === key && (!pattern || pattern.test(item.title)))
       .reduce((sum, item) => sum + (item.estimatedMinutes || minutesBetween(item.startTime, item.endTime)), 0);
+    const exactActivity = (metric: string) => activities.find(item => item.originalTranscript === `exact:${metric}:${date}`);
     const activityMinutes = (key: LifeAreaKey) => metricActivities
       .filter(item => resolveArea(item.goalId, item.activity, String(item.output?.lifeArea || "")) === key)
       .reduce((sum, item) => sum + (Number(item.output?.durationMinutes) || 0), 0);
     const routineDone = (id: string) => routineLogs.some(log => log.routineId === id);
     const record = state.healthRecords?.[date];
-    const waterMl = metricActivities.reduce((sum, item) => sum + (Number(item.output?.waterMl) || 0), 0) || (routineDone("routine_water_1500") ? 1500 : 0);
-    const exerciseMinutes = Math.max(scheduleMinutes("health", /chạy|yoga|thể dục|exercise/i), activityMinutes("health"), routineDone("routine_running_park") ? 45 : 0);
-    const fundMinutes = Math.max(scheduleMinutes("fund"), activityMinutes("fund"));
-    const b2bMinutes = Math.max(scheduleMinutes("b2b"), activityMinutes("b2b"));
+    const exactWater = exactActivity("water");
+    const exactExercise = exactActivity("exercise");
+    const exactFund = exactActivity("fund");
+    const exactB2b = exactActivity("b2b");
+    const exactChores = exactActivity("chores");
+    const waterMl = exactWater ? Number(exactWater.output?.waterMl) || 0 : metricActivities.reduce((sum, item) => sum + (Number(item.output?.waterMl) || 0), 0) || (routineDone("routine_water_1500") ? 1500 : 0);
+    const exerciseMinutes = exactExercise ? Number(exactExercise.output?.durationMinutes) || 0 : Math.max(scheduleMinutes("health", /chạy|yoga|thể dục|exercise/i), activityMinutes("health"), routineDone("routine_running_park") ? 45 : 0);
+    const fundMinutes = exactFund ? Number(exactFund.output?.durationMinutes) || 0 : Math.max(scheduleMinutes("fund"), activityMinutes("fund"));
+    const b2bMinutes = exactB2b ? Number(exactB2b.output?.durationMinutes) || 0 : Math.max(scheduleMinutes("b2b"), activityMinutes("b2b"));
     const skincareDone = routineDone("routine_beauty_foundation");
     const choreScheduleDone = schedules.filter(item => resolveArea(item.goalId || item.journeyId, item.title, item.notes || "") === "chores").length;
     const manualChoreDone = metricActivities.reduce((sum, item) => sum + (Number(item.output?.choreCount) || 0), 0);
-    const choreDone = weeklyActivities.length ? manualChoreDone : (state.chores || []).filter(chore => chore.lastCompletedDate === date).length + choreScheduleDone + manualChoreDone;
+    const choreDone = exactChores ? Number(exactChores.output?.choreCount) || 0 : weeklyActivities.length ? manualChoreDone : (state.chores || []).filter(chore => chore.lastCompletedDate === date).length + choreScheduleDone + manualChoreDone;
     const chorePlanned = Math.max(1, (state.chores || []).filter(chore => chore.frequency === "daily" || isChoreDue(chore, date)).length);
     return { weight: record?.weight ?? null, exerciseMinutes, waterMl, skincareDone, fundMinutes, b2bMinutes, choreDone, chorePlanned };
   };
@@ -125,13 +131,13 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   const latestWeights = Object.values(state.healthRecords || {}).filter(record => typeof record.weight === "number" && record.date <= today).sort((a, b) => b.date.localeCompare(a.date));
   const previousWeight = latestWeights[1]?.weight ?? null;
   const dayMetrics = [
-    { label: "Cân nặng", value: todayProgress.weight === null ? "Chưa ghi" : `${todayProgress.weight} kg`, detail: todayProgress.weight !== null && previousWeight !== null ? `${todayProgress.weight - previousWeight > 0 ? "+" : ""}${(todayProgress.weight - previousWeight).toFixed(2)} kg` : "Ghi buổi sáng", percent: todayProgress.weight === null ? 0 : 100 },
-    { label: "Thể dục", value: `${todayProgress.exerciseMinutes}/30 phút`, detail: "Mức tối thiểu", percent: Math.min(100, todayProgress.exerciseMinutes / 30 * 100) },
-    { label: "Nước", value: `${todayProgress.waterMl}/1.500 ml`, detail: "Trong cả ngày", percent: Math.min(100, todayProgress.waterMl / 1500 * 100) },
-    { label: "Skincare", value: todayProgress.skincareDone ? "Đã hoàn tất" : "Chưa làm", detail: "Routine tối", percent: todayProgress.skincareDone ? 100 : 0 },
-    { label: "Fund", value: `${todayProgress.fundMinutes}/120 phút`, detail: "T2–T6", percent: Math.min(100, todayProgress.fundMinutes / 120 * 100) },
-    { label: "B2B", value: `${todayProgress.b2bMinutes}/30 phút`, detail: "Mức duy trì", percent: Math.min(100, todayProgress.b2bMinutes / 30 * 100) },
-    { label: "Chores", value: `${todayProgress.choreDone} xong · ${todayProgress.chorePlanned} dự kiến`, detail: "Nhà và mèo", percent: Math.min(100, todayProgress.choreDone / todayProgress.chorePlanned * 100) }
+    { key: "weight", label: "Cân nặng", value: todayProgress.weight === null ? "Chưa ghi" : `${todayProgress.weight} kg`, detail: todayProgress.weight !== null && previousWeight !== null ? `${todayProgress.weight - previousWeight > 0 ? "+" : ""}${(todayProgress.weight - previousWeight).toFixed(2)} kg` : "Ghi buổi sáng", percent: todayProgress.weight === null ? 0 : 100 },
+    { key: "exercise", label: "Thể dục", value: `${todayProgress.exerciseMinutes}/30 phút`, detail: "Mức tối thiểu", percent: Math.min(100, todayProgress.exerciseMinutes / 30 * 100) },
+    { key: "water", label: "Nước", value: `${todayProgress.waterMl}/1.500 ml`, detail: "Trong cả ngày", percent: Math.min(100, todayProgress.waterMl / 1500 * 100) },
+    { key: "skincare", label: "Skincare", value: todayProgress.skincareDone ? "Đã hoàn tất" : "Chưa làm", detail: "Routine tối", percent: todayProgress.skincareDone ? 100 : 0 },
+    { key: "fund", label: "Fund", value: `${todayProgress.fundMinutes}/120 phút`, detail: "T2–T6", percent: Math.min(100, todayProgress.fundMinutes / 120 * 100) },
+    { key: "b2b", label: "B2B", value: `${todayProgress.b2bMinutes}/30 phút`, detail: "Mức duy trì", percent: Math.min(100, todayProgress.b2bMinutes / 30 * 100) },
+    { key: "chores", label: "Chores", value: `${todayProgress.choreDone} xong · ${todayProgress.chorePlanned} dự kiến`, detail: "Nhà và mèo", percent: Math.min(100, todayProgress.choreDone / todayProgress.chorePlanned * 100) }
   ];
 
   const completedToday = todaySchedule.filter(item => item.completed).length;
@@ -222,12 +228,14 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       priorityTasks: (state.priorityTasks || []).filter(task => task.id !== item.taskId)
     });
   };
-  const saveQuickMetric = (metric: "weight" | "exercise" | "water" | "skincare") => {
+  const saveQuickMetric = (metric: "weight" | "exercise" | "water" | "skincare" | "fund" | "b2b" | "chores") => {
     if (quickLock.current) return;
     const value = metric === "skincare" ? 1 : Number(quickDraft[metric]);
     if (metric === "weight" && (!Number.isFinite(value) || value < 25 || value > 300)) return setQuickNotice("Cân nặng cần nằm trong khoảng 25–300 kg.");
     if (metric === "exercise" && (!Number.isFinite(value) || value < 0 || value > 720)) return setQuickNotice("Thời gian thể dục cần nằm trong khoảng 0–720 phút.");
     if (metric === "water" && (!Number.isFinite(value) || value < 0 || value > 5000)) return setQuickNotice("Lượng nước cần nằm trong khoảng 0–5.000 ml.");
+    if ((metric === "fund" || metric === "b2b") && (!Number.isFinite(value) || value < 0 || value > 720)) return setQuickNotice("Thời gian cần nằm trong khoảng 0–720 phút.");
+    if (metric === "chores" && (!Number.isInteger(value) || value < 0 || value > 50)) return setQuickNotice("Số chores cần là số nguyên từ 0–50.");
     quickLock.current = true;
     const now = Date.now();
     if (metric === "weight") {
@@ -261,13 +269,16 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
         }, ...filtered]
       });
     } else {
-      const output = metric === "exercise" ? { lifeArea: "health", durationMinutes: value } : { lifeArea: "health", waterMl: value };
+      const lifeArea = metric === "exercise" || metric === "water" ? "health" : metric;
+      const output = metric === "water" ? { lifeArea, waterMl: value } : metric === "chores" ? { lifeArea, choreCount: value } : { lifeArea, durationMinutes: value };
+      const marker = `exact:${metric}:${today}`;
       const entry: ActivityEntry = {
-        id: `quick-${metric}-${now}`,
+        id: `exact-${metric}-${today}`,
         date: today,
         goalId: "G4",
         source: "manual",
-        activity: metric === "exercise" ? `Thể dục ${value} phút` : `Uống ${value} ml nước`,
+        originalTranscript: marker,
+        activity: `Tổng ${metric} hôm nay: ${value}`,
         output,
         outcome: {},
         outcomeStatus: "not_applicable",
@@ -278,10 +289,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
         updatedTimestamp: now,
         startTime: hcmTime()
       };
-      onChangeState({ ...state, activities: [entry, ...(state.activities || [])] });
+      onChangeState({ ...state, activities: [entry, ...(state.activities || []).filter(item => item.originalTranscript !== marker)] });
     }
     setQuickDraft(current => ({ ...current, [metric]: "" }));
-    setQuickNotice(metric === "skincare" && todayProgress.skincareDone ? "Đã bỏ hoàn tất skincare." : "Đã cập nhật tiến độ hôm nay.");
+    setQuickNotice(metric === "skincare" && todayProgress.skincareDone ? "Đã bỏ hoàn tất skincare." : metric === "skincare" ? "Đã hoàn tất skincare." : `Đã đặt tổng ${metric} hôm nay = ${value}.`);
     window.setTimeout(() => { quickLock.current = false; }, 400);
   };
 
@@ -399,10 +410,10 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
 
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3"><ClipboardCheck className="h-5 w-5 text-emerald-600" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-emerald-600">Theo từng mục nhỏ</p><h3 className="text-xl font-black">Tiến độ hôm nay</h3></div></div>
-      <p className="mt-2 text-xs text-slate-500">Nhập hoặc tick ngay trên từng thẻ; dữ liệu sẽ cập nhật cả bảng tuần.</p>
+      <p className="mt-2 text-xs text-slate-500">Nhập tổng thực tế của hôm nay rồi lưu. Giá trị mới sẽ ghi đè tổng cũ, không cộng thêm.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{dayMetrics.map(metric => {
-        const quickType = metric.label === "Cân nặng" ? "weight" : metric.label === "Thể dục" ? "exercise" : metric.label === "Nước" ? "water" : metric.label === "Skincare" ? "skincare" : null;
-        return <article key={metric.label} className={`rounded-2xl p-4 transition duration-700 ${flashMetric && resolveArea(null, metric.label) === flashMetric ? "bg-emerald-100 ring-2 ring-emerald-300" : "bg-slate-50"}`}><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-black text-slate-500">{metric.label}</p><p className="mt-1 text-sm font-black text-slate-900">{metric.value}</p></div><span className="text-xs font-black text-indigo-600">{Math.round(metric.percent)}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${metric.percent}%` }} /></div><p className="mt-2 text-[10px] font-semibold text-slate-400">{metric.detail}</p>{quickType && (quickType === "skincare" ? <button type="button" aria-pressed={todayProgress.skincareDone} onClick={() => saveQuickMetric("skincare")} className={`mt-3 w-full rounded-xl px-3 py-2.5 text-xs font-black ${todayProgress.skincareDone ? "bg-emerald-600 text-white" : "border border-slate-300 bg-white text-slate-700"}`}>{todayProgress.skincareDone ? "✓ Đã hoàn tất · bấm để bỏ" : "Đánh dấu hoàn tất"}</button> : <div className="mt-3 flex gap-2"><input aria-label={`Nhập ${metric.label}`} inputMode="decimal" value={quickDraft[quickType]} onChange={event => setQuickDraft(current => ({ ...current, [quickType]: event.target.value }))} placeholder={quickType === "weight" ? "kg" : quickType === "exercise" ? "phút" : "ml"} className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /><button type="button" onClick={() => saveQuickMetric(quickType)} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Lưu</button></div>)}</article>;
+        const quickType = metric.key as keyof typeof quickDraft | "skincare";
+        return <article key={metric.label} className={`rounded-2xl p-4 transition duration-700 ${flashMetric && resolveArea(null, metric.label) === flashMetric ? "bg-emerald-100 ring-2 ring-emerald-300" : "bg-slate-50"}`}><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-black text-slate-500">{metric.label}</p><p className="mt-1 text-sm font-black text-slate-900">{metric.value}</p></div><span className="text-xs font-black text-indigo-600">{Math.round(metric.percent)}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${metric.percent}%` }} /></div><p className="mt-2 text-[10px] font-semibold text-slate-400">{metric.detail}</p>{quickType === "skincare" ? <button type="button" aria-pressed={todayProgress.skincareDone} onClick={() => saveQuickMetric("skincare")} className={`mt-3 w-full rounded-xl px-3 py-2.5 text-xs font-black ${todayProgress.skincareDone ? "bg-emerald-600 text-white" : "border border-slate-300 bg-white text-slate-700"}`}>{todayProgress.skincareDone ? "✓ Đã hoàn tất · bấm để bỏ" : "Đánh dấu hoàn tất"}</button> : <div className="mt-3 flex gap-2"><input aria-label={`Nhập tổng ${metric.label}`} inputMode={quickType === "weight" ? "decimal" : "numeric"} value={quickDraft[quickType]} onChange={event => setQuickDraft(current => ({ ...current, [quickType]: event.target.value }))} placeholder={quickType === "weight" ? "kg" : quickType === "water" ? "ml" : quickType === "chores" ? "số việc" : "phút"} className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" /><button type="button" onClick={() => saveQuickMetric(quickType)} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">Đặt tổng</button></div>}</article>;
       })}</div>
       {quickNotice && <p role="status" className={`mt-3 text-xs font-bold ${quickNotice.startsWith("Đã") ? "text-emerald-700" : "text-rose-600"}`}>{quickNotice}</p>}
     </section>
