@@ -470,8 +470,9 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
         milestone("G2", "b2b_ai_seo", "Viết SEO bằng AI", "Hoàn thành bài thử 500–1.000 từ", "2026-08-23", 2),
         milestone("G2", "b2b_chi_review", "Chi đọc lại", "Nhận và xử lý feedback", "2026-08-30", 3),
         milestone("G2", "b2b_publish", "Đăng bài", "Bài SEO được public", "2026-09-06", 4),
-        milestone("G2", "b2b_portfolio", "Làm portfolio", "Portfolio có bằng chứng thật", "2026-09-20", 5),
-        milestone("G2", "b2b_ai_automation", "Học AI Automation", "Bắt đầu học sau chuyến đi", "2026-10-13", 6)
+        { ...milestone("G2", "b2b_portfolio", "Làm portfolio", "Portfolio có bằng chứng thật", "2026-09-20", 5), lane: "portfolio", parallel: true, status: "active" },
+        { ...milestone("G2", "b2b_connect_clients", "Connect khách hàng", "Có danh sách kết nối và cuộc trao đổi phù hợp", "2026-10-13", 6), lane: "clients", parallel: true, status: "active" },
+        milestone("G2", "b2b_ai_automation", "Học AI Automation", "Bắt đầu học sau chuyến đi", "2026-10-13", 7)
       ]
     },
     {
@@ -503,7 +504,9 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
         milestone("G4", "health_60", "Mốc 60 kg", "60 kg", "2026-09-01", 2),
         milestone("G4", "health_58", "Mốc 58 kg", "58 kg", "2026-09-18", 3),
         milestone("G4", "health_56", "Mốc 56 kg", "56 kg", "2026-10-03", 4),
-        milestone("G4", "health_54", "Mục tiêu 54 kg", "54 kg hoặc mức an toàn được điều chỉnh", "2026-10-13", 5)
+        milestone("G4", "health_54", "Mục tiêu 54 kg", "54 kg hoặc mức an toàn được điều chỉnh", "2026-10-13", 5),
+        { ...milestone("G4", "health_skin", "Da sáng và đều màu hơn", "Skincare cơ thể tối thiểu 5 ngày/tuần và ảnh theo tháng", "2026-10-13", 6), lane: "skin", parallel: true, status: "active" },
+        { ...milestone("G4", "health_style", "Trang phục gọn và phù hợp hơn", "Có ít nhất 3 bộ outfit hoàn chỉnh, sạch và phẳng", "2026-10-13", 7), lane: "style", parallel: true, status: "active" }
       ]
     }
   ];
@@ -573,7 +576,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 20, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 21, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G4", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G4", goals, routines,
     dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
@@ -740,6 +743,29 @@ export function migrateAppState(rawState: any): AppState {
     // Start the latest plan on 03/08/2026. Later confirmed tasks replace
     // conflicting preparation, Freelancer/Outlier and affiliate items.
     return applyConfirmedPersonalPlan(migrated);
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 20) {
+    // Merge only the newly confirmed parallel result lanes; preserve user edits,
+    // completion state, logs and all unrelated schedule/activity data.
+    const makeParallel = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number, lane: string) => ({
+      ...milestone(goalId, id, title, targetValue, dueDate, order), lane, parallel: true, status: "active" as const
+    });
+    migrated.goals = (migrated.goals || []).map(goal => {
+      if (goal.id === "G2") {
+        const existing = goal.milestones.map(item => item.id === "b2b_portfolio" ? { ...item, lane: "portfolio", parallel: true, status: item.achieved ? "completed" as const : "active" as const } : item);
+        return { ...goal, milestones: existing.some(item => item.id === "b2b_connect_clients") ? existing : [...existing, makeParallel("G2", "b2b_connect_clients", "Connect khách hàng", "Có danh sách kết nối và cuộc trao đổi phù hợp", "2026-10-13", existing.length, "clients")] };
+      }
+      if (goal.id === "G4") {
+        const additions = [
+          makeParallel("G4", "health_skin", "Da sáng và đều màu hơn", "Skincare cơ thể tối thiểu 5 ngày/tuần và ảnh theo tháng", "2026-10-13", goal.milestones.length, "skin"),
+          makeParallel("G4", "health_style", "Trang phục gọn và phù hợp hơn", "Có ít nhất 3 bộ outfit hoàn chỉnh, sạch và phẳng", "2026-10-13", goal.milestones.length + 1, "style")
+        ];
+        return { ...goal, milestones: [...goal.milestones, ...additions.filter(addition => !goal.milestones.some(item => item.id === addition.id))] };
+      }
+      return goal;
+    });
+    migrated.personalScheduleSeedVersion = 21;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
