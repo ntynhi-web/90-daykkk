@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Check, Circle, Flag, LockKeyhole, TrendingUp, X } from "lucide-react";
+import { Check, Circle, Flag, LockKeyhole, Pencil, Save, TrendingUp, X } from "lucide-react";
 import { AppState, Goal } from "../types";
 import GoalIcon, { COLOR_MAP } from "./GoalIcon";
 import { formatDisplayDate } from "../utils";
@@ -26,6 +26,9 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
   const completingRef = useRef(new Set<string>());
   const [progressEditorId, setProgressEditorId] = useState<string | null>(null);
   const [progressDraft, setProgressDraft] = useState({ progress: 10, note: "" });
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [milestoneDraft, setMilestoneDraft] = useState({ title: "", targetValue: "", dueDate: "" });
+  const [editNotice, setEditNotice] = useState("");
 
   const milestoneLogs = state.milestoneProgressLogs || [];
   const getMilestoneLogs = (milestoneId: string) => milestoneLogs
@@ -41,6 +44,23 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
     setProgressEditorId(milestone.id);
   };
 
+  const openMilestoneEditor = (milestone: Goal["milestones"][number]) => {
+    setMilestoneDraft({ title: milestone.title, targetValue: milestone.targetValue, dueDate: milestone.dueDate });
+    setEditingMilestoneId(milestone.id);
+    setEditNotice("");
+  };
+
+  const saveMilestoneEdit = (goal: Goal, milestoneId: string) => {
+    const title = milestoneDraft.title.trim();
+    const targetValue = milestoneDraft.targetValue.trim();
+    if (!title || !targetValue) return setEditNotice("Tên mục và kết quả không được để trống.");
+    if (title.length > 120 || targetValue.length > 240) return setEditNotice("Tên tối đa 120 ký tự; kết quả tối đa 240 ký tự.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(milestoneDraft.dueDate) || milestoneDraft.dueDate < state.startDate || milestoneDraft.dueDate > state.endDate) return setEditNotice(`Hạn phải nằm trong chu kỳ ${state.startDate}–${state.endDate}.`);
+    onChangeState({ ...state, goals: state.goals.map(item => item.id === goal.id ? { ...item, milestones: item.milestones.map(milestone => milestone.id === milestoneId ? { ...milestone, title, targetValue, dueDate: milestoneDraft.dueDate } : milestone) } : item) });
+    setEditingMilestoneId(null);
+    setEditNotice("");
+  };
+
   const saveMilestoneProgress = (goal: Goal, milestoneId: string) => {
     const progress = Math.max(0, Math.min(100, Math.round(Number(progressDraft.progress))));
     if (!Number.isFinite(progress) || progressDraft.note.trim().length > 500 || completingRef.current.has(`progress:${milestoneId}`)) return;
@@ -50,7 +70,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
     const updatedMilestones = goal.milestones.map(milestone => milestone.id === milestoneId
       ? { ...milestone, currentValue: `${progress}%`, achieved: progress === 100, status: progress === 100 ? "completed" as const : "active" as const, completedAt }
       : milestone);
-    const nextMilestone = updatedMilestones.find(milestone => !milestone.achieved && milestone.status !== "skipped") || null;
+    const nextMilestone = updatedMilestones.find(milestone => !milestone.parallel && !milestone.achieved && milestone.status !== "skipped") || null;
     const allLogs = [{
       id: `milestone_progress_${milestoneId}_${now}`,
       goalId: goal.id,
@@ -71,7 +91,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
       milestoneProgressLogs: allLogs,
       goals: state.goals.map(item => item.id === goal.id ? {
         ...item,
-        milestones: updatedMilestones.map(milestone => milestone.achieved || milestone.status === "skipped" ? milestone : { ...milestone, status: milestone.id === nextMilestone?.id ? "active" as const : "locked" as const }),
+        milestones: updatedMilestones.map(milestone => milestone.achieved || milestone.status === "skipped" ? milestone : milestone.parallel ? { ...milestone, status: "active" as const } : { ...milestone, status: milestone.id === nextMilestone?.id ? "active" as const : "locked" as const }),
         currentMilestoneId: nextMilestone?.id || null,
         currentMilestone: nextMilestone?.title || "Đã hoàn thành",
         currentProgress: weightedProgress,
@@ -116,7 +136,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
 
   const completeCurrentStep = (goal: Goal) => {
     if (completingRef.current.has(goal.id)) return;
-    const current = goal.milestones.find(milestone => !milestone.achieved);
+    const current = goal.milestones.find(milestone => !milestone.parallel && !milestone.achieved);
     if (!current) return;
     completingRef.current.add(goal.id);
 
@@ -126,10 +146,10 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
         ? { ...milestone, achieved: true, status: "completed" as const, completedAt }
         : milestone
     );
-    const next = milestones.find(milestone => !milestone.achieved);
+    const next = milestones.find(milestone => !milestone.parallel && !milestone.achieved);
     const normalized = milestones.map(milestone => {
       if (milestone.achieved) return milestone;
-      return { ...milestone, status: milestone.id === next?.id ? "active" as const : "locked" as const };
+      return milestone.parallel ? { ...milestone, status: "active" as const } : { ...milestone, status: milestone.id === next?.id ? "active" as const : "locked" as const };
     });
 
     onChangeState({
@@ -146,6 +166,39 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
       } : item)
     });
     window.setTimeout(() => completingRef.current.delete(goal.id), 500);
+  };
+
+  const completeParallelStep = (goal: Goal, milestoneId: string) => {
+    const lockKey = `parallel:${milestoneId}`;
+    if (completingRef.current.has(lockKey)) return;
+    completingRef.current.add(lockKey);
+    const now = new Date().toISOString();
+    onChangeState({
+      ...state,
+      goals: state.goals.map(item => item.id === goal.id ? {
+        ...item,
+        milestones: item.milestones.map(milestone => milestone.id === milestoneId ? { ...milestone, achieved: !milestone.achieved, status: milestone.achieved ? "active" as const : "completed" as const, completedAt: milestone.achieved ? null : now } : milestone)
+      } : item)
+    });
+    window.setTimeout(() => completingRef.current.delete(lockKey), 400);
+  };
+
+  const renderParallelRows = (goal: Goal) => {
+    const items = goal.id === "G4" ? goal.milestones : goal.milestones.filter(milestone => milestone.parallel);
+    if (!items.length) return null;
+    return <div className="mt-5 border-t border-slate-200 pt-4">
+      <div className="mb-3"><p className="text-[10px] font-black uppercase tracking-[.14em] text-indigo-600">{goal.id === "G4" ? "Lộ trình kết quả" : "Có thể làm song song"}</p><p className="mt-1 text-xs text-slate-500">Không cần hoàn tất mục trước để mở mục sau.</p></div>
+      <div className="grid gap-3 sm:grid-cols-2">{items.map(milestone => {
+        const progress = getMilestoneProgress(milestone);
+        return <article key={milestone.id} className={`rounded-2xl border p-4 ${milestone.achieved ? "border-emerald-200 bg-emerald-50" : "border-indigo-200 bg-white"}`}>
+          <div className="flex items-start gap-3"><button type="button" onClick={() => completeParallelStep(goal, milestone.id)} className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${milestone.achieved ? "bg-emerald-600 text-white" : "bg-indigo-100 text-indigo-700"}`}>{milestone.achieved ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}</button><div className="min-w-0 flex-1"><p className="text-sm font-black text-slate-950">{milestone.title}</p><p className="mt-1 text-[11px] text-slate-500">{milestone.targetValue} · hạn {formatDisplayDate(milestone.dueDate)}</p></div><button type="button" onClick={() => openMilestoneEditor(milestone)} aria-label={`Sửa ${milestone.title}`} className="rounded-lg border bg-white p-2 text-slate-500"><Pencil className="h-3.5 w-3.5" /></button></div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${progress}%` }} /></div>
+          <button type="button" onClick={() => openProgressEditor(milestone)} className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-black text-indigo-700"><TrendingUp className="h-3 w-3" /> Ghi tiến bộ · {progress}%</button>
+          {editingMilestoneId === milestone.id && <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3"><input maxLength={120} value={milestoneDraft.title} onChange={event => setMilestoneDraft({ ...milestoneDraft, title: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-xs" /><textarea maxLength={240} rows={2} value={milestoneDraft.targetValue} onChange={event => setMilestoneDraft({ ...milestoneDraft, targetValue: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-xs" /><input type="date" value={milestoneDraft.dueDate} onChange={event => setMilestoneDraft({ ...milestoneDraft, dueDate: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-xs" />{editNotice && <p className="text-[10px] font-bold text-rose-600">{editNotice}</p>}<div className="flex gap-2"><button type="button" onClick={() => saveMilestoneEdit(goal, milestone.id)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-slate-950 px-3 py-2 text-[10px] font-black text-white"><Save className="h-3 w-3" />Lưu</button><button type="button" onClick={() => setEditingMilestoneId(null)} className="rounded-lg border px-3 py-2 text-[10px] font-black">Hủy</button></div></div>}
+          {progressEditorId === milestone.id && <div className="mt-3 space-y-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3"><label className="block text-[10px] font-bold">Tiến độ: {progressDraft.progress}%<input type="range" min="0" max="100" step="5" value={progressDraft.progress} onChange={event => setProgressDraft({ ...progressDraft, progress: Number(event.target.value) })} className="mt-1 w-full" /></label><textarea maxLength={500} rows={2} value={progressDraft.note} onChange={event => setProgressDraft({ ...progressDraft, note: event.target.value })} placeholder="Đã tiến được gì?" className="w-full rounded-lg border px-2 py-1 text-[10px]" /><button type="button" onClick={() => saveMilestoneProgress(goal, milestone.id)} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white">Lưu tiến bộ</button></div>}
+        </article>;
+      })}</div>
+    </div>;
   };
 
   return (
@@ -223,11 +276,12 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                     <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800">
                       Các hành động Health & Beauty luôn mở song song. Tick trực tiếp vòng tròn để hoàn tất trong ngày; bấm lại để bỏ hoàn tất.
                     </p>
+                    {renderParallelRows(goal)}
                   </>
                 ) : (
                   <>
                 <ol className="flex gap-3 overflow-x-auto pb-2">
-                  {goal.milestones.map(milestone => {
+                  {goal.milestones.filter(milestone => !milestone.parallel).map(milestone => {
                     const isCurrent = milestone.id === current?.id;
                     const isCompleted = milestone.achieved;
                     const progress = getMilestoneProgress(milestone);
@@ -262,7 +316,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                               <p className={`text-sm font-black ${isCompleted ? "text-emerald-900 line-through decoration-emerald-300" : isCurrent ? "text-slate-950" : "text-slate-500"}`}>
                                 {milestone.title}
                               </p>
-                              {isCurrent && <span className="rounded-full bg-indigo-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-indigo-700">Đang làm</span>}
+                              <div className="flex items-center gap-1">{isCurrent && <span className="rounded-full bg-indigo-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-indigo-700">Đang làm</span>}<button type="button" onClick={() => openMilestoneEditor(milestone)} aria-label={`Sửa ${milestone.title}`} className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500"><Pencil className="h-3 w-3" /></button></div>
                             </div>
                             <p className="mt-1 text-[11px] text-slate-500">
                               Kết quả: {milestone.targetValue} · hạn {formatDisplayDate(milestone.dueDate)}
@@ -283,6 +337,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                                 <textarea maxLength={500} rows={2} value={progressDraft.note} onChange={event => setProgressDraft({ ...progressDraft, note: event.target.value })} placeholder="Hôm nay đã tiến được gì?" className="w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-[10px] outline-none focus:border-indigo-500" />
                                 <button type="button" onClick={() => saveMilestoneProgress(goal, milestone.id)} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white">Lưu tiến bộ</button>
                               </div>}
+                              {editingMilestoneId === milestone.id && <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-white p-3"><input maxLength={120} value={milestoneDraft.title} onChange={event => setMilestoneDraft({ ...milestoneDraft, title: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-[10px]" /><textarea maxLength={240} rows={2} value={milestoneDraft.targetValue} onChange={event => setMilestoneDraft({ ...milestoneDraft, targetValue: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-[10px]" /><input type="date" value={milestoneDraft.dueDate} onChange={event => setMilestoneDraft({ ...milestoneDraft, dueDate: event.target.value })} className="w-full rounded-lg border px-2.5 py-2 text-[10px]" />{editNotice && <p className="text-[10px] font-bold text-rose-600">{editNotice}</p>}<div className="flex gap-2"><button type="button" onClick={() => saveMilestoneEdit(goal, milestone.id)} className="flex-1 rounded-lg bg-slate-950 px-3 py-2 text-[10px] font-black text-white">Lưu thay đổi</button><button type="button" onClick={() => setEditingMilestoneId(null)} className="rounded-lg border px-3 py-2 text-[10px] font-black">Hủy</button></div></div>}
                           </div>
                         </div>
                         </div>
@@ -290,6 +345,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
                     );
                   })}
                 </ol>
+                {renderParallelRows(goal)}
 
                 {current ? (
                   <button
