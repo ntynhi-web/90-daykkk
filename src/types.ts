@@ -14,6 +14,9 @@ export interface Milestone {
   achieved: boolean;
   badge?: string;
   celebrationMessage?: string;
+  /** Independent lane milestones may progress in parallel instead of being locked sequentially. */
+  lane?: string;
+  parallel?: boolean;
 }
 
 export interface MilestoneProgressLog {
