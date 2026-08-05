@@ -13,7 +13,7 @@ import {
   getDoc,
   initializeFirestore,
   serverTimestamp,
-  setDoc
+  writeBatch
 } from "firebase/firestore";
 import { AppState } from "./types";
 
@@ -60,18 +60,71 @@ const stateDocument = (uid: string) => {
   return doc(db, "users", uid, "app", "state");
 };
 
+const statePartDocument = (uid: string, part: "schedule" | "activity" | "records") => {
+  if (!db) throw new Error("Firestore chưa được cấu hình.");
+  return doc(db, "users", uid, "app", `state-${part}`);
+};
+
 export const loadUserState = async (uid: string): Promise<AppState | null> => {
   const snapshot = await getDoc(stateDocument(uid));
   if (!snapshot.exists()) return null;
-  return (snapshot.data().state || null) as AppState | null;
+  const data = snapshot.data();
+  if (!data.partitioned) return (data.state || null) as AppState | null;
+  const [schedule, activity, records] = await Promise.all([
+    getDoc(statePartDocument(uid, "schedule")),
+    getDoc(statePartDocument(uid, "activity")),
+    getDoc(statePartDocument(uid, "records"))
+  ]);
+  const scheduleData = schedule.exists() ? schedule.data() : {};
+  const activityData = activity.exists() ? activity.data() : {};
+  const recordData = records.exists() ? records.data() : {};
+  return {
+    ...(data.state || {}),
+    scheduleItems: scheduleData.scheduleItems || [],
+    activities: activityData.activities || [],
+    routineLogs: activityData.routineLogs || [],
+    milestoneProgressLogs: activityData.milestoneProgressLogs || [],
+    weeklyReviews: activityData.weeklyReviews || [],
+    healthRecords: recordData.healthRecords || {},
+    lifestyleRecords: recordData.lifestyleRecords || {},
+    b2bLeads: recordData.b2bLeads || [],
+    jobApplications: recordData.jobApplications || [],
+    batchTestRecords: recordData.batchTestRecords || [],
+    aiChangeHistory: recordData.aiChangeHistory || [],
+    coachHistory: recordData.coachHistory || [],
+    experiments: recordData.experiments || []
+  } as AppState;
 };
 
 export const saveUserState = async (uid: string, state: AppState) => {
-  await setDoc(stateDocument(uid), {
-    state,
+  const {
+    scheduleItems,
+    activities,
+    routineLogs,
+    milestoneProgressLogs,
+    weeklyReviews,
+    healthRecords,
+    lifestyleRecords,
+    b2bLeads,
+    jobApplications,
+    batchTestRecords,
+    aiChangeHistory,
+    coachHistory,
+    experiments,
+    ...coreState
+  } = state;
+  if (!db) throw new Error("Firestore chưa được cấu hình.");
+  const batch = writeBatch(db);
+  batch.set(statePartDocument(uid, "schedule"), { scheduleItems: scheduleItems || [], updatedAt: serverTimestamp() });
+  batch.set(statePartDocument(uid, "activity"), { activities: activities || [], routineLogs: routineLogs || [], milestoneProgressLogs: milestoneProgressLogs || [], weeklyReviews: weeklyReviews || [], updatedAt: serverTimestamp() });
+  batch.set(statePartDocument(uid, "records"), { healthRecords: healthRecords || {}, lifestyleRecords: lifestyleRecords || {}, b2bLeads: b2bLeads || [], jobApplications: jobApplications || [], batchTestRecords: batchTestRecords || [], aiChangeHistory: aiChangeHistory || [], coachHistory: coachHistory || [], experiments: experiments || [], updatedAt: serverTimestamp() });
+  batch.set(stateDocument(uid), {
+    state: coreState,
     updatedAt: serverTimestamp(),
-    schemaVersion: 1
-  }, { merge: true });
+    schemaVersion: 2,
+    partitioned: true
+  });
+  await batch.commit();
 };
 
 export type { User };
