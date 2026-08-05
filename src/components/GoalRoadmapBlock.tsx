@@ -85,6 +85,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
       if (milestone.achieved) return sum + 100;
       return sum + (milestone.id === milestoneId ? progress : getMilestoneProgress(milestone));
     }, 0) / Math.max(updatedMilestones.length, 1));
+    const allCompleted = updatedMilestones.every(milestone => milestone.achieved || milestone.status === "skipped");
 
     onChangeState({
       ...state,
@@ -93,9 +94,9 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
         ...item,
         milestones: updatedMilestones.map(milestone => milestone.achieved || milestone.status === "skipped" ? milestone : milestone.parallel ? { ...milestone, status: "active" as const } : { ...milestone, status: milestone.id === nextMilestone?.id ? "active" as const : "locked" as const }),
         currentMilestoneId: nextMilestone?.id || null,
-        currentMilestone: nextMilestone?.title || "Đã hoàn thành",
+        currentMilestone: nextMilestone?.title || (allCompleted ? "Đã hoàn thành" : "Các nhánh song song đang thực hiện"),
         currentProgress: weightedProgress,
-        status: nextMilestone ? "active" : "completed"
+        status: allCompleted ? "completed" : "active"
       } : item)
     });
     setProgressEditorId(null);
@@ -151,6 +152,7 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
       if (milestone.achieved) return milestone;
       return milestone.parallel ? { ...milestone, status: "active" as const } : { ...milestone, status: milestone.id === next?.id ? "active" as const : "locked" as const };
     });
+    const allCompleted = normalized.every(milestone => milestone.achieved || milestone.status === "skipped");
 
     onChangeState({
       ...state,
@@ -158,11 +160,11 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
         ...item,
         milestones: normalized,
         currentMilestoneId: next?.id || null,
-        currentMilestone: next?.title || "Đã hoàn thành",
+        currentMilestone: next?.title || (allCompleted ? "Đã hoàn thành" : "Các nhánh song song đang thực hiện"),
         currentProgress: normalized.length
           ? Math.round(normalized.filter(milestone => milestone.achieved).length / normalized.length * 100)
           : 100,
-        status: next ? item.status : "completed"
+        status: allCompleted ? "completed" : "active"
       } : item)
     });
     window.setTimeout(() => completingRef.current.delete(goal.id), 500);
@@ -173,11 +175,16 @@ export default function GoalRoadmapBlock({ state, today, onChangeState }: GoalRo
     if (completingRef.current.has(lockKey)) return;
     completingRef.current.add(lockKey);
     const now = new Date().toISOString();
+    const milestones = goal.milestones.map(milestone => milestone.id === milestoneId ? { ...milestone, achieved: !milestone.achieved, status: milestone.achieved ? "active" as const : "completed" as const, completedAt: milestone.achieved ? null : now } : milestone);
+    const completedCount = milestones.filter(milestone => milestone.achieved).length;
+    const allCompleted = milestones.length > 0 && completedCount === milestones.length;
     onChangeState({
       ...state,
       goals: state.goals.map(item => item.id === goal.id ? {
         ...item,
-        milestones: item.milestones.map(milestone => milestone.id === milestoneId ? { ...milestone, achieved: !milestone.achieved, status: milestone.achieved ? "active" as const : "completed" as const, completedAt: milestone.achieved ? null : now } : milestone)
+        milestones,
+        currentProgress: Math.round(completedCount / Math.max(milestones.length, 1) * 100),
+        status: allCompleted ? "completed" : "active"
       } : item)
     });
     window.setTimeout(() => completingRef.current.delete(lockKey), 400);
