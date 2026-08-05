@@ -379,6 +379,7 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       <button onClick={onOpenReview} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-black text-slate-950"><RotateCcw className="h-4 w-4" />Mở Review tuần</button>
     </section>
     <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} />
+    <ActivityFrequencyChart today={today} state={state} getProgress={progressForDate} />
   </div>;
 
   return <div className="mx-auto max-w-6xl space-y-5">
@@ -420,7 +421,52 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
 
     <RecoveryPanel today={today} state={state} onChangeState={onChangeState} />
     <WeeklyProgress weekDays={weekDays} getProgress={progressForDate} />
+    <ActivityFrequencyChart today={today} state={state} getProgress={progressForDate} />
   </div>;
+}
+
+function ActivityFrequencyChart({ today, state, getProgress }: { today: string; state: AppState; getProgress: (date: string) => any }) {
+  const [period, setPeriod] = useState<"week" | "month">("week");
+  const todayDate = dateAtNoon(today);
+  const mondayOffset = (todayDate.getDay() + 6) % 7;
+  const periodStart = period === "week"
+    ? new Date(todayDate.getTime() - mondayOffset * DAY_MS)
+    : new Date(todayDate.getFullYear(), todayDate.getMonth(), 1, 12);
+  const planStart = dateAtNoon(state.startDate);
+  const startDate = planStart > periodStart ? planStart : periodStart;
+  const totalDays = period === "week" ? 7 : new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+  const elapsedDays = Math.max(0, Math.min(totalDays, Math.floor((todayDate.getTime() - startDate.getTime()) / DAY_MS) + 1));
+  const dates = Array.from({ length: elapsedDays }, (_, index) => {
+    const date = new Date(startDate.getTime() + index * DAY_MS);
+    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  });
+  const completedSchedules = (date: string, pattern: RegExp) => (state.scheduleItems || []).some(item => item.date === date && item.completed && pattern.test(item.title));
+  const loggedActivity = (date: string, pattern: RegExp) => (state.activities || []).some(item => item.date === date && pattern.test(item.activity));
+  const routineDone = (date: string, pattern: RegExp) => (state.routineLogs || []).some(log => {
+    if (log.date !== date || log.status !== "completed") return false;
+    const routine = state.routines.find(item => item.id === log.routineId);
+    return Boolean(routine && pattern.test(routine.name));
+  });
+  const trackers = [
+    { label: "Tắm & vệ sinh", done: (date: string) => completedSchedules(date, /tắm|gội|vệ sinh cá nhân/i) || loggedActivity(date, /tắm|gội|vệ sinh cá nhân/i) },
+    { label: "Thể dục", done: (date: string) => getProgress(date).exerciseMinutes > 0 },
+    { label: "Uống đủ nước", done: (date: string) => getProgress(date).waterMl >= 1500 },
+    { label: "Skincare", done: (date: string) => getProgress(date).skincareDone },
+    { label: "Fund", done: (date: string) => getProgress(date).fundMinutes > 0 },
+    { label: "B2B", done: (date: string) => getProgress(date).b2bMinutes > 0 },
+    { label: "Chores", done: (date: string) => getProgress(date).choreDone > 0 || routineDone(date, /dọn|chore|mèo/i) }
+  ];
+  const summaries = trackers.map(tracker => ({ ...tracker, count: dates.filter(tracker.done).length }));
+  const daily = dates.map(date => ({ date, count: trackers.filter(tracker => tracker.done(date)).length }));
+  const maxDaily = Math.max(1, ...daily.map(item => item.count));
+
+  return <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-fuchsia-600">Tần suất thực tế</p><h3 className="mt-1 text-xl font-black text-slate-950">Hoạt động tuần hoặc tháng</h3><p className="mt-1 text-xs text-slate-500">Đếm số ngày có thực hiện, ví dụ Tắm & vệ sinh 3/7 ngày. Ngày tương lai không bị tính là thiếu.</p></div><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setPeriod("week")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "week" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tuần</button><button type="button" onClick={() => setPeriod("month")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "month" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tháng</button></div></div>
+    <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+      <div className="space-y-3">{summaries.map(item => <div key={item.label} className="rounded-2xl bg-slate-50 p-3.5"><div className="flex items-center justify-between gap-3"><span className="text-xs font-black text-slate-800">{item.label}</span><span className="font-mono text-sm font-black text-fuchsia-700">{item.count}/{elapsedDays} ngày</span></div><div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-500 transition-all" style={{ width: `${elapsedDays ? item.count / elapsedDays * 100 : 0}%` }} /></div></div>)}</div>
+      <div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-black text-slate-900">Ngày nhiều · ngày ít</p><p className="mt-1 text-[10px] text-slate-500">Số nhóm hoạt động có dữ liệu trong từng ngày</p></div><span className="text-[10px] font-bold text-slate-400">Tối đa {trackers.length}</span></div><div className="mt-5 flex h-52 items-end gap-2 overflow-x-auto border-b border-slate-200 px-1 pb-1">{daily.map(item => <div key={item.date} className="flex min-w-[34px] flex-1 flex-col items-center justify-end gap-2"><span className="text-[10px] font-black text-slate-600">{item.count}</span><div title={`${item.date}: ${item.count} nhóm`} className={`w-full max-w-10 rounded-t-lg transition-all ${item.count ? "bg-gradient-to-t from-violet-600 to-fuchsia-400" : "bg-slate-200"}`} style={{ height: `${Math.max(6, item.count / maxDaily * 150)}px` }} /><span className="whitespace-nowrap font-mono text-[9px] text-slate-400">{item.date.slice(8, 10)}/{item.date.slice(5, 7)}</span></div>)}</div></div>
+    </div>
+  </section>;
 }
 
 function WeeklyProgress({ weekDays, getProgress }: { weekDays: { date: string; label: string }[]; getProgress: (date: string) => any }) {
