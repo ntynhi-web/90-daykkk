@@ -432,7 +432,7 @@ const getConfirmedChores = (): Chore[] => [
 
 /** Latest confirmed personal plan, clean cycle restarted on 01/08/2026. */
 function applyConfirmedPersonalPlan(state: AppState): AppState {
-  const startDate = "2026-08-03";
+  const startDate = "2026-08-06";
   const endDate = "2026-10-13";
   const milestone = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number): any => ({
     id, goalId, title, targetValue, currentValue: "0", dueDate, order,
@@ -448,7 +448,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       nextAction: "Học video trong block Fund và ghi lại điểm cần đưa vào checklist", accentColor: "purple", category: "fund_backtest", icon: "chart",
       notes: "Không mua tài khoản chỉ vì hết hai tuần; chỉ chuyển bước khi dữ liệu backtest và demo đạt ngưỡng đã định.",
       milestones: [
-        milestone("G1", "fund_video", "Học video", "Nắm nội dung và ghi chú trọng tâm", "2026-08-03", 0),
+        milestone("G1", "fund_video", "Học video", "Nắm nội dung và ghi chú trọng tâm", "2026-08-06", 0),
         milestone("G1", "fund_checklist", "Viết checklist", "Một checklist dùng được", "2026-08-07", 1),
         milestone("G1", "fund_watch_demo", "Xem demo", "Hiểu cách áp dụng checklist", "2026-08-10", 2),
         milestone("G1", "fund_backtest", "Backtest", "Bộ dữ liệu đủ để đánh giá setup", "2026-08-17", 3),
@@ -483,7 +483,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
       nextAction: null, accentColor: "emerald", category: "career", icon: "career",
       notes: "Đã tạm dừng theo cập nhật mới ngày 03/08; không đưa lên trang Hôm nay.",
       milestones: [
-        milestone("G3", "outlier_course", "Làm course Outlier", "Hoàn thành course hiện tại", "2026-08-03", 0),
+        milestone("G3", "outlier_course", "Làm course Outlier", "Hoàn thành course hiện tại", "2026-08-06", 0),
         milestone("G3", "outlier_gate", "Kiểm tra kết quả", "Xác định pass hay chuyển hướng", "2026-08-05", 1),
         milestone("G3", "outlier_task", "Nếu pass: làm task", "Có task được nghiệm thu", "2026-08-15", 2),
         milestone("G3", "freelance_fallback", "Nếu chưa pass: tối ưu Upwork & LinkedIn", "Hai hồ sơ sẵn sàng tìm việc", "2026-08-15", 3),
@@ -576,7 +576,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     { id: "task_health_minimum", title: "Giữ nền Healthy & Beauty", description: "Mỗi ngày chọn đúng một hành động tối thiểu phù hợp năng lượng; không biến sức khỏe thành dự án gây áp lực", goalId: "G4", milestoneId: "health_baseline", priority: "later" as const, estimatedMinutes: 10, completed: false, createdAt: new Date().toISOString() }
   ];
   return {
-    ...state, startDate, endDate, personalScheduleSeedVersion: 21, personalPlanStartedAt: new Date().toISOString(),
+    ...state, startDate, endDate, personalScheduleSeedVersion: 22, personalPlanStartedAt: new Date().toISOString(),
     weeklyFocusGoalId: "G4", weeklySupportGoalIds: ["G1", "G2"], dailyFocusGoalId: "G4", goals, routines,
     dailyFocusDate: startDate, dailyMode: "normal", dailyModeDate: startDate, activeFocusSession: null,
     lifeAnchors: getConfirmedLifeAnchors(), chores: getConfirmedChores(), priorityTasks: newTasks,
@@ -749,7 +749,8 @@ export function migrateAppState(rawState: any): AppState {
     // Merge only the newly confirmed parallel result lanes; preserve user edits,
     // completion state, logs and all unrelated schedule/activity data.
     const makeParallel = (goalId: string, id: string, title: string, targetValue: string, dueDate: string, order: number, lane: string) => ({
-      ...milestone(goalId, id, title, targetValue, dueDate, order), lane, parallel: true, status: "active" as const
+      id, goalId, title, targetValue, currentValue: "0", dueDate, order,
+      type: "completion" as const, achieved: false, lane, parallel: true, status: "active" as const
     });
     migrated.goals = (migrated.goals || []).map(goal => {
       if (goal.id === "G2") {
@@ -766,6 +767,24 @@ export function migrateAppState(rawState: any): AppState {
       return goal;
     });
     migrated.personalScheduleSeedVersion = 21;
+  }
+
+  if ((migrated.personalScheduleSeedVersion || 0) === 21) {
+    const cycleStart = "2026-08-06";
+    const cycleEnd = "2026-10-13";
+    migrated.startDate = cycleStart;
+    migrated.endDate = cycleEnd;
+    migrated.dailyFocusDate = cycleStart;
+    migrated.dailyModeDate = cycleStart;
+    migrated.scheduleItems = (migrated.scheduleItems || []).filter(item => item.date >= cycleStart && item.date <= cycleEnd);
+    migrated.priorityTasks = (migrated.priorityTasks || []).filter(task => !task.date || task.date >= cycleStart);
+    migrated.goals = (migrated.goals || []).map(goal => ({
+      ...goal,
+      startDate: cycleStart,
+      deadline: cycleEnd,
+      milestones: goal.milestones.map(item => ({ ...item, dueDate: item.dueDate < cycleStart ? cycleStart : item.dueDate > cycleEnd ? cycleEnd : item.dueDate }))
+    }));
+    migrated.personalScheduleSeedVersion = 22;
   }
 
   if ((migrated.personalScheduleSeedVersion || 0) < 4) {
