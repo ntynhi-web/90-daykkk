@@ -153,9 +153,21 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
     quickLock.current = true;
     const now = Date.now();
     const linkedGoal = activeGoals.find(goal => resolveArea(goal.id) === lifeArea);
-    const entry: ActivityEntry = { id: `quick-preset-${now}`, date: today, goalId: linkedGoal?.id || null, source: "manual", activity: activityName, output: { lifeArea, ...output }, outcome: {}, outcomeStatus: "not_applicable", insight: null, nextAction: null, confidence: 1, createdTimestamp: now, updatedTimestamp: now, startTime: hcmTime() };
-    onChangeState({ ...state, activities: [entry, ...(state.activities || [])] });
-    setQuickNotice(feedback);
+    const metric = output.waterMl ? "water" : output.choreCount ? "chores" : lifeArea === "health" ? "exercise" : lifeArea === "fund" ? "fund" : lifeArea === "b2b" ? "b2b" : null;
+    const marker = metric ? `exact:${metric}:${today}` : null;
+    const existingExact = marker ? (state.activities || []).find(item => item.originalTranscript === marker) : null;
+    const increment = Number(output.waterMl || output.choreCount || output.durationMinutes || 0);
+    const exactKey = metric === "water" ? "waterMl" : metric === "chores" ? "choreCount" : "durationMinutes";
+    const nextExactValue = existingExact ? (Number(existingExact.output?.[exactKey]) || 0) + increment : null;
+    const entry: ActivityEntry = existingExact && marker ? {
+      ...existingExact,
+      activity: `Tổng ${metric} hôm nay: ${nextExactValue}`,
+      output: { ...existingExact.output, [exactKey]: nextExactValue },
+      updatedTimestamp: now,
+      startTime: hcmTime()
+    } : { id: `quick-preset-${now}`, date: today, goalId: linkedGoal?.id || null, source: "manual", activity: activityName, output: { lifeArea, ...output }, outcome: {}, outcomeStatus: "not_applicable", insight: null, nextAction: null, confidence: 1, createdTimestamp: now, updatedTimestamp: now, startTime: hcmTime() };
+    onChangeState({ ...state, activities: [entry, ...(state.activities || []).filter(item => item.id !== entry.id)] });
+    setQuickNotice(existingExact ? `Đã cập nhật tổng ${metric} hôm nay = ${nextExactValue}.` : feedback);
     setFlashMetric(lifeArea);
     window.setTimeout(() => { quickLock.current = false; setFlashMetric(null); }, 800);
   };
@@ -230,7 +242,9 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
   };
   const saveQuickMetric = (metric: "weight" | "exercise" | "water" | "skincare" | "fund" | "b2b" | "chores") => {
     if (quickLock.current) return;
-    const value = metric === "skincare" ? 1 : Number(quickDraft[metric]);
+    const rawValue = metric === "skincare" ? "1" : quickDraft[metric].trim();
+    if (metric !== "skincare" && rawValue === "") return setQuickNotice("Hãy nhập một giá trị trước khi đặt tổng.");
+    const value = Number(rawValue);
     if (metric === "weight" && (!Number.isFinite(value) || value < 25 || value > 300)) return setQuickNotice("Cân nặng cần nằm trong khoảng 25–300 kg.");
     if (metric === "exercise" && (!Number.isFinite(value) || value < 0 || value > 720)) return setQuickNotice("Thời gian thể dục cần nằm trong khoảng 0–720 phút.");
     if (metric === "water" && (!Number.isFinite(value) || value < 0 || value > 5000)) return setQuickNotice("Lượng nước cần nằm trong khoảng 0–5.000 ml.");
@@ -270,12 +284,13 @@ export default function SimpleTodayView({ state, onChangeState, onOpenReview }: 
       });
     } else {
       const lifeArea = metric === "exercise" || metric === "water" ? "health" : metric;
+      const goalId = metric === "fund" ? "G1" : metric === "b2b" ? "G2" : metric === "chores" ? null : "G4";
       const output = metric === "water" ? { lifeArea, waterMl: value } : metric === "chores" ? { lifeArea, choreCount: value } : { lifeArea, durationMinutes: value };
       const marker = `exact:${metric}:${today}`;
       const entry: ActivityEntry = {
         id: `exact-${metric}-${today}`,
         date: today,
-        goalId: "G4",
+        goalId,
         source: "manual",
         originalTranscript: marker,
         activity: `Tổng ${metric} hôm nay: ${value}`,
@@ -447,8 +462,8 @@ function ActivityFrequencyChart({ today, state, getProgress }: { today: string; 
     const routine = state.routines.find(item => item.id === log.routineId);
     return Boolean(routine && pattern.test(routine.name));
   });
-  const trackers = [
-    { label: "Tắm & vệ sinh", done: (date: string) => completedSchedules(date, /tắm|gội|vệ sinh cá nhân/i) || loggedActivity(date, /tắm|gội|vệ sinh cá nhân/i) },
+  const coreTrackers = [
+    { label: "Tắm & gội", done: (date: string) => completedSchedules(date, /tắm|gội/i) || loggedActivity(date, /tắm|gội/i) },
     { label: "Thể dục", done: (date: string) => getProgress(date).exerciseMinutes > 0 },
     { label: "Uống đủ nước", done: (date: string) => getProgress(date).waterMl >= 1500 },
     { label: "Skincare", done: (date: string) => getProgress(date).skincareDone },
@@ -456,12 +471,18 @@ function ActivityFrequencyChart({ today, state, getProgress }: { today: string; 
     { label: "B2B", done: (date: string) => getProgress(date).b2bMinutes > 0 },
     { label: "Chores", done: (date: string) => getProgress(date).choreDone > 0 || routineDone(date, /dọn|chore|mèo/i) }
   ];
+  const coveredRoutine = /chạy|thể dục|yoga|nước|skincare|fund|b2b|dọn|chore|mèo/i;
+  const routineTrackers = state.routines.filter(routine => routine.active !== false && !coveredRoutine.test(routine.name)).map(routine => ({
+    label: routine.name,
+    done: (date: string) => (state.routineLogs || []).some(log => log.date === date && log.routineId === routine.id && log.status === "completed")
+  }));
+  const trackers = [...coreTrackers, ...routineTrackers];
   const summaries = trackers.map(tracker => ({ ...tracker, count: dates.filter(tracker.done).length }));
   const daily = dates.map(date => ({ date, count: trackers.filter(tracker => tracker.done(date)).length }));
   const maxDaily = Math.max(1, ...daily.map(item => item.count));
 
   return <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-fuchsia-600">Tần suất thực tế</p><h3 className="mt-1 text-xl font-black text-slate-950">Hoạt động tuần hoặc tháng</h3><p className="mt-1 text-xs text-slate-500">Đếm số ngày có thực hiện, ví dụ Tắm & vệ sinh 3/7 ngày. Ngày tương lai không bị tính là thiếu.</p></div><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setPeriod("week")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "week" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tuần</button><button type="button" onClick={() => setPeriod("month")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "month" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tháng</button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-fuchsia-600">Tần suất thực tế</p><h3 className="mt-1 text-xl font-black text-slate-950">Hoạt động tuần hoặc tháng</h3><p className="mt-1 text-xs text-slate-500">Đếm số ngày đã thực hiện trong phần thời gian đã trôi qua; biểu đồ không gán thất bại cho ngày tương lai.</p></div><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setPeriod("week")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "week" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tuần</button><button type="button" onClick={() => setPeriod("month")} className={`rounded-lg px-3 py-2 text-xs font-black ${period === "month" ? "bg-white text-fuchsia-700 shadow-sm" : "text-slate-500"}`}>Tháng</button></div></div>
     <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
       <div className="space-y-3">{summaries.map(item => <div key={item.label} className="rounded-2xl bg-slate-50 p-3.5"><div className="flex items-center justify-between gap-3"><span className="text-xs font-black text-slate-800">{item.label}</span><span className="font-mono text-sm font-black text-fuchsia-700">{item.count}/{elapsedDays} ngày</span></div><div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-500 transition-all" style={{ width: `${elapsedDays ? item.count / elapsedDays * 100 : 0}%` }} /></div></div>)}</div>
       <div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-black text-slate-900">Ngày nhiều · ngày ít</p><p className="mt-1 text-[10px] text-slate-500">Số nhóm hoạt động có dữ liệu trong từng ngày</p></div><span className="text-[10px] font-bold text-slate-400">Tối đa {trackers.length}</span></div><div className="mt-5 flex h-52 items-end gap-2 overflow-x-auto border-b border-slate-200 px-1 pb-1">{daily.map(item => <div key={item.date} className="flex min-w-[34px] flex-1 flex-col items-center justify-end gap-2"><span className="text-[10px] font-black text-slate-600">{item.count}</span><div title={`${item.date}: ${item.count} nhóm`} className={`w-full max-w-10 rounded-t-lg transition-all ${item.count ? "bg-gradient-to-t from-violet-600 to-fuchsia-400" : "bg-slate-200"}`} style={{ height: `${Math.max(6, item.count / maxDaily * 150)}px` }} /><span className="whitespace-nowrap font-mono text-[9px] text-slate-400">{item.date.slice(8, 10)}/{item.date.slice(5, 7)}</span></div>)}</div></div>

@@ -111,7 +111,23 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
 
   const handleAddEvent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    const title = newTitle.trim();
+    if (!title) {
+      setAddError('Hãy nhập tên công việc.');
+      return;
+    }
+    if (title.length > 160) {
+      setAddError('Tên công việc tối đa 160 ký tự.');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || newDate < state.startDate || newDate > state.endDate) {
+      setAddError(`Ngày phải nằm trong chu kỳ ${state.startDate}–${state.endDate}.`);
+      return;
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(newStartTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(newEndTime)) {
+      setAddError('Giờ phải đúng định dạng HH:mm.');
+      return;
+    }
 
     if (newEndTime <= newStartTime) {
       setAddError('Giờ hoàn tất phải sau giờ bắt đầu.');
@@ -129,7 +145,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
     }
     const newItem: ScheduleItem = {
       id: `schedule_${Date.now()}`,
-      title: newTitle,
+      title,
       date: newDate,
       startTime: newStartTime,
       endTime: newEndTime,
@@ -557,6 +573,7 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                     required
                     placeholder="Ví dụ: Gọi 15 khách hàng outreached"
                     value={newTitle}
+                    maxLength={160}
                     onChange={e => setNewTitle(e.target.value)}
                     className="w-full text-xs border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-indigo-500 bg-slate-50/50"
                   />
@@ -605,6 +622,8 @@ export default function CalendarView({ state, onChangeState }: CalendarViewProps
                     type="date"
                     required
                     value={newDate}
+                    min={state.startDate}
+                    max={state.endDate}
                     onChange={e => setNewDate(e.target.value)}
                     className="w-full text-xs border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-indigo-500 bg-slate-50/50"
                   />
