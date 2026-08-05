@@ -551,7 +551,7 @@ function applyConfirmedPersonalPlan(state: AppState): AppState {
     const date = new Date(`${cursor}T12:00:00`); date.setDate(date.getDate() + 1); cursor = formatDateStr(date);
   }
   const addOnce = (id: string, title: string, date: string, startTime: string, endTime: string, goalId: string | null, type: ScheduleItem["type"], notes?: string) => scheduleItems.push({ id, title, date, startTime, endTime, goalId, journeyId: goalId, type, notes, completed: false });
-  for (let date = "2026-08-04"; date <= endDate;) {
+  for (let date = "2026-08-11"; date <= endDate;) {
     addOnce(`ranny_${date}`, "Tắm Ranny", date, "11:00", "12:00", null, "habit", "Lặp mỗi 7 ngày; mốc đã xác nhận là thứ Ba.");
     const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 7); date = formatDateStr(next);
   }
